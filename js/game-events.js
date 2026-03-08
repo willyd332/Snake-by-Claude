@@ -253,9 +253,10 @@ export function processPostTickEvents(ctx) {
         playBossShockwaveSound();
     }
 
-    // Boss Phase 3 survival: 30 seconds = ~200 ticks at ~6.7 ticks/sec
-    if (ctx.state.bossState && ctx.state.bossState.phase === 3 && ctx.state.bossPhase3Ticks >= 200) {
+    // Boss Phase 3 survival: 30 seconds = ~400 ticks at ~13.3 ticks/sec
+    if (ctx.state.bossState && ctx.state.bossState.phase === 3 && ctx.state.bossPhase3Ticks >= 400 && !ctx.state._bossPhase3Unlocked) {
         ctx.tryUnlock('boss_phase3_survivor');
+        ctx.state = Object.assign({}, ctx.state, { _bossPhase3Unlocked: true });
     }
 
     // Arena shrink: shake
@@ -309,6 +310,9 @@ export function processPostTickEvents(ctx) {
                 activePowerUp: null,
                 powerUpSpawnCounter: 0,
                 bossState: ctx.state.bossState ? createBossState() : null,
+                bossPhase3Ticks: 0,
+                bossCloneHitThisRun: false,
+                _bossPhase3Unlocked: false,
                 _killedByHunter: false,
                 _deathCause: null,
             });
