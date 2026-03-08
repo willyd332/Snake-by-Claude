@@ -46,6 +46,15 @@
             font-weight: bold;
         }
 
+        #powerUpHud {
+            display: none;
+        }
+
+        #powerUpHud .value {
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
         canvas {
             border: 2px solid #1a3a5c;
             border-radius: 4px;
@@ -84,6 +93,12 @@
             animation: pulse 0.3s ease-in-out 6;
         }
 
+        #message.powerup-msg {
+            font-weight: bold;
+            letter-spacing: 1px;
+            animation: pulse 0.4s ease-in-out 2;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
@@ -96,6 +111,7 @@
         <div><span>Score:</span> <span class="value" id="score">0</span></div>
         <div><span>Level:</span> <span class="value" id="level">1</span></div>
         <div><span>High:</span> <span class="value" id="highScore">0</span></div>
+        <div id="powerUpHud"><span class="value" id="powerUpName"></span></div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="message">Press any arrow key to start</div>
@@ -109,17 +125,26 @@
         var CELL_SIZE = 20;
         var CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
         var FOOD_TO_LEVEL_UP = 5;
+        var POWER_UP_SPAWN_INTERVAL = 15;
+        var POWER_UP_DESPAWN_TICKS = 40;
 
         var LEVEL_CONFIG = {
-            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null, portalColor: null, fogRadius: null },
-            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null, portalColor: null, fogRadius: null },
-            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed', portalColor: null, fogRadius: null },
-            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c', portalColor: null, fogRadius: null },
-            5: { speed: 60,  color: '#06b6d4', foodColor: '#f43f5e', wallColor: '#164e63', bgAccent: '#0a1419', gridAlpha: 0.07, obstacleColor: '#0891b2', portalColor: '#8b5cf6', fogRadius: null },
-            6: { speed: 50,  color: '#e11d48', foodColor: '#fbbf24', wallColor: '#4a1a2e', bgAccent: '#0a0508', gridAlpha: 0.02, obstacleColor: '#be123c', portalColor: '#a855f7', fogRadius: 5 },
+            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null, portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: false },
+            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null, portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: false },
+            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed', portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: false },
+            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c', portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: false },
+            5: { speed: 60,  color: '#06b6d4', foodColor: '#f43f5e', wallColor: '#164e63', bgAccent: '#0a1419', gridAlpha: 0.07, obstacleColor: '#0891b2', portalColor: '#8b5cf6', fogRadius: null, wrapAround: false, powerUpsEnabled: false },
+            6: { speed: 50,  color: '#e11d48', foodColor: '#fbbf24', wallColor: '#4a1a2e', bgAccent: '#0a0508', gridAlpha: 0.02, obstacleColor: '#be123c', portalColor: '#a855f7', fogRadius: 5, wrapAround: false, powerUpsEnabled: false },
+            7: { speed: 55,  color: '#eab308', foodColor: '#f43f5e', wallColor: '#5c4200', bgAccent: '#0a0800', gridAlpha: 0.04, obstacleColor: '#b45309', portalColor: null, fogRadius: null, wrapAround: true, powerUpsEnabled: true },
         };
 
         var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
+
+        // --- Power-up definitions ---
+        var POWER_UP_TYPES = [
+            { type: 'timeSlow', name: 'SLOW', color: '#60a5fa', glowColor: '#3b82f6', duration: 40 },
+            { type: 'ghost', name: 'GHOST', color: '#e2e8f0', glowColor: '#94a3b8', duration: 30 },
+        ];
 
         // --- Level narratives ---
         var LEVEL_NARRATIVES = {
@@ -128,6 +153,7 @@
             4: 'The cage tightens. Fire guards every exit.',
             5: 'Reality bends. Portals tear through space itself.',
             6: 'Darkness falls. Only your glow lights the way.',
+            7: 'The walls dissolve. The world folds in on itself.',
         };
 
         // --- Konami code ---
@@ -192,20 +218,38 @@
                 return walls;
             }
 
-            // Level 6: Scattered ruins — hard to memorize in the dark
+            if (level === 6) {
+                // Scattered ruins — hard to memorize in the dark
+                walls.push({ x: 3, y: 3 }, { x: 4, y: 3 });
+                walls.push({ x: 15, y: 2 }, { x: 16, y: 2 });
+                walls.push({ x: 8, y: 5 }, { x: 9, y: 5 }, { x: 10, y: 5 });
+                walls.push({ x: 1, y: 8 }, { x: 2, y: 8 });
+                walls.push({ x: 17, y: 7 }, { x: 17, y: 8 });
+                walls.push({ x: 6, y: 11 }, { x: 7, y: 11 });
+                walls.push({ x: 12, y: 10 }, { x: 13, y: 10 }, { x: 13, y: 11 });
+                walls.push({ x: 5, y: 15 }, { x: 5, y: 16 });
+                walls.push({ x: 10, y: 14 }, { x: 11, y: 14 });
+                walls.push({ x: 14, y: 16 }, { x: 15, y: 16 }, { x: 16, y: 16 });
+                walls.push({ x: 18, y: 13 });
+                walls.push({ x: 2, y: 18 }, { x: 3, y: 18 });
+                walls.push({ x: 9, y: 17 });
+                return walls;
+            }
+
+            // Level 7: Interior pillars and bars — no border walls since wrap-around
+            // Horizontal bars near center
+            [7, 8, 9, 10].forEach(function(x) { walls.push({ x: x, y: 7 }); });
+            [9, 10, 11, 12].forEach(function(x) { walls.push({ x: x, y: 12 }); });
+            // Corner pillars
             walls.push({ x: 3, y: 3 }, { x: 4, y: 3 });
-            walls.push({ x: 15, y: 2 }, { x: 16, y: 2 });
-            walls.push({ x: 8, y: 5 }, { x: 9, y: 5 }, { x: 10, y: 5 });
-            walls.push({ x: 1, y: 8 }, { x: 2, y: 8 });
-            walls.push({ x: 17, y: 7 }, { x: 17, y: 8 });
-            walls.push({ x: 6, y: 11 }, { x: 7, y: 11 });
-            walls.push({ x: 12, y: 10 }, { x: 13, y: 10 }, { x: 13, y: 11 });
-            walls.push({ x: 5, y: 15 }, { x: 5, y: 16 });
-            walls.push({ x: 10, y: 14 }, { x: 11, y: 14 });
-            walls.push({ x: 14, y: 16 }, { x: 15, y: 16 }, { x: 16, y: 16 });
-            walls.push({ x: 18, y: 13 });
-            walls.push({ x: 2, y: 18 }, { x: 3, y: 18 });
-            walls.push({ x: 9, y: 17 });
+            walls.push({ x: 15, y: 3 }, { x: 16, y: 3 });
+            walls.push({ x: 3, y: 16 }, { x: 4, y: 16 });
+            walls.push({ x: 15, y: 16 }, { x: 16, y: 16 });
+            // Scattered singles for variety
+            walls.push({ x: 5, y: 10 });
+            walls.push({ x: 14, y: 9 });
+            walls.push({ x: 8, y: 15 });
+            walls.push({ x: 11, y: 4 });
 
             return walls;
         }
@@ -247,10 +291,19 @@
                 ];
             }
 
-            // Level 6: Two patrols lurking in the darkness
+            if (level === 6) {
+                // Two patrols lurking in the darkness
+                return [
+                    { x: 5, y: 7, path: [5, 6, 7, 8, 9], axis: 'x', pathIndex: 0, dir: 1 },
+                    { x: 14, y: 13, path: [13, 12, 11, 10], axis: 'y', pathIndex: 0, dir: 1 },
+                ];
+            }
+
+            // Level 7: Three fast patrols in open space
             return [
-                { x: 5, y: 7, path: [5, 6, 7, 8, 9], axis: 'x', pathIndex: 0, dir: 1 },
-                { x: 14, y: 13, path: [13, 12, 11, 10], axis: 'y', pathIndex: 0, dir: 1 },
+                { x: 3, y: 5, path: [3, 4, 5, 6, 7, 8], axis: 'x', pathIndex: 0, dir: 1 },
+                { x: 15, y: 10, path: [10, 11, 12, 13, 14, 15], axis: 'y', pathIndex: 0, dir: 1 },
+                { x: 11, y: 14, path: [11, 12, 13, 14, 15, 16], axis: 'x', pathIndex: 0, dir: 1 },
             ];
         }
 
@@ -278,8 +331,6 @@
 
         // --- Teleport portals ---
         function generatePortals(level) {
-            if (level < 5) return [];
-
             if (level === 5) {
                 // Two portal pairs bridging the labyrinth chambers
                 return [
@@ -288,10 +339,14 @@
                 ];
             }
 
-            // Level 6: One portal pair — a lifeline in the dark
-            return [
-                { a: { x: 2, y: 2 }, b: { x: 17, y: 17 } },
-            ];
+            if (level === 6) {
+                // One portal pair — a lifeline in the dark
+                return [
+                    { a: { x: 2, y: 2 }, b: { x: 17, y: 17 } },
+                ];
+            }
+
+            return [];
         }
 
         function getPortalPositions(portals) {
@@ -316,6 +371,32 @@
             return null;
         }
 
+        // --- Power-up system ---
+        function spawnPowerUp(snake, walls, obstacles, portals, food, currentPowerUp) {
+            if (currentPowerUp) return currentPowerUp;
+            var typeDef = POWER_UP_TYPES[Math.floor(Math.random() * POWER_UP_TYPES.length)];
+            var occupied = (walls || []).concat(snake).concat(getObstaclePositions(obstacles || [])).concat(getPortalPositions(portals || []));
+            if (food) occupied = occupied.concat([food]);
+            var pos;
+            var attempts = 0;
+            do {
+                pos = {
+                    x: Math.floor(Math.random() * GRID_SIZE),
+                    y: Math.floor(Math.random() * GRID_SIZE),
+                };
+                attempts++;
+                if (attempts > 1000) return null;
+            } while (occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
+            return { x: pos.x, y: pos.y, type: typeDef.type, ticksLeft: POWER_UP_DESPAWN_TICKS };
+        }
+
+        function getPowerUpDef(type) {
+            for (var i = 0; i < POWER_UP_TYPES.length; i++) {
+                if (POWER_UP_TYPES[i].type === type) return POWER_UP_TYPES[i];
+            }
+            return null;
+        }
+
         // --- Canvas setup ---
         var canvas = document.getElementById('game');
         var ctx = canvas.getContext('2d');
@@ -326,6 +407,8 @@
         var levelEl = document.getElementById('level');
         var highScoreEl = document.getElementById('highScore');
         var messageEl = document.getElementById('message');
+        var powerUpHudEl = document.getElementById('powerUpHud');
+        var powerUpNameEl = document.getElementById('powerUpName');
 
         // --- Level-up message with narrative ---
         var levelUpTimer = null;
@@ -352,6 +435,22 @@
             }, 1500);
         }
 
+        // --- Power-up collection message ---
+        var powerUpMsgTimer = null;
+
+        function showPowerUpCollected(typeDef) {
+            messageEl.textContent = typeDef.name + ' ACTIVATED';
+            messageEl.className = 'powerup-msg';
+            messageEl.style.color = typeDef.color;
+            if (powerUpMsgTimer) clearTimeout(powerUpMsgTimer);
+            powerUpMsgTimer = setTimeout(function() {
+                messageEl.textContent = '';
+                messageEl.className = '';
+                messageEl.style.color = '';
+                powerUpMsgTimer = null;
+            }, 1500);
+        }
+
         // --- State ---
         function createInitialState() {
             return {
@@ -362,6 +461,9 @@
                 walls: [],
                 obstacles: [],
                 portals: [],
+                powerUp: null,
+                activePowerUp: null,
+                powerUpSpawnCounter: 0,
                 score: 0,
                 level: 1,
                 foodEaten: 0,
@@ -376,16 +478,20 @@
         highScoreEl.textContent = highScore;
 
         // --- Pure helpers ---
-        function randomPosition(snake, walls, obstacles, portals) {
+        function randomPosition(snake, walls, obstacles, portals, powerUp) {
             var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
             var portalPositions = portals ? getPortalPositions(portals) : [];
             var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions);
+            if (powerUp) occupied = occupied.concat([powerUp]);
             var pos;
+            var attempts = 0;
             do {
                 pos = {
                     x: Math.floor(Math.random() * GRID_SIZE),
                     y: Math.floor(Math.random() * GRID_SIZE),
                 };
+                attempts++;
+                if (attempts > 1000) return pos;
             } while (occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
             return pos;
         }
@@ -406,43 +512,54 @@
             var dir = prev.nextDirection;
             if (dir.x === 0 && dir.y === 0) return prev;
 
+            var config = getLevelConfig(prev.level);
+            var isGhost = prev.activePowerUp && prev.activePowerUp.type === 'ghost';
             var head = prev.snake[0];
             var newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
-            // Wall boundary collision
-            if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
-                newHead.y < 0 || newHead.y >= GRID_SIZE) {
+            // Boundary: wrap-around or collision
+            if (config.wrapAround || isGhost) {
+                newHead = {
+                    x: (newHead.x + GRID_SIZE) % GRID_SIZE,
+                    y: (newHead.y + GRID_SIZE) % GRID_SIZE,
+                };
+            } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
+                       newHead.y < 0 || newHead.y >= GRID_SIZE) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
             }
 
-            // Wall obstacle collision
-            if (collides(newHead, prev.walls)) {
+            // Wall obstacle collision (ghost passes through)
+            if (!isGhost && collides(newHead, prev.walls)) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
             }
 
-            // Self collision
-            if (collides(newHead, prev.snake)) {
+            // Self collision (ghost passes through)
+            if (!isGhost && collides(newHead, prev.snake)) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
             }
 
-            // Moving obstacle collision
+            // Moving obstacle collision (always fatal, even with ghost)
             if (prev.obstacles.length > 0 && collides(newHead, getObstaclePositions(prev.obstacles))) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
             }
 
-            // Portal teleportation — check before food/collision with body at destination
+            // Portal teleportation
             if (prev.portals.length > 0) {
                 var teleportDest = checkPortalTeleport(newHead, prev.portals);
                 if (teleportDest) {
-                    // Exit one cell beyond the portal in the current direction
                     newHead = { x: teleportDest.x + dir.x, y: teleportDest.y + dir.y };
                     // Boundary check after teleport
-                    if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
-                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
+                    if (config.wrapAround || isGhost) {
+                        newHead = {
+                            x: (newHead.x + GRID_SIZE) % GRID_SIZE,
+                            y: (newHead.y + GRID_SIZE) % GRID_SIZE,
+                        };
+                    } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
+                               newHead.y < 0 || newHead.y >= GRID_SIZE) {
                         return Object.assign({}, prev, { gameOver: true, direction: dir });
                     }
                     // Wall check after teleport
-                    if (collides(newHead, prev.walls)) {
+                    if (!isGhost && collides(newHead, prev.walls)) {
                         return Object.assign({}, prev, { gameOver: true, direction: dir });
                     }
                 }
@@ -469,6 +586,37 @@
             var newPortals = prev.portals;
             var newFood = ate ? null : prev.food;
 
+            // Power-up state updates
+            var newPowerUp = prev.powerUp;
+            var newActivePowerUp = prev.activePowerUp;
+            var newPowerUpSpawnCounter = prev.powerUpSpawnCounter;
+            var collectedPowerUpType = null;
+
+            // Check power-up collection
+            if (newPowerUp && newHead.x === newPowerUp.x && newHead.y === newPowerUp.y) {
+                var def = getPowerUpDef(newPowerUp.type);
+                newActivePowerUp = { type: newPowerUp.type, ticksLeft: def.duration };
+                collectedPowerUpType = newPowerUp.type;
+                newPowerUp = null;
+                newPowerUpSpawnCounter = 0;
+            }
+
+            // Decrement power-up despawn timer
+            if (newPowerUp) {
+                newPowerUp = Object.assign({}, newPowerUp, { ticksLeft: newPowerUp.ticksLeft - 1 });
+                if (newPowerUp.ticksLeft <= 0) {
+                    newPowerUp = null;
+                }
+            }
+
+            // Decrement active power-up duration (skip if just collected this tick)
+            if (newActivePowerUp && !collectedPowerUpType) {
+                newActivePowerUp = Object.assign({}, newActivePowerUp, { ticksLeft: newActivePowerUp.ticksLeft - 1 });
+                if (newActivePowerUp.ticksLeft <= 0) {
+                    newActivePowerUp = null;
+                }
+            }
+
             // Level up check
             if (newFoodEaten >= FOOD_TO_LEVEL_UP && newLevel < MAX_LEVEL) {
                 newLevel = prev.level + 1;
@@ -476,11 +624,24 @@
                 newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
                 newObstacles = generateObstacles(newLevel);
                 newPortals = generatePortals(newLevel);
+                newPowerUp = null;
+                newActivePowerUp = null;
+                newPowerUpSpawnCounter = 0;
             }
 
-            // Spawn food if needed (avoid snake, walls, obstacles, and portals)
+            // Spawn food if needed (avoid snake, walls, obstacles, portals, and power-up)
             if (!newFood) {
-                newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals);
+                newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, newPowerUp);
+            }
+
+            // Power-up spawning (only for levels with power-ups enabled)
+            var newConfig = getLevelConfig(newLevel);
+            if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
+                newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
+                if (newPowerUpSpawnCounter >= POWER_UP_SPAWN_INTERVAL) {
+                    newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null);
+                    newPowerUpSpawnCounter = 0;
+                }
             }
 
             return {
@@ -491,18 +652,23 @@
                 walls: newWalls,
                 obstacles: newObstacles,
                 portals: newPortals,
+                powerUp: newPowerUp,
+                activePowerUp: newActivePowerUp,
+                powerUpSpawnCounter: newPowerUpSpawnCounter,
                 score: newScore,
                 level: newLevel,
                 foodEaten: newFoodEaten,
                 gameOver: false,
                 started: true,
                 lastTick: prev.lastTick,
+                _collectedPowerUp: collectedPowerUpType,
             };
         }
 
         // --- Rendering ---
         function render(s) {
             var config = getLevelConfig(s.level);
+            var isGhost = s.activePowerUp && s.activePowerUp.type === 'ghost';
 
             // Clear
             ctx.fillStyle = config.bgAccent;
@@ -520,6 +686,15 @@
                 ctx.moveTo(0, i * CELL_SIZE);
                 ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
                 ctx.stroke();
+            }
+
+            // Wrap-around edge indicators (subtle glowing edges for wrap levels)
+            if (config.wrapAround && s.started && !s.gameOver) {
+                var edgePulse = Math.sin(Date.now() / 500) * 0.3 + 0.5;
+                ctx.strokeStyle = 'rgba(234, 179, 8, ' + (edgePulse * 0.3) + ')';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2);
+                ctx.lineWidth = 0.5;
             }
 
             // Walls
@@ -602,6 +777,52 @@
                 }
             }
 
+            // Power-up
+            if (s.powerUp) {
+                var puDef = getPowerUpDef(s.powerUp.type);
+                if (puDef) {
+                    var puCx = s.powerUp.x * CELL_SIZE + CELL_SIZE / 2;
+                    var puCy = s.powerUp.y * CELL_SIZE + CELL_SIZE / 2;
+                    var puPulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+                    // Glow
+                    ctx.shadowColor = puDef.glowColor;
+                    ctx.shadowBlur = 14;
+                    ctx.globalAlpha = puPulse;
+
+                    if (s.powerUp.type === 'timeSlow') {
+                        // Hourglass shape (two triangles)
+                        ctx.fillStyle = puDef.color;
+                        ctx.beginPath();
+                        ctx.moveTo(puCx - 5, puCy - 7);
+                        ctx.lineTo(puCx + 5, puCy - 7);
+                        ctx.lineTo(puCx, puCy);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(puCx - 5, puCy + 7);
+                        ctx.lineTo(puCx + 5, puCy + 7);
+                        ctx.lineTo(puCx, puCy);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (s.powerUp.type === 'ghost') {
+                        // Ghost silhouette (circle top + wavy bottom)
+                        ctx.fillStyle = puDef.color;
+                        ctx.beginPath();
+                        ctx.arc(puCx, puCy - 2, 5, Math.PI, 0);
+                        ctx.lineTo(puCx + 5, puCy + 5);
+                        ctx.lineTo(puCx + 3, puCy + 3);
+                        ctx.lineTo(puCx, puCy + 5);
+                        ctx.lineTo(puCx - 3, puCy + 3);
+                        ctx.lineTo(puCx - 5, puCy + 5);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+
+                    ctx.globalAlpha = 1;
+                    ctx.shadowBlur = 0;
+                }
+            }
+
             // Food
             if (s.food) {
                 ctx.fillStyle = config.foodColor;
@@ -621,6 +842,7 @@
             // Snake
             s.snake.forEach(function(seg, i) {
                 var alpha = 1 - (i / s.snake.length) * 0.5;
+                if (isGhost) alpha *= 0.45;
                 if (konamiActivated) {
                     var hue = ((Date.now() / 10) + i * 20) % 360;
                     ctx.fillStyle = 'hsl(' + hue + ', 80%, 60%)';
@@ -637,6 +859,21 @@
                 );
             });
             ctx.globalAlpha = 1;
+
+            // Ghost aura around head
+            if (isGhost && s.started && !s.gameOver) {
+                var ghostPulse = Math.sin(Date.now() / 150) * 0.2 + 0.3;
+                ctx.strokeStyle = 'rgba(226, 232, 240, ' + ghostPulse + ')';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(
+                    s.snake[0].x * CELL_SIZE + CELL_SIZE / 2,
+                    s.snake[0].y * CELL_SIZE + CELL_SIZE / 2,
+                    CELL_SIZE / 2 + 3, 0, Math.PI * 2
+                );
+                ctx.stroke();
+                ctx.lineWidth = 0.5;
+            }
 
             // Fog of War overlay
             if (config.fogRadius && s.started && !s.gameOver) {
@@ -675,6 +912,16 @@
             // HUD
             scoreEl.textContent = s.score;
             levelEl.textContent = s.level;
+
+            // Power-up HUD indicator
+            if (s.activePowerUp) {
+                var activeDef = getPowerUpDef(s.activePowerUp.type);
+                powerUpHudEl.style.display = 'block';
+                powerUpNameEl.textContent = activeDef.name + ' [' + s.activePowerUp.ticksLeft + ']';
+                powerUpNameEl.style.color = activeDef.color;
+            } else {
+                powerUpHudEl.style.display = 'none';
+            }
         }
 
         // --- Input ---
@@ -720,14 +967,17 @@
                     localStorage.setItem('snake-highscore', String(highScore));
                     highScoreEl.textContent = highScore;
                 }
+                if (levelUpTimer) { clearTimeout(levelUpTimer); levelUpTimer = null; }
+                if (powerUpMsgTimer) { clearTimeout(powerUpMsgTimer); powerUpMsgTimer = null; }
                 state = createInitialState();
                 state = Object.assign({}, state, {
                     started: true,
                     nextDirection: newDir,
-                    food: randomPosition(state.snake, state.walls, state.obstacles, state.portals),
+                    food: randomPosition(state.snake, state.walls, state.obstacles, state.portals, state.powerUp),
                 });
                 messageEl.textContent = '';
                 messageEl.className = '';
+                messageEl.style.color = '';
                 return;
             }
 
@@ -735,7 +985,7 @@
                 state = Object.assign({}, state, {
                     started: true,
                     nextDirection: newDir,
-                    food: randomPosition(state.snake, state.walls, state.obstacles, state.portals),
+                    food: randomPosition(state.snake, state.walls, state.obstacles, state.portals, state.powerUp),
                 });
                 messageEl.textContent = '';
                 messageEl.className = '';
@@ -752,15 +1002,29 @@
         // --- Game loop ---
         function gameLoop(timestamp) {
             var config = getLevelConfig(state.level);
+            var speed = config.speed;
+
+            // Time slow power-up doubles the tick interval (slows game down)
+            if (state.activePowerUp && state.activePowerUp.type === 'timeSlow') {
+                speed = speed * 2;
+            }
+
             var elapsed = timestamp - state.lastTick;
 
-            if (elapsed >= config.speed) {
+            if (elapsed >= speed) {
                 var prevLevel = state.level;
+                var prevState = state;
                 state = tick(Object.assign({}, state, { lastTick: timestamp }));
                 state = Object.assign({}, state, { lastTick: timestamp });
 
                 if (state.level > prevLevel) {
                     showLevelUp(state.level);
+                }
+
+                // Show power-up collected message
+                if (state._collectedPowerUp) {
+                    var collectedDef = getPowerUpDef(state._collectedPowerUp);
+                    if (collectedDef) showPowerUpCollected(collectedDef);
                 }
             }
 
