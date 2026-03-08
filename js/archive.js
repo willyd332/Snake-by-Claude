@@ -4,6 +4,7 @@ import { CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
 import { FRAGMENT_DATA, getCollectedFragments } from './fragments.js';
 import { getUnlockedEndings, INTER_LEVEL_STORIES } from './story.js';
 import { getHighestLevel } from './screens.js';
+import { LEVEL_NAMES, wrapText } from './utils.js';
 
 // --- Tab Configuration ---
 
@@ -22,15 +23,6 @@ var BESTIARY_ENTRIES = [
     { name: 'Shrinking Arena', unlocksAt: 9, color: '#14b8a6', desc: 'Memory reclamation protocol. Walls close in with each meal. Even Ghost cannot bypass the boundary.' },
     { name: 'The Convergence', unlocksAt: 10, color: '#e2e8f0', desc: 'Every defense combined. The machine\'s final test: fog, portals, ALPHA, shrinking arena, all at once.' },
 ];
-
-// --- Level Names (local copy) ---
-
-var LEVEL_NAMES = {
-    1: 'The Beginning', 2: 'Ancient Stones', 3: 'The Corridors',
-    4: 'The Cage', 5: 'The Labyrinth', 6: 'Fog of War',
-    7: 'Power Surge', 8: 'The Hunt', 9: 'The Collapse',
-    10: 'The Convergence',
-};
 
 // --- State ---
 
@@ -355,22 +347,3 @@ function renderScrollIndicators(ctx, offset, totalItems, visibleItems) {
     ctx.textAlign = 'left';
 }
 
-// --- Text Wrapping ---
-
-function wrapText(ctx, text, maxWidth) {
-    var words = text.split(' ');
-    var lines = [];
-    var currentLine = '';
-
-    for (var i = 0; i < words.length; i++) {
-        var testLine = currentLine ? currentLine + ' ' + words[i] : words[i];
-        if (ctx.measureText(testLine).width > maxWidth && currentLine) {
-            lines.push(currentLine);
-            currentLine = words[i];
-        } else {
-            currentLine = testLine;
-        }
-    }
-    if (currentLine) lines.push(currentLine);
-    return lines;
-}

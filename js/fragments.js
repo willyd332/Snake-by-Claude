@@ -1,6 +1,7 @@
 'use strict';
 
 import { CELL_SIZE, CANVAS_SIZE } from './constants.js';
+import { LEVEL_NAMES, wrapText } from './utils.js';
 
 // --- Fragment Data ---
 // One data fragment per level, at fixed positions in risky locations.
@@ -157,19 +158,6 @@ export function renderFragmentOverlay(ctx, fragmentTextState) {
 
 // --- Codex Screen ---
 
-var LEVEL_NAMES = {
-    1: 'The Beginning',
-    2: 'Ancient Stones',
-    3: 'The Corridors',
-    4: 'The Cage',
-    5: 'The Labyrinth',
-    6: 'Fog of War',
-    7: 'Power Surge',
-    8: 'The Hunt',
-    9: 'The Collapse',
-    10: 'The Convergence',
-};
-
 export function renderCodex(ctx, codexState) {
     var collected = getCollectedFragments();
 
@@ -269,23 +257,3 @@ export function renderCodex(ctx, codexState) {
     ctx.textAlign = 'left';
 }
 
-// --- Helpers ---
-
-function wrapText(ctx, text, maxWidth) {
-    var words = text.split(' ');
-    var lines = [];
-    var currentLine = '';
-
-    for (var i = 0; i < words.length; i++) {
-        var testLine = currentLine ? currentLine + ' ' + words[i] : words[i];
-        var metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine) {
-            lines.push(currentLine);
-            currentLine = words[i];
-        } else {
-            currentLine = testLine;
-        }
-    }
-    if (currentLine) lines.push(currentLine);
-    return lines;
-}

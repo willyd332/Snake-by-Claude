@@ -3,19 +3,7 @@
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
 import { getCollectedFragments } from './fragments.js';
 import { getUnlockedEndings } from './story.js';
-
-var LEVEL_NAMES = {
-    1: 'The Beginning',
-    2: 'Ancient Stones',
-    3: 'The Corridors',
-    4: 'The Cage',
-    5: 'The Labyrinth',
-    6: 'Fog of War',
-    7: 'Power Surge',
-    8: 'The Hunt',
-    9: 'The Collapse',
-    10: 'The Convergence',
-};
+import { LEVEL_NAMES } from './utils.js';
 
 var LEVEL_TAGS = {
     1: 'No obstacles',

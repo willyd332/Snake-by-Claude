@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE, CANVAS_SIZE, MAX_LEVEL, AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD } from './constants.js';
+import { CANVAS_SIZE, MAX_LEVEL } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
 import { render } from './renderer.js';
@@ -11,49 +11,40 @@ import { generateWalls, filterWallsFromSnake, generateObstacles, generatePortals
 import { generateHunter } from './hunter.js';
 import {
     createTitleState, updateTitleState, renderTitleScreen,
-    createLevelSelectState, renderLevelSelect,
-    getHighestLevel, setHighestLevel,
+    createLevelSelectState, renderLevelSelect, getHighestLevel,
 } from './screens.js';
 import {
     hasPrologueSeen, markPrologueSeen,
-    createPrologueState, renderPrologue,
-    createStoryScreenState, renderStoryScreen,
-    createEndingState, renderEndingScreen, isEndingComplete, unlockEnding, getUnlockedEndings,
+    createPrologueState, renderPrologue, renderStoryScreen,
+    renderEndingScreen, getUnlockedEndings,
 } from './story.js';
 import {
-    createParticleSystem, updateParticles, renderParticles,
-    emitBurst, emitExplosion, emitSparkle, emitLevelUpShower,
-    emitPortalSwirl,
-    createShakeState, triggerShake, updateShake, getShakeOffset,
+    createParticleSystem, updateParticles, renderParticles, emitSparkle,
+    createShakeState, updateShake, getShakeOffset,
 } from './particles.js';
 import {
-    initAudio, playEatSound, playLevelUpSound, playDeathSound,
-    playPowerUpCollectSound, playPortalSound, playShrinkSound,
-    playMenuSelectSound, playMenuNavigateSound, playStartSound,
-    playFragmentCollectSound, playHunterKillSound, playHunterIntroSound,
-    playSecretSound,
+    initAudio, playMenuSelectSound, playMenuNavigateSound, playStartSound,
+    playHunterIntroSound, playSecretSound,
 } from './audio.js';
 import {
-    FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected, collectFragment,
-    getCollectedFragments, renderFragmentOverlay, renderCodex,
+    FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected,
+    renderFragmentOverlay, renderCodex,
 } from './fragments.js';
 import { createArchiveState, renderArchive, getArchiveMaxScroll } from './archive.js';
 import {
-    getEndlessConfig, getWaveTitle,
-    getEndlessHighScore, setEndlessHighScore,
+    getEndlessConfig, getEndlessHighScore, setEndlessHighScore,
     getEndlessHighWave, setEndlessHighWave,
 } from './endless.js';
+import { processPostTickEvents } from './game-events.js';
 import {
-    handleSecretKey, isSecretActive, toggleDevConsole, isDevConsoleOpen,
+    handleSecretKey, toggleDevConsole, isDevConsoleOpen,
     applyInvertFilter, markSecretFound,
-    createMatrixState, updateMatrixState, renderMatrixRain,
-    renderDevConsole,
+    createMatrixState, updateMatrixState, renderMatrixRain, renderDevConsole,
 } from './secrets.js';
 import {
     unlockAchievement, createPopupState, renderPopup,
     createGalleryState, renderGallery, getGalleryItemCount,
-    SKINS, TRAILS, setActiveSkin, setActiveTrail,
-    isSkinUnlocked, isTrailUnlocked, getActiveSkin, getActiveTrail,
+    SKINS, TRAILS, setActiveSkin, setActiveTrail, isSkinUnlocked, isTrailUnlocked,
 } from './achievements.js';
 import { playAchievementSound } from './audio.js';
 
@@ -692,228 +683,35 @@ function gameLoop(timestamp) {
             snakeTrailHistory = [tail].concat(snakeTrailHistory.slice(0, 7));
         }
 
-        // --- Particle Events ---
-
-        // Food eaten: burst at food position, skip interpolation (snake grew)
-        if (state._ateFood && state._ateFoodPos) {
-            prevSnake = null;
-            playEatSound();
-            particleSystem = emitBurst(particleSystem, state._ateFoodPos.x, state._ateFoodPos.y, config.foodColor, 12, 60, 0.5);
-            shakeState = triggerShake(2, 0.1);
-
-            // Score achievements
-            if (state.score >= 100) tryUnlock('first_byte');
-            if (state.score >= 500) tryUnlock('data_hoarder');
-            if (state.score >= 1000) tryUnlock('megabyte');
-        }
-
-        // Awakening ending: eat enough food on Level 10 while alive (normal mode only)
-        if (!endlessMode && state._ateFood && state.level === MAX_LEVEL && state.foodEaten >= AWAKENING_FOOD_THRESHOLD) {
-            if (state.score > highScore) {
-                highScore = state.score;
-                localStorage.setItem('snake-highscore', String(highScore));
-                dom.highScoreEl.textContent = highScore;
-            }
-            playLevelUpSound();
-            endingState = createEndingState('awakening');
-            unlockEnding('awakening');
-            tryUnlock('transcendence');
-            checkAllEndings();
-            currentScreen = 'ending';
-            hideGameplayUI();
-            ui.clearTimers();
-        }
-
-        // Endless wave-up detection
-        if (endlessMode && state.endlessWave > (prevState.endlessWave || 0)) {
-            if (state.endlessWave >= 10) tryUnlock('endurance');
-            if (state.endlessWave >= 25) tryUnlock('marathoner');
-            prevSnake = null;
-            prevHunterSegments = null;
-            playLevelUpSound();
-            var waveConfig = state.endlessConfig;
-            particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, waveConfig.color);
-            shakeState = triggerShake(4, 0.3);
-            hunterTrailHistory = [];
-
-            // ALPHA intro on first hunter wave
-            if (state.hunter && !(prevState.hunter)) {
-                hunterIntroState = { text: 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON', startTime: Date.now() };
-                playHunterIntroSound();
-            }
-
-            // Wave title message
-            var waveTitle = getWaveTitle(state.endlessWave);
-            if (waveTitle) {
-                messageEl.textContent = 'WAVE ' + state.endlessWave + ' \u2014 ' + waveTitle;
-                messageEl.className = 'levelup';
-                messageEl.style.color = waveConfig.color;
-                setTimeout(function() {
-                    messageEl.textContent = '';
-                    messageEl.className = '';
-                    messageEl.style.color = '';
-                }, 2000);
-            } else {
-                messageEl.textContent = 'WAVE ' + state.endlessWave;
-                messageEl.className = 'levelup';
-                messageEl.style.color = waveConfig.color;
-                setTimeout(function() {
-                    messageEl.textContent = '';
-                    messageEl.className = '';
-                    messageEl.style.color = '';
-                }, 1500);
-            }
-
-        }
-
-        // Level up: shower + shake + story screen (normal mode)
-        if (!endlessMode && state.level > prevLevel) {
-            prevSnake = null;
-            prevHunterSegments = null;
-            playLevelUpSound();
-            setHighestLevel(state.level);
-
-            // Progression achievements
-            if (prevLevel === 1) tryUnlock('boot_sequence');
-            if (state.level >= 5) tryUnlock('deep_dive');
-            if (state.level >= 10) tryUnlock('the_core');
-            if (prevLevel === 8) tryUnlock('untouchable');
-
-            // Speed demon: cleared prev level in under 20s
-            if (levelStartTime > 0 && (Date.now() - levelStartTime) < 20000) {
-                tryUnlock('speed_demon');
-            }
-            levelStartTime = Date.now();
-            var newConfig = getLevelConfig(state.level);
-            particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, newConfig.color);
-            shakeState = triggerShake(4, 0.3);
-
-            // Spawn fragment for new level
-            var newLevelFrag = spawnFragmentForLevel(state.level, 0);
-            if (newLevelFrag) {
-                state = Object.assign({}, state, { fragment: newLevelFrag });
-            }
-
-            // Reset hunter trail for new level
-            hunterTrailHistory = [];
-
-            // ALPHA intro when leveling up to a hunter level
-            if (state.hunter) {
-                var hunterLevelText = state.level === 10
-                    ? 'ALPHA REMEMBERS YOU.'
-                    : 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON';
-                hunterIntroState = { text: hunterLevelText, startTime: Date.now() + 1500 };
-            }
-
-            // Show inter-level story screen
-            var newStoryState = createStoryScreenState(state.level);
-            if (newStoryState.lines.length > 0) {
-                storyScreenState = newStoryState;
-                currentScreen = 'story_screen';
-                hideGameplayUI();
-                ui.clearTimers();
-            } else {
-                ui.showLevelUp(state.level);
-            }
-        }
-
-        // Power-up collected: sparkle burst
-        if (state._collectedPowerUp) {
-            if (state._collectedPowerUp === 'ghost') tryUnlock('ghost_rider');
-            var collectedDef = getPowerUpDef(state._collectedPowerUp);
-            if (collectedDef) {
-                playPowerUpCollectSound();
-                ui.showPowerUpCollected(collectedDef);
-                particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
-            }
-        }
-
-        // Fragment collected: sound, particles, text overlay, localStorage
-        if (state._collectedFragment) {
-            var fragLevel = state._collectedFragmentLevel;
-            var fragData = getFragmentForLevel(fragLevel);
-            if (fragData) {
-                playFragmentCollectSound();
-                collectFragment(fragLevel);
-                // Fragment achievements (check after collecting)
-                var totalFrags = getCollectedFragments().length;
-                if (totalFrags >= 5) tryUnlock('archaeologist');
-                if (totalFrags >= 10) tryUnlock('full_archive');
-                fragmentTextState = { text: fragData.text, startTime: Date.now() };
-                particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, '#4a9eff', 20, 70, 0.8);
-                shakeState = triggerShake(3, 0.15);
-            }
-        }
-
-        // Fragment conditional spawning: check if food threshold now met
-        if (state._ateFood && !state.fragment && !state._collectedFragment) {
-            var pendingFrag = spawnFragmentForLevel(state.level, state.foodEaten);
-            if (pendingFrag) {
-                state = Object.assign({}, state, { fragment: pendingFrag });
-            }
-        }
-
-        // Arena shrink: shake
-        if (state._shrinkOccurred) {
-            playShrinkSound();
-            ui.showShrinkMessage();
-            shakeState = triggerShake(5, 0.25);
-            var arenaW = state.arenaMaxX - state.arenaMinX + 1;
-            var arenaH = state.arenaMaxY - state.arenaMinY + 1;
-            if (arenaW <= 8 && arenaH <= 8) tryUnlock('survivor');
-        }
-
-        // Teleport: detect by checking if head moved more than 2 cells (skip on wrap-around levels)
-        if (!state.gameOver && prevState.started && !config.wrapAround) {
-            var headDx = Math.abs(state.snake[0].x - prevState.snake[0].x);
-            var headDy = Math.abs(state.snake[0].y - prevState.snake[0].y);
-            if (headDx > 2 || headDy > 2) {
-                playPortalSound();
-                var portalColor = config.portalColor || '#8b5cf6';
-                particleSystem = emitPortalSwirl(particleSystem, prevState.snake[0].x, prevState.snake[0].y, portalColor);
-                particleSystem = emitPortalSwirl(particleSystem, state.snake[0].x, state.snake[0].y, portalColor);
-            }
-        }
-
-        // Game over: explosion + stop interpolation
-        if (state.gameOver && !prevState.gameOver) {
-            prevSnake = null;
-            prevHunterSegments = null;
-            hunterIntroState = null;
-
-            // Save endless high scores on death
-            if (endlessMode) {
-                setEndlessHighScore(state.score);
-                setEndlessHighWave(state.endlessWave);
-            }
-
-            if (state._killedByHunter) {
-                // ALPHA kill: distinctive sound, orange particles, heavier shake
-                playHunterKillSound();
-                particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.hunterColor || '#f97316', '#ff2200');
-                shakeState = triggerShake(12, 0.5);
-            } else {
-                playDeathSound();
-                particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
-                shakeState = triggerShake(8, 0.4);
-            }
-
-            // Ending sequence for Level 10 deaths (normal mode only)
-            if (!endlessMode && state.level === MAX_LEVEL && currentScreen !== 'ending') {
-                if (state.score > highScore) {
-                    highScore = state.score;
-                    localStorage.setItem('snake-highscore', String(highScore));
-                    dom.highScoreEl.textContent = highScore;
-                }
-                var deathEndingType = state.foodEaten >= DELETION_FOOD_THRESHOLD ? 'deletion' : 'loop';
-                endingState = createEndingState(deathEndingType);
-                unlockEnding(deathEndingType);
-                checkAllEndings();
-                currentScreen = 'ending';
-                hideGameplayUI();
-                ui.clearTimers();
-            }
-        }
+        // Process post-tick game events (sounds, particles, screen transitions)
+        var eventCtx = {
+            state: state, prevState: prevState, prevLevel: prevLevel,
+            prevSnake: prevSnake, prevHunterSegments: prevHunterSegments,
+            hunterTrailHistory: hunterTrailHistory,
+            particleSystem: particleSystem, shakeState: shakeState,
+            highScore: highScore, levelStartTime: levelStartTime,
+            fragmentTextState: fragmentTextState, hunterIntroState: hunterIntroState,
+            endingState: endingState, storyScreenState: storyScreenState,
+            currentScreen: currentScreen, endlessMode: endlessMode, config: config,
+            messageEl: messageEl, dom: dom, ui: ui,
+            tryUnlock: tryUnlock, checkAllEndings: checkAllEndings,
+            spawnFragmentForLevel: spawnFragmentForLevel,
+            hideGameplayUI: hideGameplayUI,
+        };
+        processPostTickEvents(eventCtx);
+        state = eventCtx.state;
+        prevSnake = eventCtx.prevSnake;
+        prevHunterSegments = eventCtx.prevHunterSegments;
+        hunterTrailHistory = eventCtx.hunterTrailHistory;
+        particleSystem = eventCtx.particleSystem;
+        shakeState = eventCtx.shakeState;
+        highScore = eventCtx.highScore;
+        levelStartTime = eventCtx.levelStartTime;
+        fragmentTextState = eventCtx.fragmentTextState;
+        hunterIntroState = eventCtx.hunterIntroState;
+        endingState = eventCtx.endingState;
+        storyScreenState = eventCtx.storyScreenState;
+        currentScreen = eventCtx.currentScreen;
     }
 
     // Active power-up sparkle trail (every frame, throttled by particle count)
