@@ -118,7 +118,7 @@ export function tickBoss(bossState, gameState, config) {
 
 // --- Food Pulse: Scatter all food to random positions ---
 
-export function applyFoodPulse(gameState) {
+function applyFoodPulse(gameState) {
     var newFood = randomPosition(
         gameState.snake, gameState.walls, gameState.obstacles,
         gameState.portals, gameState.powerUp, gameState.hunter
@@ -219,7 +219,7 @@ export function pushSnakeInward(snake, bounds) {
 
 // --- Berserk: Modify hunter direction with randomness ---
 
-export function getBerserkDirection(hunter) {
+function getBerserkDirection(hunter) {
     if (!hunter) return null;
     if (Math.random() < BERSERK_RANDOM_CHANCE) {
         var dirs = [

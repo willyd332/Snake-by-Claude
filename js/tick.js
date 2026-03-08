@@ -7,7 +7,7 @@ import { generateHunter, moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
-import { tickBoss, applyFoodPulse, checkShadowCloneCollision, getShadowCloneHitPenalty, getShockwaveBounds, pushSnakeInward, getBerserkTickInterval } from './boss.js';
+import { tickBoss, createBossState, checkShadowCloneCollision, getShadowCloneHitPenalty, getShockwaveBounds, pushSnakeInward, getBerserkTickInterval } from './boss.js';
 
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
@@ -346,13 +346,7 @@ export function tick(prev) {
             powerUp: newPowerUp,
             hunter: newHunter,
         };
-        newBossState = tickBoss(newBossState || (function() {
-            // Initialize on first tick of Level 10
-            var bs = { phase: 1, pulseCooldown: 100, pulseTriggered: false, shadowClones: [],
-                shockwaveCooldown: 67, shockwaveActive: false, shockwaveTicksRemaining: 0,
-                shockwaveShrinkApplied: false, phaseTransition: null, berserkActive: false };
-            return bs;
-        })(), bossGameState, config);
+        newBossState = tickBoss(newBossState || createBossState(), bossGameState, config);
 
         if (newBossState && newBossState.phase > prevBossPhase) {
             bossPhaseChanged = true;

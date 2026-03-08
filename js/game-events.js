@@ -13,6 +13,7 @@ import {
     playFragmentCollectSound, playHunterKillSound, playHunterIntroSound,
 } from './audio.js';
 import { getFragmentForLevel, collectFragment, getCollectedFragments } from './fragments.js';
+import { createBossState } from './boss.js';
 import { setHighestLevel } from './screens.js';
 import { createEndingState, unlockEnding, createStoryScreenState } from './story.js';
 import { setEndlessHighScore, setEndlessHighWave, getWaveTitle } from './endless.js';
@@ -281,6 +282,7 @@ export function processPostTickEvents(ctx) {
                 powerUp: null,
                 activePowerUp: null,
                 powerUpSpawnCounter: 0,
+                bossState: ctx.state.bossState ? createBossState() : null,
                 _killedByHunter: false,
                 _deathCause: null,
             });
