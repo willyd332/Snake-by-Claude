@@ -20,6 +20,11 @@ import {
     emitPortalSwirl,
     createShakeState, triggerShake, updateShake, getShakeOffset,
 } from './particles.js';
+import {
+    initAudio, playEatSound, playLevelUpSound, playDeathSound,
+    playPowerUpCollectSound, playPortalSound, playShrinkSound,
+    playMenuSelectSound, playMenuNavigateSound, playStartSound,
+} from './audio.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -119,9 +124,13 @@ setupInput({
 
     // Title screen actions
     onTitlePlay: function() {
+        initAudio();
+        playMenuSelectSound();
         startGameAtLevel(1);
     },
     onTitleLevelSelect: function() {
+        initAudio();
+        playMenuSelectSound();
         switchToLevelSelect();
     },
 
@@ -130,6 +139,7 @@ setupInput({
         var highest = getHighestLevel();
         var newLevel = levelSelectState.selectedLevel + delta;
         if (newLevel >= 1 && newLevel <= Math.min(highest, MAX_LEVEL)) {
+            playMenuNavigateSound();
             levelSelectState = Object.assign({}, levelSelectState, {
                 selectedLevel: newLevel,
             });
@@ -138,10 +148,12 @@ setupInput({
     onLevelSelectConfirm: function() {
         var highest = getHighestLevel();
         if (levelSelectState.selectedLevel <= highest) {
+            playMenuSelectSound();
             startGameAtLevel(levelSelectState.selectedLevel);
         }
     },
     onLevelSelectBack: function() {
+        playMenuNavigateSound();
         switchToTitle();
     },
 
@@ -187,6 +199,7 @@ setupInput({
     },
 
     startGame: function(newDir) {
+        playStartSound();
         state = Object.assign({}, state, {
             started: true,
             nextDirection: newDir,
@@ -253,12 +266,14 @@ function gameLoop(timestamp) {
 
         // Food eaten: burst at food position
         if (state._ateFood && state._ateFoodPos) {
+            playEatSound();
             particleSystem = emitBurst(particleSystem, state._ateFoodPos.x, state._ateFoodPos.y, config.foodColor, 12, 60, 0.5);
             shakeState = triggerShake(2, 0.1);
         }
 
         // Level up: shower + bigger shake
         if (state.level > prevLevel) {
+            playLevelUpSound();
             ui.showLevelUp(state.level);
             setHighestLevel(state.level);
             var newConfig = getLevelConfig(state.level);
@@ -270,6 +285,7 @@ function gameLoop(timestamp) {
         if (state._collectedPowerUp) {
             var collectedDef = getPowerUpDef(state._collectedPowerUp);
             if (collectedDef) {
+                playPowerUpCollectSound();
                 ui.showPowerUpCollected(collectedDef);
                 particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
             }
@@ -277,6 +293,7 @@ function gameLoop(timestamp) {
 
         // Arena shrink: shake
         if (state._shrinkOccurred) {
+            playShrinkSound();
             ui.showShrinkMessage();
             shakeState = triggerShake(5, 0.25);
         }
@@ -286,6 +303,7 @@ function gameLoop(timestamp) {
             var headDx = Math.abs(state.snake[0].x - prevState.snake[0].x);
             var headDy = Math.abs(state.snake[0].y - prevState.snake[0].y);
             if (headDx > 2 || headDy > 2) {
+                playPortalSound();
                 var portalColor = config.portalColor || '#8b5cf6';
                 particleSystem = emitPortalSwirl(particleSystem, prevState.snake[0].x, prevState.snake[0].y, portalColor);
                 particleSystem = emitPortalSwirl(particleSystem, state.snake[0].x, state.snake[0].y, portalColor);
@@ -294,6 +312,7 @@ function gameLoop(timestamp) {
 
         // Game over: explosion
         if (state.gameOver && !prevState.gameOver) {
+            playDeathSound();
             particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
             shakeState = triggerShake(8, 0.4);
         }
