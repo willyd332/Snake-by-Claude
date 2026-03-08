@@ -140,7 +140,7 @@ test.describe('Snake Game — Load & Render', () => {
     await expect(page.locator('#score')).toBeVisible()
     await expect(page.locator('#level')).toBeVisible()
     await expect(page.locator('#highScore')).toBeVisible()
-    await expect(page.locator('#message')).toHaveText('Press any arrow key to start')
+    await expect(page.locator('#message')).toHaveText('Arrow keys or swipe to start')
   })
 
   test('initial gameplay state shows level 1 and score 0', async ({ page }) => {
@@ -179,12 +179,12 @@ test.describe('Snake Game — Gameplay', () => {
     await page.keyboard.press('Enter')
     await page.waitForTimeout(200)
 
-    await expect(page.locator('#message')).toHaveText('Press any arrow key to start')
+    await expect(page.locator('#message')).toHaveText('Arrow keys or swipe to start')
 
     await page.keyboard.press('ArrowRight')
     await page.waitForTimeout(300)
 
-    await expect(page.locator('#message')).not.toHaveText('Press any arrow key to start')
+    await expect(page.locator('#message')).not.toHaveText('Arrow keys or swipe to start')
   })
 
   test('snake moves and score can increase', async ({ page }) => {
@@ -840,14 +840,14 @@ test.describe('Snake Game — Game Over Screen', () => {
     await page.keyboard.press('ArrowUp')
     await page.waitForTimeout(2500)
 
-    // Press R to restart — should show "Press any arrow key to start"
+    // Press R to restart — should show "Arrow keys or swipe to start"
     await page.keyboard.press('r')
     await page.waitForTimeout(300)
 
     const messageText = await page.evaluate(() => {
       return document.getElementById('message').textContent
     })
-    expect(messageText).toBe('Press any arrow key to start')
+    expect(messageText).toBe('Arrow keys or swipe to start')
   })
 })
 

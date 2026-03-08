@@ -6,6 +6,7 @@ import { tick } from './tick.js';
 import { render } from './renderer.js';
 import { createUI } from './ui.js';
 import { setupInput } from './input.js';
+import { setupTouch, TITLE_MENU_COUNT } from './touch.js';
 import { getPowerUpDef } from './powerups.js';
 import { generateWalls, filterWallsFromSnake, generateObstacles, generatePortals } from './levels.js';
 import { generateHunter } from './hunter.js';
@@ -92,6 +93,7 @@ var achievementPopupQueue = [];
 var galleryState = createGalleryState();
 var snakeTrailHistory = [];
 var levelStartTime = 0;
+var titleMenuIndex = null;
 
 // --- Game State ---
 var state = createInitialState();
@@ -151,6 +153,7 @@ function hideGameplayUI() {
 function switchToTitle() {
     currentScreen = 'title';
     endlessMode = false;
+    titleMenuIndex = null;
     dom.levelLabelEl.textContent = 'Level:';
     titleState = createTitleState();
     hideGameplayUI();
@@ -219,7 +222,7 @@ function startGameAtLevel(level) {
     }
 
     levelStartTime = Date.now();
-    messageEl.textContent = 'Press any arrow key to start';
+    messageEl.textContent = 'Arrow keys or swipe to start';
     messageEl.className = '';
     messageEl.style.color = '';
 }
@@ -251,13 +254,13 @@ function startEndlessMode() {
 
     dom.levelLabelEl.textContent = 'Wave:';
 
-    messageEl.textContent = 'ENDLESS MODE \u2014 Press any arrow to begin';
+    messageEl.textContent = 'ENDLESS MODE \u2014 Swipe or press arrow to begin';
     messageEl.className = '';
     messageEl.style.color = '#ef4444';
 }
 
 // --- Input callbacks ---
-setupInput({
+var gameCallbacks = {
     getState: function() { return state; },
     getScreen: function() { return currentScreen; },
     getLevelSelectState: function() { return levelSelectState; },
@@ -440,7 +443,7 @@ setupInput({
         messageEl.className = konamiActivated ? 'rainbow' : 'active';
         setTimeout(function() {
             if (!state.started) {
-                messageEl.textContent = 'Press any arrow key to start';
+                messageEl.textContent = 'Arrow keys or swipe to start';
                 messageEl.className = '';
             }
         }, 2500);
@@ -472,7 +475,7 @@ setupInput({
                 messageEl.style.color = result.name === 'matrix' ? '#00ff00' : '#e0e0e0';
                 setTimeout(function() {
                     if (!state.started) {
-                        messageEl.textContent = 'Press any arrow key to start';
+                        messageEl.textContent = 'Arrow keys or swipe to start';
                         messageEl.className = '';
                         messageEl.style.color = '';
                     }
@@ -581,7 +584,26 @@ setupInput({
             startGameAtLevel(startingLevel);
         }
     },
-});
+
+    // Touch-specific callbacks
+    getTitleMenuIndex: function() { return titleMenuIndex; },
+    onTitleMenuNavigate: function(delta) {
+        initAudio();
+        if (titleMenuIndex === null) {
+            titleMenuIndex = 0;
+            playMenuNavigateSound();
+            return;
+        }
+        var newIdx = titleMenuIndex + delta;
+        if (newIdx >= 0 && newIdx < TITLE_MENU_COUNT) {
+            playMenuNavigateSound();
+            titleMenuIndex = newIdx;
+        }
+    },
+};
+
+setupInput(gameCallbacks);
+setupTouch(canvas, gameCallbacks);
 
 // --- Game loop ---
 function gameLoop(timestamp) {
@@ -622,7 +644,7 @@ function gameLoop(timestamp) {
 
     if (currentScreen === 'title') {
         titleState = updateTitleState(titleState);
-        renderTitleScreen(ctx, titleState);
+        renderTitleScreen(ctx, titleState, titleMenuIndex);
         renderDevConsole(ctx);
         requestAnimationFrame(gameLoop);
         return;

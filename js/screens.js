@@ -182,7 +182,7 @@ export function updateTitleState(titleState) {
     };
 }
 
-export function renderTitleScreen(ctx, titleState) {
+export function renderTitleScreen(ctx, titleState, menuIndex) {
     var demo = titleState.demo;
 
     // Background
@@ -285,30 +285,44 @@ export function renderTitleScreen(ctx, titleState) {
     ctx.stroke();
 
     // Menu options
-    var enterPulse = Math.sin(Date.now() / 600) * 0.3 + 0.7;
-    ctx.fillStyle = 'rgba(224, 224, 224, ' + enterPulse + ')';
-    ctx.font = '14px Courier New';
-    ctx.fillText('ENTER \u2014 Play', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
+    var menuItems = [
+        { text: 'Play', color: 'rgba(224, 224, 224, ', alpha: 0.7, font: '14px Courier New' },
+        { text: 'Level Select', color: 'rgba(150, 150, 170, ', alpha: 0.6, font: '13px Courier New' },
+        { text: 'Data Codex', color: 'rgba(74, 158, 255, ', alpha: 0.4, font: '13px Courier New' },
+        { text: 'Archive', color: 'rgba(150, 130, 170, ', alpha: 0.4, font: '13px Courier New' },
+        { text: 'Endless Mode', color: 'rgba(239, 68, 68, ', alpha: 0.5, font: '13px Courier New' },
+        { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.4, font: '13px Courier New' },
+    ];
+    var menuKeys = ['ENTER', 'L', 'C', 'A', 'E', 'T'];
+    var menuYOffsets = [10, 32, 52, 72, 92, 112];
+    var hasMenuIndex = menuIndex !== undefined && menuIndex !== null && menuIndex >= 0;
 
-    ctx.fillStyle = 'rgba(150, 150, 170, 0.6)';
-    ctx.font = '13px Courier New';
-    ctx.fillText('L \u2014 Level Select', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 32);
+    for (var mi = 0; mi < menuItems.length; mi++) {
+        var item = menuItems[mi];
+        var itemY = CANVAS_SIZE / 2 + menuYOffsets[mi];
+        var isMenuSelected = hasMenuIndex && menuIndex === mi;
 
-    ctx.fillStyle = 'rgba(74, 158, 255, 0.4)';
-    ctx.font = '13px Courier New';
-    ctx.fillText('C \u2014 Data Codex', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 52);
-
-    ctx.fillStyle = 'rgba(150, 130, 170, 0.4)';
-    ctx.font = '13px Courier New';
-    ctx.fillText('A \u2014 Archive', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 72);
-
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
-    ctx.font = '13px Courier New';
-    ctx.fillText('E \u2014 Endless Mode', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 92);
-
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.4)';
-    ctx.font = '13px Courier New';
-    ctx.fillText('T \u2014 Trophies', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 112);
+        if (isMenuSelected) {
+            // Highlight background
+            roundRect(ctx, CANVAS_SIZE / 2 - 105, itemY - 13, 210, 18, 3);
+            ctx.fillStyle = 'rgba(74, 158, 255, 0.1)';
+            ctx.fill();
+            // Bright text with arrow
+            var selPulse = Math.sin(Date.now() / 400) * 0.15 + 0.85;
+            ctx.fillStyle = 'rgba(255, 255, 255, ' + selPulse + ')';
+            ctx.font = 'bold ' + item.font;
+            ctx.fillText('\u25B8 ' + item.text, CANVAS_SIZE / 2, itemY);
+        } else if (mi === 0 && !hasMenuIndex) {
+            var enterPulse = Math.sin(Date.now() / 600) * 0.3 + 0.7;
+            ctx.fillStyle = item.color + enterPulse + ')';
+            ctx.font = item.font;
+            ctx.fillText(menuKeys[mi] + ' \u2014 ' + item.text, CANVAS_SIZE / 2, itemY);
+        } else {
+            ctx.fillStyle = item.color + item.alpha + ')';
+            ctx.font = item.font;
+            ctx.fillText(menuKeys[mi] + ' \u2014 ' + item.text, CANVAS_SIZE / 2, itemY);
+        }
+    }
 
     // Level dots
     var dotY = CANVAS_SIZE / 2 + 136;
@@ -356,7 +370,7 @@ export function renderTitleScreen(ctx, titleState) {
     // Footer
     ctx.fillStyle = 'rgba(100, 100, 120, 0.3)';
     ctx.font = '10px Courier New';
-    ctx.fillText('10 levels \u00b7 arrow keys to play', CANVAS_SIZE / 2, CANVAS_SIZE - 20);
+    ctx.fillText('10 levels \u00b7 swipe or arrow keys', CANVAS_SIZE / 2, CANVAS_SIZE - 20);
 
     ctx.textAlign = 'left';
 }
@@ -490,7 +504,7 @@ export function renderLevelSelect(ctx, selectState) {
     // Footer instructions
     ctx.fillStyle = 'rgba(150, 150, 170, 0.5)';
     ctx.font = '11px Courier New';
-    ctx.fillText('\u2190\u2191\u2192\u2193 Navigate  \u00b7  ENTER Select  \u00b7  ESC Back', CANVAS_SIZE / 2, CANVAS_SIZE - 16);
+    ctx.fillText('Swipe / \u2190\u2191\u2192\u2193  \u00b7  Tap / ENTER  \u00b7  Hold / ESC', CANVAS_SIZE / 2, CANVAS_SIZE - 16);
 
     ctx.textAlign = 'left';
 }

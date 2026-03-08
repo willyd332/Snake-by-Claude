@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Snake Game — The Blue Computer</title>
     <style>
         * {
@@ -21,6 +21,10 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
+            padding: 8px;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         h1 {
@@ -59,6 +63,10 @@
             border: 2px solid #1a3a5c;
             border-radius: 4px;
             background: #0d1117;
+            touch-action: none;
+            max-width: calc(100vw - 24px);
+            max-height: calc(100vh - 120px);
+            aspect-ratio: 1 / 1;
         }
 
         #message {
@@ -109,6 +117,18 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
+
+        @media (max-width: 440px) {
+            h1 { font-size: 1.1rem; margin-bottom: 4px; }
+            #hud { gap: 16px; font-size: 0.75rem; margin-bottom: 4px; }
+            #message { font-size: 0.75rem; margin-top: 6px; }
+        }
+
+        @media (max-height: 580px) {
+            h1 { font-size: 1rem; margin-bottom: 2px; }
+            #hud { gap: 12px; font-size: 0.7rem; margin-bottom: 2px; }
+            #message { font-size: 0.7rem; margin-top: 4px; }
+        }
     </style>
 </head>
 <body>
@@ -121,7 +141,7 @@
         <div id="arenaHud" style="display:none"><span>Arena:</span> <span class="value" id="arenaSize"></span></div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
-    <div id="message">Press any arrow key to start</div>
+    <div id="message">Arrow keys or swipe to start</div>
 
     <script type="module" src="js/main.js"></script>
 </body>

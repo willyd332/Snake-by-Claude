@@ -609,8 +609,8 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         // Controls
         ctx.fillStyle = '#777';
         ctx.font = '11px Courier New';
-        ctx.fillText('R \u2014 Restart', goCenterX, CANVAS_SIZE - 50);
-        ctx.fillText('ESC \u2014 Title', goCenterX, CANVAS_SIZE - 34);
+        ctx.fillText('R / Tap \u2014 Restart', goCenterX, CANVAS_SIZE - 50);
+        ctx.fillText('ESC / Hold \u2014 Title', goCenterX, CANVAS_SIZE - 34);
 
         ctx.textAlign = 'left';
     }
