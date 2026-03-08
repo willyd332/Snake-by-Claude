@@ -19,7 +19,7 @@
 
 import { addLeaderboardEntry, formatDate } from './leaderboard.js';
 import { getStreakBonus, STREAK_DISPLAY_MIN } from './streak.js';
-import { getActiveModifiers, computeModifierMultiplier, getActiveModifierIds } from './modifiers.js';
+import { getActiveModifiers, computeModifierMultiplier, getActiveModifierIds, getModifierDef } from './modifiers.js';
 
 var DEATH_CAUSE_LABELS = {
     boundary:  'Hit a wall',
@@ -191,7 +191,7 @@ function createLeaderboardSection(board, currentRank) {
     return section;
 }
 
-export function showRunSummary(data, onRestart, onMenu) {
+export function showRunSummary(data, onRestart, onMenu, runModifierIds) {
     var isNewBest = data.score > data.previousHighScore && data.score > 0;
     var timeAlive = formatTimeAlive(data.timeAliveMs);
     var causeText = formatDeathCause(data.deathCause, data.killedByHunter);
@@ -301,10 +301,11 @@ export function showRunSummary(data, onRestart, onMenu) {
     }
 
     // Active modifiers display
-    var activeMods = getActiveModifiers();
+    var modIds = runModifierIds !== undefined ? runModifierIds : getActiveModifierIds();
+    var activeMods = modIds.map(function(id) { return getModifierDef(id); }).filter(Boolean);
     if (activeMods.length > 0) {
         var modNames = activeMods.map(function(m) { return m.icon + ' ' + m.name; }).join(', ');
-        var modMult = computeModifierMultiplier(getActiveModifierIds());
+        var modMult = computeModifierMultiplier(modIds);
         statsEl.appendChild(createStatRow('Modifiers', modNames, '#ef4444'));
         statsEl.appendChild(createStatRow('Modifier bonus', modMult.toFixed(2) + 'x score', '#fbbf24'));
     }

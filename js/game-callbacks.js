@@ -106,10 +106,18 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
         },
         onModifiersNavigate: function(delta) {
             var count = MODIFIERS.length;
-            var newIdx = (g.modifierScreenState ? g.modifierScreenState.selectedIndex : 0) + delta;
+            var currentState = g.modifierScreenState || { selectedIndex: 0, scrollOffset: 0 };
+            var newIdx = currentState.selectedIndex + delta;
             if (newIdx >= 0 && newIdx < count) {
                 playMenuNavigateSound();
-                g.modifierScreenState = Object.assign({}, g.modifierScreenState, { selectedIndex: newIdx });
+                var maxVisible = 6;
+                var scrollOffset = currentState.scrollOffset;
+                if (newIdx >= scrollOffset + maxVisible) {
+                    scrollOffset = newIdx - maxVisible + 1;
+                } else if (newIdx < scrollOffset) {
+                    scrollOffset = newIdx;
+                }
+                g.modifierScreenState = Object.assign({}, currentState, { selectedIndex: newIdx, scrollOffset: scrollOffset });
             }
         },
         onModifiersToggle: function() {

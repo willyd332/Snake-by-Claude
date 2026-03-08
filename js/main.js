@@ -371,7 +371,8 @@ function gameLoop(timestamp) {
                         currentStreak: getCurrentStreak(),
                     },
                     function() { g.summaryVisible = false; gameCallbacks.restartGame({ x: 1, y: 0 }); },
-                    function() { g.summaryVisible = false; gameCallbacks.goToTitle(); }
+                    function() { g.summaryVisible = false; gameCallbacks.goToTitle(); },
+                    deathCtxState.modifiers || []
                 );
             }
         } else {
