@@ -35,6 +35,9 @@ export var ACHIEVEMENTS = [
     { id: 'hunter_survivor', name: 'Hunter Survivor', desc: 'Survive ALPHA for a full wave', category: 'skill' },
     { id: 'iron_will', name: 'Iron Will', desc: 'Reach wave 5 without losing a life', category: 'skill' },
     { id: 'feeding_frenzy', name: 'Feeding Frenzy', desc: 'Eat all 3 frenzy food items during a Frenzy', category: 'skill' },
+    // Streak (2)
+    { id: 'relentless', name: 'Relentless', desc: 'Reach a 5-run streak', category: 'skill' },
+    { id: 'possessed', name: 'Possessed', desc: 'Reach a 10-run streak', category: 'skill' },
     // Secrets (4)
     { id: 'rainbow_road', name: 'Rainbow Road', desc: 'Activate Konami code', category: 'secret' },
     { id: 'red_pill', name: 'Red Pill', desc: 'Enter the data stream', category: 'secret' },

@@ -18,6 +18,7 @@
 // }
 
 import { addLeaderboardEntry, formatDate } from './leaderboard.js';
+import { getStreakBonus, STREAK_DISPLAY_MIN } from './streak.js';
 
 var DEATH_CAUSE_LABELS = {
     boundary:  'Hit a wall',
@@ -288,6 +289,14 @@ export function showRunSummary(data, onRestart, onMenu) {
 
     if (data.powerUpsCollected > 0) {
         statsEl.appendChild(createStatRow('Power-ups used', String(data.powerUpsCollected), '#8b5cf6'));
+    }
+
+    if (data.currentStreak >= STREAK_DISPLAY_MIN) {
+        statsEl.appendChild(createStatRow('Streak', data.currentStreak + 'x run', '#f97316'));
+        var bonus = getStreakBonus(data.currentStreak);
+        if (bonus > 0) {
+            statsEl.appendChild(createStatRow('Streak bonus', '+' + bonus + ' pts', '#f97316'));
+        }
     }
 
     var highScoreColor = isNewBest ? '#fbbf24' : 'rgba(160, 160, 180, 0.8)';

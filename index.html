@@ -75,6 +75,12 @@
             animation: comboPulse 0.4s ease-in-out infinite alternate;
         }
 
+        #streakHud .value {
+            color: #f97316;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
         @keyframes comboPulse {
             0% { opacity: 0.85; }
             100% { opacity: 1; text-shadow: 0 0 8px #f59e0b; }
@@ -162,6 +168,7 @@
         <div id="arenaHud" style="display:none"><span>Arena:</span> <span class="value" id="arenaSize"></span></div>
         <div id="livesHud" style="display:none"><span>Lives:</span> <span class="value" id="lives">3</span></div>
         <div id="comboHud" style="display:none"><span class="value" id="comboLabel"></span></div>
+        <div id="streakHud" style="display:none"><span>Streak:</span> <span class="value" id="streakLabel"></span></div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="message">Arrow keys or swipe to start</div>

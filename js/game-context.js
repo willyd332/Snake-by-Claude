@@ -13,7 +13,10 @@ import { getEndlessConfig, setEndlessHighScore, setEndlessHighWave } from './end
 import { createReplayBuffer } from './replay.js';
 import { playHunterIntroSound } from './audio.js';
 import { stopMusic } from './music.js';
-import { recordGameStart, recordGameTime } from './stats.js';
+import { recordGameStart, recordGameTime, recordBestStreak } from './stats.js';
+import {
+    getCurrentStreak, incrementStreak, resetStreak, getStreakBonus,
+} from './streak.js';
 import { createSpeedrunState, resetSpeedrun } from './speedrun.js';
 import { createWaveEventState } from './wave-events.js';
 
@@ -102,6 +105,8 @@ export function startEndlessMode(g, deps) {
     g.runFoodEaten = 0;
     g.runPrevHighScore = g.highScore || 0;
     g.summaryVisible = false;
+    resetStreak();
+    g.streakRingEmitted = false;
     recordGameStart();
     deps.updateLivesHUD(endlessDiffPreset.livesCount);
 
@@ -199,6 +204,18 @@ export function restartGame(g, deps, newDir) {
     deps.canvas.width = CANVAS_SIZE;
     deps.canvas.height = CANVAS_SIZE;
 
+    var newStreak = incrementStreak();
+    recordBestStreak(newStreak);
+    var streakBonus = getStreakBonus(newStreak);
+    g.streakRingEmitted = false;
+
+    if (newStreak >= 5 && deps.tryUnlock) {
+        deps.tryUnlock('relentless');
+    }
+    if (newStreak >= 10 && deps.tryUnlock) {
+        deps.tryUnlock('possessed');
+    }
+
     var w1Config = getEndlessConfig(1);
     g.state = createInitialState();
     g.state = Object.assign({}, g.state, {
@@ -209,6 +226,7 @@ export function restartGame(g, deps, newDir) {
         nextDirection: newDir,
         lives: restartDiff.livesCount,
         waveEvent: createWaveEventState(),
+        score: streakBonus,
     });
     g.state = Object.assign({}, g.state, {
         food: randomPosition(g.state.snake, g.state.walls, g.state.obstacles, g.state.portals, g.state.powerUp, g.state.hunter),
@@ -233,6 +251,7 @@ export function goToTitle(g, deps) {
             deps.dom.highScoreEl.textContent = g.highScore;
         }
     }
+    resetStreak();
     switchToTitle(g, deps);
 }
 

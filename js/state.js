@@ -38,6 +38,7 @@ export function createInitialState() {
         combo: createComboState(),
         waveEvent: null,
         frenzyFood: [],
+        scoreZones: [],
     };
 }
 

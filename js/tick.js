@@ -1,6 +1,10 @@
 'use strict';
 
-import { GRID_SIZE, FRENZY_EXTRA_FOOD, FRENZY_SCORE_MULTIPLIER } from './constants.js';
+import {
+    GRID_SIZE, FRENZY_EXTRA_FOOD, FRENZY_SCORE_MULTIPLIER,
+    ZONE_MIN_WAVE, ZONE_MAX_ACTIVE, ZONE_SIZE,
+    ZONE_LIFETIME_MIN, ZONE_LIFETIME_MAX, ZONE_SPAWN_CHANCE, ZONE_TYPES,
+} from './constants.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { moveObstacles, getObstaclePositions, checkPortalTeleport } from './levels.js';
 import { moveHunter } from './hunter.js';
@@ -64,6 +68,102 @@ function magnetizeFood(food, head, minX, minY, maxX, maxY) {
     return Object.assign({}, food, { x: newX, y: newY });
 }
 
+// Pick a zone type weighted by rarity
+function pickZoneType() {
+    var roll = Math.random();
+    var cumulative = 0;
+    for (var i = 0; i < ZONE_TYPES.length; i++) {
+        cumulative += ZONE_TYPES[i].weight;
+        if (roll < cumulative) return ZONE_TYPES[i];
+    }
+    return ZONE_TYPES[0];
+}
+
+// Check if a proposed zone placement overlaps walls, portals, or the snake spawn area
+function zoneOverlapsBlocked(x, y, walls, portals, snake) {
+    for (var zy = y; zy < y + ZONE_SIZE; zy++) {
+        for (var zx = x; zx < x + ZONE_SIZE; zx++) {
+            var cell = { x: zx, y: zy };
+            if (collides(cell, walls)) return true;
+            for (var pi = 0; pi < portals.length; pi++) {
+                if ((portals[pi].a.x === zx && portals[pi].a.y === zy) ||
+                    (portals[pi].b.x === zx && portals[pi].b.y === zy)) {
+                    return true;
+                }
+            }
+        }
+    }
+    // Keep spawn area (center ±2) clear
+    var center = Math.floor(GRID_SIZE / 2);
+    if (x + ZONE_SIZE > center - 2 && x < center + 3 &&
+        y + ZONE_SIZE > center - 2 && y < center + 3) {
+        return true;
+    }
+    return false;
+}
+
+// Check if a point is inside any zone
+function getZoneAtPoint(x, y, zones) {
+    for (var i = 0; i < zones.length; i++) {
+        var z = zones[i];
+        if (x >= z.x && x < z.x + ZONE_SIZE && y >= z.y && y < z.y + ZONE_SIZE) {
+            return z;
+        }
+    }
+    return null;
+}
+
+// Tick zone lifetimes (decrement) and remove expired zones
+function tickZones(zones) {
+    var result = [];
+    for (var i = 0; i < zones.length; i++) {
+        var updated = Object.assign({}, zones[i], { ticksLeft: zones[i].ticksLeft - 1 });
+        if (updated.ticksLeft > 0) {
+            result = result.concat([updated]);
+        }
+    }
+    return result;
+}
+
+// Try to spawn a new zone, returning null if conditions aren't met
+function trySpawnZone(zones, walls, portals, snake) {
+    if (zones.length >= ZONE_MAX_ACTIVE) return null;
+    if (Math.random() >= ZONE_SPAWN_CHANCE) return null;
+
+    var maxAttempts = 30;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+        var zx = Math.floor(Math.random() * (GRID_SIZE - ZONE_SIZE));
+        var zy = Math.floor(Math.random() * (GRID_SIZE - ZONE_SIZE));
+        if (zoneOverlapsBlocked(zx, zy, walls, portals, snake)) continue;
+
+        // Ensure no overlap with existing zones
+        var overlapsExisting = false;
+        for (var ei = 0; ei < zones.length; ei++) {
+            var ez = zones[ei];
+            if (zx < ez.x + ZONE_SIZE && zx + ZONE_SIZE > ez.x &&
+                zy < ez.y + ZONE_SIZE && zy + ZONE_SIZE > ez.y) {
+                overlapsExisting = true;
+                break;
+            }
+        }
+        if (overlapsExisting) continue;
+
+        var zoneType = pickZoneType();
+        var lifetime = ZONE_LIFETIME_MIN + Math.floor(Math.random() * (ZONE_LIFETIME_MAX - ZONE_LIFETIME_MIN + 1));
+        return {
+            x: zx,
+            y: zy,
+            multiplier: zoneType.multiplier,
+            color: zoneType.color,
+            glowColor: zoneType.glowColor,
+            label: zoneType.label,
+            ticksLeft: lifetime,
+            maxTicks: lifetime,
+        };
+    }
+    return null;
+}
+
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
     var clean = Object.assign({}, prev, {
@@ -87,6 +187,7 @@ export function tick(prev) {
         _frenzyEnded: false,
         _ateFrenzyFood: false,
         _ateFrenzyFoodPos: null,
+        _activeZone: null,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -262,6 +363,9 @@ export function tick(prev) {
 
     var ateFoodType = ate ? (clean.food.type || 'standard') : null;
 
+    // Determine active score zone at head position (checked before scoring)
+    var _activeZone = ate ? getZoneAtPoint(newHead.x, newHead.y, clean.scoreZones || []) : null;
+
     if (ate) {
         var eatResult = onFoodEaten(currentCombo, clean.lastTick);
         newCombo = eatResult.comboState;
@@ -274,6 +378,10 @@ export function tick(prev) {
         // Frenzy active: all food worth 3x
         if (clean.activePowerUp && clean.activePowerUp.type === 'frenzy') {
             foodScoreMultiplier = Math.max(foodScoreMultiplier, FRENZY_SCORE_MULTIPLIER);
+        }
+        // Score zone: stacks multiplicatively with other multipliers
+        if (_activeZone) {
+            foodScoreMultiplier = foodScoreMultiplier * _activeZone.multiplier;
         }
         _scoreGained = eatResult.scoreGained * foodScoreMultiplier;
         newScore = clean.score + _scoreGained;
@@ -442,10 +550,28 @@ export function tick(prev) {
         });
     }
 
+    // --- Score Multiplier Zones ---
+    // Reset zones on wave transition; otherwise tick lifetimes and maybe spawn
+    var newScoreZones = clean.scoreZones || [];
+    if (endlessWave !== clean.endlessWave) {
+        newScoreZones = [];
+    } else {
+        newScoreZones = tickZones(newScoreZones);
+        if (endlessWave >= ZONE_MIN_WAVE) {
+            var spawnedZone = trySpawnZone(newScoreZones, newWalls, newPortals, newSnake);
+            if (spawnedZone) {
+                newScoreZones = newScoreZones.concat([spawnedZone]);
+            }
+        }
+    }
+
     // Spawn food if needed
     if (!newFood) {
         var spawnedPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
-        newFood = Object.assign({}, spawnedPos, { type: pickFoodType() });
+        var spawnedFoodType = pickFoodType();
+        // Inherit zone multiplier for food spawned inside a zone
+        var spawnedFoodZone = getZoneAtPoint(spawnedPos.x, spawnedPos.y, newScoreZones);
+        newFood = Object.assign({}, spawnedPos, { type: spawnedFoodType, zoneMultiplier: spawnedFoodZone ? spawnedFoodZone.multiplier : 1 });
     }
 
     // Magnet effect: move food one cell closer to snake head each tick
@@ -675,5 +801,7 @@ export function tick(prev) {
         _frenzyEnded: frenzyJustEnded,
         _ateFrenzyFood: ateFrenzyFood,
         _ateFrenzyFoodPos: ateFrenzyFoodPos,
+        scoreZones: newScoreZones,
+        _activeZone: _activeZone,
     };
 }

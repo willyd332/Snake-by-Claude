@@ -17,7 +17,7 @@ import {
 } from './settings.js';
 import {
     createParticleSystem, updateParticles, renderParticles, emitSparkle,
-    createShakeState, updateShake, getShakeOffset,
+    createShakeState, updateShake, getShakeOffset, emitStreakRing,
 } from './particles.js';
 import { setSoundEnabled, playAchievementSound } from './audio.js';
 import { getEndlessHighScore, getEndlessHighWave } from './endless.js';
@@ -49,7 +49,6 @@ import { createGameCallbacks } from './game-callbacks.js';
 import { showRunSummary } from './run-summary.js';
 import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
 import { getCurrentStreak, getStreakBonus, STREAK_VISUAL_THRESHOLD } from './streak.js';
-import { emitStreakRing } from './particles.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');

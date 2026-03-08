@@ -198,6 +198,28 @@ export function emitPortalSwirl(system, gridX, gridY, color) {
     return { particles: newParticles };
 }
 
+// Ring burst centered on canvas (streak 5+ game start flourish)
+export function emitStreakRing(system, canvasSize, color) {
+    var cx = canvasSize / 2;
+    var cy = canvasSize / 2;
+    var newParticles = system.particles.slice();
+    var count = 24;
+    for (var i = 0; i < count; i++) {
+        var angle = (Math.PI * 2 * i) / count;
+        var spd = 80 + Math.random() * 60;
+        newParticles.push(createParticle(
+            cx + Math.cos(angle) * 20,
+            cy + Math.sin(angle) * 20,
+            Math.cos(angle) * spd,
+            Math.sin(angle) * spd,
+            0.8 + Math.random() * 0.4,
+            color,
+            2 + Math.random() * 2
+        ));
+    }
+    return { particles: newParticles };
+}
+
 // --- Screen Shake ---
 
 // Named shake presets — intensity (pixels) and duration (seconds)

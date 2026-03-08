@@ -165,6 +165,48 @@ function lerpPos(prev, curr, t, wrapGrid) {
     return { x: prev.x + dx * t, y: prev.y + dy * t };
 }
 
+function renderScoreZones(ctx, zones, now) {
+    ctx.save();
+    for (var i = 0; i < zones.length; i++) {
+        var z = zones[i];
+        // Fade out in the last 10 ticks
+        var fadeAlpha = z.ticksLeft <= 10 ? z.ticksLeft / 10 : 1;
+        var pulse = Math.sin(now / 350 + i * 1.4) * 0.15 + 0.85;
+        var zPx = z.x * CELL_SIZE;
+        var zPy = z.y * CELL_SIZE;
+        var zW = CELL_SIZE * 2; // ZONE_SIZE = 2
+        var zH = CELL_SIZE * 2;
+
+        // Fill: subtle tinted overlay
+        ctx.globalAlpha = 0.18 * fadeAlpha * pulse;
+        ctx.fillStyle = z.color;
+        ctx.fillRect(zPx, zPy, zW, zH);
+
+        // Border glow
+        ctx.globalAlpha = 0.55 * fadeAlpha * pulse;
+        ctx.strokeStyle = z.glowColor;
+        ctx.shadowColor = z.glowColor;
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(zPx + 0.75, zPy + 0.75, zW - 1.5, zH - 1.5);
+        ctx.shadowBlur = 0;
+
+        // Label (x2 or x3) at center
+        ctx.globalAlpha = 0.9 * fadeAlpha * pulse;
+        ctx.fillStyle = z.glowColor;
+        ctx.shadowColor = z.glowColor;
+        ctx.shadowBlur = 6;
+        ctx.font = 'bold 9px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText(z.label, zPx + zW / 2, zPy + zH / 2 + 3);
+        ctx.shadowBlur = 0;
+        ctx.textAlign = 'left';
+    }
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 0.5;
+    ctx.restore();
+}
+
 export function render(ctx, state, konamiActivated, dom, interp) {
     var config = getLevelConfig(state.level, state.endlessConfig);
     var userSettings = getSettingsRef();
@@ -215,6 +257,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineWidth = 2;
         ctx.strokeRect(arenaMinPx + 1, arenaMinPy + 1, arenaW - 2, arenaH - 2);
         ctx.lineWidth = 0.5;
+    }
+
+    // Score multiplier zones (rendered as semi-transparent glowing overlays)
+    if (state.scoreZones && state.scoreZones.length > 0 && state.started && !state.gameOver) {
+        renderScoreZones(ctx, state.scoreZones, Date.now());
     }
 
     // Walls
@@ -971,6 +1018,17 @@ export function render(ctx, state, konamiActivated, dom, interp) {
             dom.comboLabelEl.textContent = 'x' + comboMult + ' COMBO!';
         } else {
             dom.comboHudEl.style.display = 'none';
+        }
+    }
+
+    // Streak HUD badge
+    if (dom.streakHudEl && dom.streakLabelEl) {
+        var currentStreak = interp ? interp.currentStreak : 0;
+        if (currentStreak >= 2 && state.started && !state.gameOver) {
+            dom.streakHudEl.style.display = 'inline';
+            dom.streakLabelEl.textContent = currentStreak + 'x';
+        } else {
+            dom.streakHudEl.style.display = 'none';
         }
     }
 

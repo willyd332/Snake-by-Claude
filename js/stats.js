@@ -25,6 +25,7 @@ function createDefaultStats() {
         powerUpsCollected: 0,
         levelsCompleted: 0,
         bestEndlessWave: 0,
+        bestStreak: 0,
         deathsByLevel: deathsByLevel,
         bestScoreByLevel: bestScoreByLevel,
         fastestLevelMs: fastestLevelMs,
@@ -123,6 +124,13 @@ export function recordEndlessWave(wave) {
     }
 }
 
+export function recordBestStreak(streak) {
+    var stats = getStats();
+    if (streak > stats.bestStreak) {
+        saveStats(Object.assign({}, stats, { bestStreak: streak }));
+    }
+}
+
 // --- Rendering ---
 
 function formatTime(ms) {
@@ -151,8 +159,8 @@ function formatTimeShort(ms) {
 }
 
 export function getStatsRowCount() {
-    // 8 general stat rows + header + spacer + per-level header + 10 level rows
-    return 8 + 1 + 1 + MAX_LEVEL;
+    // 9 general stat rows + header + spacer + per-level header + 10 level rows
+    return 9 + 1 + 1 + MAX_LEVEL;
 }
 
 export function renderStats(ctx, scrollOffset) {
@@ -171,6 +179,7 @@ export function renderStats(ctx, scrollOffset) {
         { label: 'Portals Used', value: String(stats.portalsUsed), color: '#8b5cf6' },
         { label: 'Power-ups Collected', value: String(stats.powerUpsCollected), color: '#06b6d4' },
         { label: 'Best Endless Wave', value: stats.bestEndlessWave > 0 ? String(stats.bestEndlessWave) : '--', color: '#ef4444' },
+        { label: 'Best Streak', value: stats.bestStreak > 0 ? String(stats.bestStreak) + 'x', color: '#f97316' },
     ];
 
     var allRows = [];

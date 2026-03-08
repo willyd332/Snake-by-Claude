@@ -50,3 +50,15 @@ export var POWER_UP_TYPES = [
 ];
 
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
+
+// --- Score Multiplier Zones ---
+export var ZONE_MIN_WAVE = 3;          // earliest wave zones can appear
+export var ZONE_MAX_ACTIVE = 2;        // max zones on grid at once
+export var ZONE_SIZE = 2;              // cells per side (2x2 zone)
+export var ZONE_LIFETIME_MIN = 30;     // ticks minimum lifetime
+export var ZONE_LIFETIME_MAX = 50;     // ticks maximum lifetime
+export var ZONE_SPAWN_CHANCE = 0.06;   // per-tick chance to try spawning a zone (when below max)
+export var ZONE_TYPES = [
+    { multiplier: 2, color: '#3b82f6', glowColor: '#60a5fa', label: 'x2', weight: 0.75 },
+    { multiplier: 3, color: '#f59e0b', glowColor: '#fbbf24', label: 'x3', weight: 0.25 },
+];
