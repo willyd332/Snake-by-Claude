@@ -110,10 +110,10 @@ export function tick(prev) {
     // Move obstacles
     var newObstacles = clean.obstacles.length > 0 ? moveObstacles(clean.obstacles) : clean.obstacles;
 
-    // Check if obstacle moved onto snake body (invincible ignores)
+    // Check if obstacle moved onto snake head (invincible ignores; body is safe)
     if (!isInvincible && newObstacles.length > 0) {
         var obPositions = getObstaclePositions(newObstacles);
-        var snakeHit = obPositions.some(function(op) { return collides(op, [newHead].concat(clean.snake)); });
+        var snakeHit = obPositions.some(function(op) { return collides(op, [newHead]); });
         if (snakeHit) {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle' });
         }
@@ -137,17 +137,12 @@ export function tick(prev) {
     var newPortals = clean.portals;
     var newFood = ate ? null : clean.food;
 
-    // Check if hunter moved onto player snake (invincible ignores)
+    // Check if hunter moved onto player head (invincible ignores; body is safe)
     if (newHunter && !isInvincible) {
         var newHunterHead = newHunter.segments[0];
         var playerHead = newSnake[0];
         if (newHunterHead.x === playerHead.x && newHunterHead.y === playerHead.y) {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter' });
-        }
-        if (!isGhost && newSnake.length > 1) {
-            if (collides(newHunterHead, newSnake.slice(1))) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter' });
-            }
         }
     }
 
