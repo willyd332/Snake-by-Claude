@@ -13,6 +13,7 @@ import {
     getReplayProgress, getReplayTrail,
 } from './replay.js';
 import { getEndlessHighScore, getEndlessHighWave } from './endless.js';
+import { CANVAS_SIZE } from './constants.js';
 
 // Advances the replay by one tick and renders the current frame.
 // Returns { replayState, done } where done=true means replay finished.
@@ -66,6 +67,17 @@ export function runReplayFrame(params) {
         renderParticles(params.ctx, params.particleSystem);
     }
 
+    params.ctx.restore();
+
+    // Render skip hint (outside shake transform, always visible)
+    params.ctx.save();
+    params.ctx.globalAlpha = 0.55;
+    params.ctx.font = '10px Courier New';
+    params.ctx.fillStyle = '#ffffff';
+    params.ctx.textAlign = 'center';
+    params.ctx.fillText('SPACE to skip', CANVAS_SIZE / 2, CANVAS_SIZE - 8);
+    params.ctx.textAlign = 'left';
+    params.ctx.globalAlpha = 1;
     params.ctx.restore();
 
     return { replayState: updated, done: false };

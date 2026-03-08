@@ -37,13 +37,12 @@ import {
     applyInvertFilter, markSecretFound,
 } from './secrets.js';
 import {
-    showGameplayUI, hideGameplayUI,
+    hideGameplayUI,
     switchToTitle, switchToCodex, switchToArchive, switchToGallery,
     switchToSettings, switchToLevelSelect,
     startGameAtLevel, startEndlessMode,
     restartGame, goToTitle, onRestartLevel,
 } from './game-context.js';
-import { resumeSpeedrunTimer } from './speedrun.js';
 
 export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canvas, konamiRef, tryUnlock) {
     return {
@@ -51,6 +50,7 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
         getScreen: function() { return g.currentScreen; },
         getLevelSelectState: function() { return g.levelSelectState; },
         isReplaying: function() { return g.replayState !== null; },
+        onReplaySkip: function() { g.replaySkipRequested = true; },
 
         // Prologue actions
         onPrologueAdvance: function() {
@@ -61,20 +61,6 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             g.currentScreen = 'title';
             g.titleState = createTitleState();
             hideGameplayUI(hudEl, titleEl, messageEl);
-        },
-
-        // Story screen actions (inter-level)
-        onStoryScreenAdvance: function() {
-            playMenuSelectSound();
-            g.storyScreenState = null;
-            g.currentScreen = 'gameplay';
-            showGameplayUI(hudEl, titleEl, messageEl);
-            g.prevSnake = null;
-            g.prevHunterSegments = null;
-            // Resume speedrun timer now that gameplay resumes
-            g.speedrunState = resumeSpeedrunTimer(g.speedrunState);
-            // Reset lastTick so game doesn't try to catch up on elapsed time
-            g.state = Object.assign({}, g.state, { lastTick: 0 });
         },
 
         // Ending screen actions

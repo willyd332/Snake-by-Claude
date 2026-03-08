@@ -18,7 +18,7 @@ import {
 } from './settings.js';
 import {
     hasPrologueSeen,
-    createPrologueState, renderPrologue, renderStoryScreen,
+    createPrologueState, renderPrologue,
     renderEndingScreen, getUnlockedEndings,
 } from './story.js';
 import {
@@ -92,7 +92,6 @@ var g = {
     // Screen state
     currentScreen: null,
     prologueState: null,
-    storyScreenState: null,
     endingState: null,
     titleState: createTitleState(),
     levelSelectState: createLevelSelectState(),
@@ -108,6 +107,7 @@ var g = {
     snakeTrailHistory: [],
     replayBuffer: createReplayBuffer(),
     replayState: null,
+    replaySkipRequested: false,
     replayDeathContext: null,
     deathAnimation: null,
     levelTransition: null,
@@ -229,12 +229,6 @@ function gameLoop(timestamp) {
         return;
     }
 
-    if (g.currentScreen === 'story_screen') {
-        renderStoryScreen(ctx, g.storyScreenState);
-        requestAnimationFrame(gameLoop);
-        return;
-    }
-
     // Update particles, shake, and matrix rain every frame
     g.particleSystem = updateParticles(g.particleSystem, dt);
     g.shakeState = updateShake(g.shakeState, dt);
@@ -290,38 +284,52 @@ function gameLoop(timestamp) {
 
     // --- Death Replay Mode ---
     if (g.replayState) {
-        var replayResult = runReplayFrame({
-            ctx: ctx,
-            replayState: g.replayState,
-            timestamp: timestamp,
-            speed: speed,
-            config: config,
-            gameState: g.state,
-            konamiActivated: konamiRef.value,
-            dom: dom,
-            matrixState: matrixState,
-            particleSystem: g.particleSystem,
-            shakeState: g.shakeState,
-            frameSettings: frameSettings,
-            endlessMode: g.endlessMode,
-            highScore: g.highScore,
-        });
-
-        g.replayState = replayResult.replayState;
-
-        if (replayResult.done) {
-            // Replay finished — start death animation before processing events
+        // Handle skip request from keypress — treat as if replay completed
+        if (g.replaySkipRequested) {
+            g.replaySkipRequested = false;
+            g.replayState = null;
             if (g.replayDeathContext) {
-                var deathConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
+                var skipDeathConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
                 g.deathAnimation = createDeathAnimation(
                     g.state.snake,
-                    deathConfig.color,
+                    skipDeathConfig.color,
                     g.state._killedByHunter
                 );
             }
         } else {
-            requestAnimationFrame(gameLoop);
-            return;
+            var replayResult = runReplayFrame({
+                ctx: ctx,
+                replayState: g.replayState,
+                timestamp: timestamp,
+                speed: speed,
+                config: config,
+                gameState: g.state,
+                konamiActivated: konamiRef.value,
+                dom: dom,
+                matrixState: matrixState,
+                particleSystem: g.particleSystem,
+                shakeState: g.shakeState,
+                frameSettings: frameSettings,
+                endlessMode: g.endlessMode,
+                highScore: g.highScore,
+            });
+
+            g.replayState = replayResult.replayState;
+
+            if (replayResult.done) {
+                // Replay finished — start death animation before processing events
+                if (g.replayDeathContext) {
+                    var deathConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
+                    g.deathAnimation = createDeathAnimation(
+                        g.state.snake,
+                        deathConfig.color,
+                        g.state._killedByHunter
+                    );
+                }
+            } else {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
         }
     }
 
@@ -370,11 +378,7 @@ function gameLoop(timestamp) {
                 processPostTickEvents(g.levelUpEventCtx);
                 applyEventCtx(g, g.levelUpEventCtx);
                 g.levelUpEventCtx = null;
-                // Resume timer for the new level — unless a story screen is now
-                // showing (onStoryScreenAdvance will resume it when dismissed).
-                if (g.currentScreen !== 'story_screen') {
-                    g.speedrunState = resumeSpeedrunTimer(g.speedrunState);
-                }
+                g.speedrunState = resumeSpeedrunTimer(g.speedrunState);
             }
         } else {
             requestAnimationFrame(gameLoop);

@@ -24,15 +24,6 @@ export function setupInput(callbacks) {
             return;
         }
 
-        // --- Story Screen (inter-level) ---
-        if (screen === 'story_screen') {
-            if (e.key === 'Enter' || e.key === 'Escape') {
-                e.preventDefault();
-                callbacks.onStoryScreenAdvance();
-            }
-            return;
-        }
-
         // --- Ending Screen ---
         if (screen === 'ending') {
             // Loop ending auto-returns — no manual advance
@@ -251,9 +242,12 @@ export function setupInput(callbacks) {
         // --- Gameplay ---
         var state = callbacks.getState();
 
-        // Block all gameplay input during death replay
+        // During death replay: skip on Space/Escape/Enter, block everything else
         if (callbacks.isReplaying && callbacks.isReplaying()) {
             e.preventDefault();
+            if (e.key === ' ' || e.key === 'Escape' || e.key === 'Enter') {
+                callbacks.onReplaySkip();
+            }
             return;
         }
 
