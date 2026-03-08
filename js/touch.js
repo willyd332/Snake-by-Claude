@@ -96,6 +96,11 @@ export function setupTouch(canvas, callbacks) {
             return;
         }
 
+        // While run summary is visible: let the DOM overlay handle touch
+        if (callbacks.isSummaryVisible && callbacks.isSummaryVisible()) {
+            return;
+        }
+
         var screen = callbacks.getScreen();
 
         if (screen === 'title') {
@@ -126,6 +131,11 @@ export function setupTouch(canvas, callbacks) {
         // Skip replay on swipe
         if (callbacks.isReplaying && callbacks.isReplaying()) {
             callbacks.onReplaySkip();
+            return;
+        }
+
+        // While run summary is visible: let the DOM overlay handle touch
+        if (callbacks.isSummaryVisible && callbacks.isSummaryVisible()) {
             return;
         }
 

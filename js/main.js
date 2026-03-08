@@ -97,6 +97,7 @@ var g = {
     runPowerUpsCollected: 0,
     runFoodEaten: 0,
     runPrevHighScore: 0,
+    summaryVisible: false,
 
     // Game state
     state: createInitialState(),
@@ -286,6 +287,7 @@ function gameLoop(timestamp) {
                 applyEventCtx(g, g.replayDeathContext);
                 g.replayDeathContext = null;
 
+                g.summaryVisible = true;
                 showRunSummary(
                     {
                         wave: summaryWave,
@@ -298,8 +300,8 @@ function gameLoop(timestamp) {
                         highScore: g.highScore,
                         previousHighScore: summaryPrevHighScore,
                     },
-                    function() { gameCallbacks.restartGame({ x: 1, y: 0 }); },
-                    function() { gameCallbacks.goToTitle(); }
+                    function() { g.summaryVisible = false; gameCallbacks.restartGame({ x: 1, y: 0 }); },
+                    function() { g.summaryVisible = false; gameCallbacks.goToTitle(); }
                 );
             }
         } else {

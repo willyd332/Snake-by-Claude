@@ -126,6 +126,11 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // While run summary is visible: block all gameplay keys (summary handles input)
+        if (callbacks.isSummaryVisible && callbacks.isSummaryVisible()) {
+            return;
+        }
+
         // ESC to return to title (when not mid-game)
         if (e.key === 'Escape' && (!state.started || state.gameOver)) {
             e.preventDefault();

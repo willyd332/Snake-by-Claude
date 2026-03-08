@@ -92,6 +92,10 @@ export function startEndlessMode(g, deps) {
     g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     deps.dom.levelLabelEl.textContent = 'Wave:';
     g.gameSessionStartTime = Date.now();
+    g.runPowerUpsCollected = 0;
+    g.runFoodEaten = 0;
+    g.runPrevHighScore = g.highScore || 0;
+    g.summaryVisible = false;
     recordGameStart();
     deps.updateLivesHUD(endlessDiffPreset.livesCount);
 
@@ -168,6 +172,10 @@ export function restartGame(g, deps, newDir) {
     g.replayDeathContext = null;
     g.deathAnimation = null;
     g.scorePopups = [];
+    g.runPowerUpsCollected = 0;
+    g.runFoodEaten = 0;
+    g.runPrevHighScore = g.highScore || 0;
+    g.summaryVisible = false;
 
     var restartDiff = getDifficultyPreset(getSettings().difficulty);
     setGridSize(ENDLESS_GRID_SIZE);
