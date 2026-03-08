@@ -67,6 +67,8 @@ var startingLevel = 1;
 var particleSystem = createParticleSystem();
 var shakeState = createShakeState();
 var lastFrameTime = 0;
+var prevSnake = null;
+var prevHunterSegments = null;
 var highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
 var konamiActivated = localStorage.getItem('snake-konami') === 'true';
 dom.highScoreEl.textContent = highScore;
@@ -108,6 +110,8 @@ function startGameAtLevel(level) {
     ui.clearTimers();
     particleSystem = createParticleSystem();
     shakeState = createShakeState();
+    prevSnake = null;
+    prevHunterSegments = null;
 
     state = createInitialState();
     // Set up for the chosen level
@@ -147,6 +151,8 @@ setupInput({
         storyScreenState = null;
         currentScreen = 'gameplay';
         showGameplayUI();
+        prevSnake = null;
+        prevHunterSegments = null;
         // Reset lastTick so game doesn't try to catch up on elapsed time
         state = Object.assign({}, state, { lastTick: 0 });
     },
@@ -209,6 +215,8 @@ setupInput({
         ui.clearTimers();
         particleSystem = createParticleSystem();
         shakeState = createShakeState();
+        prevSnake = null;
+        prevHunterSegments = null;
         state = createInitialState();
         state = Object.assign({}, state, {
             level: startingLevel,
@@ -229,6 +237,8 @@ setupInput({
 
     startGame: function(newDir) {
         playStartSound();
+        prevSnake = null;
+        prevHunterSegments = null;
         state = Object.assign({}, state, {
             started: true,
             nextDirection: newDir,
@@ -298,6 +308,10 @@ function gameLoop(timestamp) {
     var elapsed = timestamp - state.lastTick;
 
     if (elapsed >= speed) {
+        // Save previous positions for interpolation
+        prevSnake = state.snake;
+        prevHunterSegments = state.hunter ? state.hunter.segments : null;
+
         var prevState = state;
         var prevLevel = state.level;
         state = tick(Object.assign({}, state, { lastTick: timestamp }));
@@ -305,8 +319,9 @@ function gameLoop(timestamp) {
 
         // --- Particle Events ---
 
-        // Food eaten: burst at food position
+        // Food eaten: burst at food position, skip interpolation (snake grew)
         if (state._ateFood && state._ateFoodPos) {
+            prevSnake = null;
             playEatSound();
             particleSystem = emitBurst(particleSystem, state._ateFoodPos.x, state._ateFoodPos.y, config.foodColor, 12, 60, 0.5);
             shakeState = triggerShake(2, 0.1);
@@ -314,6 +329,8 @@ function gameLoop(timestamp) {
 
         // Level up: shower + shake + story screen
         if (state.level > prevLevel) {
+            prevSnake = null;
+            prevHunterSegments = null;
             playLevelUpSound();
             setHighestLevel(state.level);
             var newConfig = getLevelConfig(state.level);
@@ -361,8 +378,10 @@ function gameLoop(timestamp) {
             }
         }
 
-        // Game over: explosion
+        // Game over: explosion + stop interpolation
         if (state.gameOver && !prevState.gameOver) {
+            prevSnake = null;
+            prevHunterSegments = null;
             playDeathSound();
             particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
             shakeState = triggerShake(8, 0.4);
@@ -377,12 +396,23 @@ function gameLoop(timestamp) {
         }
     }
 
+    // Compute interpolation progress for smooth animation
+    var tickProgress = 0;
+    if (state.started && !state.gameOver && prevSnake && state.lastTick > 0) {
+        tickProgress = Math.min((timestamp - state.lastTick) / speed, 1);
+    }
+    var interp = {
+        progress: tickProgress,
+        prevSnake: prevSnake,
+        prevHunter: prevHunterSegments,
+    };
+
     // Apply screen shake
     var offset = getShakeOffset(shakeState);
     ctx.save();
     ctx.translate(offset.x, offset.y);
 
-    render(ctx, state, konamiActivated, dom);
+    render(ctx, state, konamiActivated, dom, interp);
     renderParticles(ctx, particleSystem);
 
     ctx.restore();

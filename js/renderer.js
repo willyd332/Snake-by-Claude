@@ -4,9 +4,26 @@ import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE } from './constants.js';
 import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 
-export function render(ctx, state, konamiActivated, dom) {
+function lerpPos(prev, curr, t, wrapGrid) {
+    var dx = curr.x - prev.x;
+    var dy = curr.y - prev.y;
+    if (wrapGrid) {
+        if (dx > wrapGrid / 2) dx -= wrapGrid;
+        else if (dx < -wrapGrid / 2) dx += wrapGrid;
+        if (dy > wrapGrid / 2) dy -= wrapGrid;
+        else if (dy < -wrapGrid / 2) dy += wrapGrid;
+    }
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) return curr;
+    return { x: prev.x + dx * t, y: prev.y + dy * t };
+}
+
+export function render(ctx, state, konamiActivated, dom, interp) {
     var config = getLevelConfig(state.level);
     var isGhost = state.activePowerUp && state.activePowerUp.type === 'ghost';
+    var interpProgress = interp ? interp.progress : 0;
+    var iPrevSnake = interp ? interp.prevSnake : null;
+    var iPrevHunter = interp ? interp.prevHunter : null;
+    var wrapGrid = (config.wrapAround || isGhost) ? GRID_SIZE : null;
 
     // Clear
     ctx.fillStyle = config.bgAccent;
@@ -94,6 +111,13 @@ export function render(ctx, state, konamiActivated, dom) {
     if (state.hunter && config.hunterColor) {
         var hunterPulse = Math.sin(Date.now() / 250) * 0.15 + 0.85;
         state.hunter.segments.forEach(function(seg, i) {
+            var hDrawX = seg.x;
+            var hDrawY = seg.y;
+            if (iPrevHunter && iPrevHunter[i] && interpProgress < 1) {
+                var hl = lerpPos(iPrevHunter[i], seg, interpProgress, wrapGrid);
+                hDrawX = hl.x;
+                hDrawY = hl.y;
+            }
             var hAlpha = (1 - (i / state.hunter.segments.length) * 0.4) * hunterPulse;
             ctx.globalAlpha = hAlpha;
             ctx.fillStyle = config.hunterColor;
@@ -101,8 +125,8 @@ export function render(ctx, state, konamiActivated, dom) {
             ctx.shadowBlur = i === 0 ? 8 : 3;
             var hPad = i === 0 ? 1 : 2;
             ctx.fillRect(
-                seg.x * CELL_SIZE + hPad,
-                seg.y * CELL_SIZE + hPad,
+                hDrawX * CELL_SIZE + hPad,
+                hDrawY * CELL_SIZE + hPad,
                 CELL_SIZE - hPad * 2,
                 CELL_SIZE - hPad * 2
             );
@@ -111,8 +135,8 @@ export function render(ctx, state, konamiActivated, dom) {
                 ctx.fillStyle = '#ff0000';
                 ctx.shadowColor = '#ff0000';
                 ctx.shadowBlur = 4;
-                var hcx = seg.x * CELL_SIZE + CELL_SIZE / 2;
-                var hcy = seg.y * CELL_SIZE + CELL_SIZE / 2;
+                var hcx = hDrawX * CELL_SIZE + CELL_SIZE / 2;
+                var hcy = hDrawY * CELL_SIZE + CELL_SIZE / 2;
                 var hDir = state.hunter.direction;
                 var eyeFwd = 2;
                 var eyeSpread = 3;
@@ -224,8 +248,21 @@ export function render(ctx, state, konamiActivated, dom) {
         ctx.shadowBlur = 0;
     }
 
-    // Snake
+    // Snake (with sub-cell interpolation)
+    var interpHeadX = state.snake[0].x;
+    var interpHeadY = state.snake[0].y;
     state.snake.forEach(function(seg, i) {
+        var drawX = seg.x;
+        var drawY = seg.y;
+        if (iPrevSnake && iPrevSnake[i] && interpProgress < 1) {
+            var sl = lerpPos(iPrevSnake[i], seg, interpProgress, wrapGrid);
+            drawX = sl.x;
+            drawY = sl.y;
+        }
+        if (i === 0) {
+            interpHeadX = drawX;
+            interpHeadY = drawY;
+        }
         var alpha = 1 - (i / state.snake.length) * 0.5;
         if (isGhost) alpha *= 0.45;
         if (konamiActivated) {
@@ -237,33 +274,33 @@ export function render(ctx, state, konamiActivated, dom) {
         ctx.globalAlpha = alpha;
         var padding = i === 0 ? 1 : 2;
         ctx.fillRect(
-            seg.x * CELL_SIZE + padding,
-            seg.y * CELL_SIZE + padding,
+            drawX * CELL_SIZE + padding,
+            drawY * CELL_SIZE + padding,
             CELL_SIZE - padding * 2,
             CELL_SIZE - padding * 2
         );
     });
     ctx.globalAlpha = 1;
 
-    // Ghost aura around head
+    // Ghost aura around head (uses interpolated position)
     if (isGhost && state.started && !state.gameOver) {
         var ghostPulse = Math.sin(Date.now() / 150) * 0.2 + 0.3;
         ctx.strokeStyle = 'rgba(226, 232, 240, ' + ghostPulse + ')';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.arc(
-            state.snake[0].x * CELL_SIZE + CELL_SIZE / 2,
-            state.snake[0].y * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadX * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadY * CELL_SIZE + CELL_SIZE / 2,
             CELL_SIZE / 2 + 3, 0, Math.PI * 2
         );
         ctx.stroke();
         ctx.lineWidth = 0.5;
     }
 
-    // Fog of War overlay
+    // Fog of War overlay (uses interpolated head position)
     if (config.fogRadius && state.started && !state.gameOver) {
-        var headPixX = state.snake[0].x * CELL_SIZE + CELL_SIZE / 2;
-        var headPixY = state.snake[0].y * CELL_SIZE + CELL_SIZE / 2;
+        var headPixX = interpHeadX * CELL_SIZE + CELL_SIZE / 2;
+        var headPixY = interpHeadY * CELL_SIZE + CELL_SIZE / 2;
         var flicker = Math.sin(Date.now() / 200) * 0.05 + 1;
         var outerRadius = config.fogRadius * CELL_SIZE * flicker;
         var innerRadius = outerRadius * 0.4;
