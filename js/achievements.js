@@ -8,7 +8,7 @@ var STORAGE_KEY = 'snake-achievements';
 var SKIN_KEY = 'snake-active-skin';
 var TRAIL_KEY = 'snake-active-trail';
 
-// --- Achievement Definitions (25 total) ---
+// --- Achievement Definitions (50 total) ---
 export var ACHIEVEMENTS = [
     // Score milestones (5)
     { id: 'first_byte', name: 'First Byte', desc: 'Score 100 points', category: 'score' },
@@ -43,6 +43,47 @@ export var ACHIEVEMENTS = [
     { id: 'red_pill', name: 'Red Pill', desc: 'Enter the data stream', category: 'secret' },
     { id: 'upside_down', name: 'Upside Down', desc: 'Invert reality', category: 'secret' },
     { id: 'root_access', name: 'Root Access', desc: 'Open the dev console', category: 'secret' },
+
+    // --- NEW ACHIEVEMENTS (25) ---
+
+    // Score milestones — extended (2)
+    { id: 'gigabyte', name: 'Gigabyte', desc: 'Score 10,000 points in one run', category: 'score' },
+    { id: 'terabyte', name: 'Terabyte', desc: 'Score 25,000 points in one run', category: 'score' },
+
+    // Wave milestones — extended (2)
+    { id: 'century', name: 'Century', desc: 'Reach wave 100', category: 'endless' },
+    { id: 'deep_space', name: 'Deep Space', desc: 'Reach wave 75', category: 'endless' },
+
+    // Survival / endurance (4)
+    { id: 'serpent_god', name: 'Serpent God', desc: 'Reach length 60', category: 'skill' },
+    { id: 'iron_core', name: 'Iron Core', desc: 'Reach wave 10 without losing a life', category: 'skill' },
+    { id: 'long_haul', name: 'Long Haul', desc: 'Play for 10 minutes total (lifetime)', category: 'skill' },
+    { id: 'alpha_dodger', name: 'Alpha Dodger', desc: 'Survive 3 waves in a row while ALPHA hunts you', category: 'skill' },
+
+    // Power-up mastery (4)
+    { id: 'power_addict', name: 'Power Addict', desc: 'Collect 50 power-ups (lifetime)', category: 'skill' },
+    { id: 'type_collector', name: 'Type Collector', desc: 'Collect every power-up type at least once', category: 'skill' },
+    { id: 'pacifist', name: 'Pacifist', desc: 'Complete a wave without collecting any power-ups', category: 'skill' },
+    { id: 'shield_hero', name: 'Shield Hero', desc: 'Have Shield absorb 5 hits (lifetime)', category: 'skill' },
+
+    // Speed / skill (4)
+    { id: 'combo_king', name: 'Combo King', desc: 'Reach the maximum x5 combo multiplier', category: 'skill' },
+    { id: 'hypnotic', name: 'Hypnotic', desc: 'Eat 20 foods in a single combo chain', category: 'skill' },
+    { id: 'ghost_zone', name: 'Ghost Zone', desc: 'Eat food in a score zone while Ghost is active', category: 'skill' },
+    { id: 'quick_draw', name: 'Quick Draw', desc: 'Eat 3 foods in a score zone in one wave', category: 'skill' },
+
+    // Exploration / discovery (4)
+    { id: 'portal_hopper', name: 'Portal Hopper', desc: 'Use 10 portals in a single run', category: 'skill' },
+    { id: 'zone_hunter', name: 'Zone Hunter', desc: 'Eat food in a x3 score multiplier zone', category: 'skill' },
+    { id: 'wrap_survivor', name: 'Wrap Survivor', desc: 'Survive 5 waves with wrap-around active', category: 'skill' },
+    { id: 'foodie', name: 'Foodie', desc: 'Eat 1000 food items total (lifetime)', category: 'skill' },
+
+    // Meta / fun (5)
+    { id: 'hunter_bait', name: 'Hunter Bait', desc: 'Be eliminated by ALPHA (not walls or self)', category: 'skill' },
+    { id: 'big_eater', name: 'Big Eater', desc: 'Eat 100 food items in one run', category: 'skill' },
+    { id: 'no_power_legend', name: 'Purist', desc: 'Reach wave 15 without ever collecting a power-up', category: 'skill' },
+    { id: 'combo_zone', name: 'Combo Zone', desc: 'Eat food in a score zone while at x3 or higher combo', category: 'skill' },
+    { id: 'completionist', name: 'The Completionist', desc: 'Unlock all other achievements', category: 'secret' },
 ];
 
 var CATEGORY_COLORS = {

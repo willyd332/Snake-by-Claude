@@ -49,6 +49,8 @@ import { createGameCallbacks } from './game-callbacks.js';
 import { showRunSummary } from './run-summary.js';
 import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
 import { getCurrentStreak, getStreakBonus, STREAK_VISUAL_THRESHOLD } from './streak.js';
+import { getTwoPowerUpChoices, spawnPowerUpOfType } from './powerups.js';
+import { showPowerUpChoice, dismissPowerUpChoice, isPowerUpChoiceActive } from './power-up-choice.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -107,6 +109,7 @@ var g = {
     runPrevHighScore: 0,
     summaryVisible: false,
     waveTransitionActive: false,
+    powerUpChoiceActive: false,
     streakRingEmitted: false,
 
     // Game state

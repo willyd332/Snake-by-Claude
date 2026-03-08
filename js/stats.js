@@ -29,6 +29,8 @@ function createDefaultStats() {
         deathsByLevel: deathsByLevel,
         bestScoreByLevel: bestScoreByLevel,
         fastestLevelMs: fastestLevelMs,
+        powerUpTypesCollected: {},
+        shieldHitsAbsorbed: 0,
     };
 }
 
@@ -43,6 +45,7 @@ export function getStats() {
             deathsByLevel: Object.assign({}, defaults.deathsByLevel, parsed.deathsByLevel || {}),
             bestScoreByLevel: Object.assign({}, defaults.bestScoreByLevel, parsed.bestScoreByLevel || {}),
             fastestLevelMs: Object.assign({}, defaults.fastestLevelMs, parsed.fastestLevelMs || {}),
+            powerUpTypesCollected: Object.assign({}, parsed.powerUpTypesCollected || {}),
         });
     } catch (e) {
         return createDefaultStats();
@@ -129,6 +132,23 @@ export function recordBestStreak(streak) {
     if (streak > stats.bestStreak) {
         saveStats(Object.assign({}, stats, { bestStreak: streak }));
     }
+}
+
+export function recordPowerUpTypeCollected(type) {
+    var stats = getStats();
+    var newTypes = Object.assign({}, stats.powerUpTypesCollected);
+    newTypes[type] = true;
+    saveStats(Object.assign({}, stats, { powerUpTypesCollected: newTypes }));
+}
+
+export function recordShieldHit() {
+    var stats = getStats();
+    saveStats(Object.assign({}, stats, { shieldHitsAbsorbed: stats.shieldHitsAbsorbed + 1 }));
+}
+
+export function getAllPowerUpTypesCollected() {
+    var stats = getStats();
+    return stats.powerUpTypesCollected || {};
 }
 
 // --- Rendering ---

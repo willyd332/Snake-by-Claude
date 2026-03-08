@@ -188,6 +188,7 @@ export function tick(prev) {
         _ateFrenzyFood: false,
         _ateFrenzyFoodPos: null,
         _activeZone: null,
+        _powerUpChoicePending: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -678,13 +679,14 @@ export function tick(prev) {
         newFrenzyFood = [];
     }
 
-    // Power-up spawning from config
+    // Power-up spawning from config — triggers a choice UI instead of auto-spawning
+    var powerUpChoicePending = false;
     var newConfig = getLevelConfig(newLevel, endlessConfig);
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
         var puInterval = getDifficultyPreset(getSettingsRef().difficulty).powerUpFreq;
         if (newPowerUpSpawnCounter >= puInterval) {
-            newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter, endlessWave);
+            powerUpChoicePending = true;
             newPowerUpSpawnCounter = 0;
         }
     }
@@ -803,5 +805,6 @@ export function tick(prev) {
         _ateFrenzyFoodPos: ateFrenzyFoodPos,
         scoreZones: newScoreZones,
         _activeZone: _activeZone,
+        _powerUpChoicePending: powerUpChoicePending,
     };
 }

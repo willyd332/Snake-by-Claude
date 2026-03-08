@@ -42,12 +42,14 @@ export var FRENZY_SCORE_MULTIPLIER = 3; // score multiplier for food eaten durin
 export var FRENZY_MIN_WAVE = 10;       // earliest wave frenzy can appear
 
 export var POWER_UP_TYPES = [
-    { type: 'timeSlow', name: 'SLOW', color: '#60a5fa', glowColor: '#3b82f6', duration: 40 },
-    { type: 'ghost', name: 'GHOST', color: '#e2e8f0', glowColor: '#94a3b8', duration: 30 },
-    { type: 'shield', name: 'SHIELD', color: '#22d3ee', glowColor: '#06b6d4', duration: SHIELD_DURATION },
-    { type: 'magnet', name: 'MAGNET', color: '#fbbf24', glowColor: '#f59e0b', duration: MAGNET_DURATION },
-    { type: 'frenzy', name: 'FRENZY', color: '#f97316', glowColor: '#ef4444', duration: FRENZY_DURATION },
+    { type: 'timeSlow', name: 'SLOW', color: '#60a5fa', glowColor: '#3b82f6', duration: 40, icon: '\u23F3', desc: 'Halves game speed' },
+    { type: 'ghost', name: 'GHOST', color: '#e2e8f0', glowColor: '#94a3b8', duration: 30, icon: '\uD83D\uDC7B', desc: 'Phase through walls and self' },
+    { type: 'shield', name: 'SHIELD', color: '#22d3ee', glowColor: '#06b6d4', duration: SHIELD_DURATION, icon: '\uD83D\uDEE1\uFE0F', desc: 'Absorbs one lethal hit' },
+    { type: 'magnet', name: 'MAGNET', color: '#fbbf24', glowColor: '#f59e0b', duration: MAGNET_DURATION, icon: '\uD83E\uDDF2', desc: 'Food moves toward you' },
+    { type: 'frenzy', name: 'FRENZY', color: '#f97316', glowColor: '#ef4444', duration: FRENZY_DURATION, icon: '\uD83D\uDD25', desc: 'Double speed, 3x score, extra food' },
 ];
+
+export var POWER_UP_CHOICE_TIMEOUT_MS = 5000;
 
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
 

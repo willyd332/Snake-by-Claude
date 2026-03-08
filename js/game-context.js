@@ -13,7 +13,7 @@ import { getEndlessConfig, setEndlessHighScore, setEndlessHighWave } from './end
 import { createReplayBuffer } from './replay.js';
 import { playHunterIntroSound } from './audio.js';
 import { stopMusic } from './music.js';
-import { recordGameStart, recordGameTime, recordBestStreak } from './stats.js';
+import { recordGameStart, recordGameTime, recordBestStreak, recordPowerUpTypeCollected, recordShieldHit, getAllPowerUpTypesCollected } from './stats.js';
 import {
     getCurrentStreak, incrementStreak, resetStreak, getStreakBonus,
 } from './streak.js';
@@ -105,6 +105,12 @@ export function startEndlessMode(g, deps) {
     g.runFoodEaten = 0;
     g.runPrevHighScore = g.highScore || 0;
     g.summaryVisible = false;
+    g.runPortalUses = 0;
+    g.runWrapWaves = 0;
+    g.runNoPowerUpWaves = 0;
+    g.runPowerUpCollectedThisWave = false;
+    g.runConsecutiveHunterWaves = 0;
+    g.runEverCollectedPowerUp = false;
     resetStreak();
     g.streakRingEmitted = false;
     recordGameStart();
