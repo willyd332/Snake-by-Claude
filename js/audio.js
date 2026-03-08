@@ -207,6 +207,34 @@ export function playPowerUpCollectSound() {
     });
 }
 
+export function playMagnetCollectSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Magnetic hum: two descending sine tones pulling in together
+    var hum1 = createTone(ctx, 'sine', now, now + 0.4);
+    hum1.osc.frequency.setValueAtTime(900, now);
+    hum1.osc.frequency.exponentialRampToValueAtTime(300, now + 0.4);
+    hum1.gain.gain.setValueAtTime(0, now);
+    hum1.gain.gain.linearRampToValueAtTime(0.18, now + 0.05);
+    hum1.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+    // Warm low pulse underneath
+    var hum2 = createTone(ctx, 'triangle', now + 0.05, now + 0.35);
+    hum2.osc.frequency.setValueAtTime(220, now + 0.05);
+    hum2.osc.frequency.linearRampToValueAtTime(180, now + 0.35);
+    hum2.gain.gain.setValueAtTime(0.12, now + 0.05);
+    hum2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    // Final golden ping
+    var ping = createTone(ctx, 'sine', now + 0.3, now + 0.55);
+    ping.osc.frequency.setValueAtTime(1200, now + 0.3);
+    ping.osc.frequency.exponentialRampToValueAtTime(800, now + 0.55);
+    ping.gain.gain.setValueAtTime(0.08, now + 0.3);
+    ping.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+}
+
 export function playPortalSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

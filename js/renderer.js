@@ -436,6 +436,28 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 ctx.arc(puCx, puCy, 2, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.lineWidth = 0.5;
+            } else if (state.powerUp.type === 'magnet') {
+                // Magnet icon: U-shape with poles
+                ctx.strokeStyle = puDef.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(puCx, puCy + 2, 5, Math.PI, 0);
+                ctx.stroke();
+                // Left pole
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(puCx - 5, puCy + 2);
+                ctx.lineTo(puCx - 5, puCy - 5);
+                ctx.stroke();
+                // Right pole
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(puCx + 5, puCy + 2);
+                ctx.lineTo(puCx + 5, puCy - 5);
+                ctx.stroke();
+                ctx.lineWidth = 0.5;
             }
 
             ctx.globalAlpha = 1;
@@ -446,6 +468,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     // Food
     if (state.food) {
         var foodType = state.food.type || 'standard';
+        var isMagnetActive = state.activePowerUp && state.activePowerUp.type === 'magnet';
         var fcx = state.food.x * CELL_SIZE + CELL_SIZE / 2;
         var fcy = state.food.y * CELL_SIZE + CELL_SIZE / 2;
         var foodPulse = Math.sin(Date.now() / 220) * 0.2 + 0.8;
@@ -539,6 +562,22 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 ctx.stroke();
             }
             ctx.shadowBlur = 0;
+        }
+
+        // Magnet active: draw a pulsing gold ring around the food item
+        if (isMagnetActive) {
+            var magnetRingPulse = Math.sin(Date.now() / 120) * 0.3 + 0.6;
+            ctx.globalAlpha = magnetRingPulse;
+            ctx.strokeStyle = '#fbbf24';
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = 8;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(fcx, fcy, CELL_SIZE / 2 + 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0.5;
         }
     }
 

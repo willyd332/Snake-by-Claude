@@ -12,7 +12,7 @@ import {
 } from './particles.js';
 import {
     playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
-    playPowerUpCollectSound, playPortalSound, playShrinkSound,
+    playPowerUpCollectSound, playMagnetCollectSound, playPortalSound, playShrinkSound,
     playHunterKillSound, playHunterIntroSound, playComboSound,
     playShieldBreakSound, playBonusFoodSound,
     getAudioContext, getMasterGain,
@@ -187,7 +187,11 @@ export function processPostTickEvents(ctx) {
         if (ctx.state._collectedPowerUp === 'timeSlow') ctx.tryUnlock('power_collector');
         var collectedDef = getPowerUpDef(ctx.state._collectedPowerUp);
         if (collectedDef) {
-            playPowerUpCollectSound();
+            if (ctx.state._collectedPowerUp === 'magnet') {
+                playMagnetCollectSound();
+            } else {
+                playPowerUpCollectSound();
+            }
             ctx.ui.showPowerUpCollected(collectedDef);
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
             ctx.shakeState = triggerShake(SHAKE_POWER_UP.intensity, SHAKE_POWER_UP.duration);

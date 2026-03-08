@@ -31,6 +31,35 @@ function pickFoodType() {
     return 'standard';
 }
 
+// Move food one cell toward the snake head (magnet power-up effect).
+// Food already adjacent to the head (Manhattan distance <= 1) is not moved.
+// Respects arena bounds to prevent food escaping the playfield.
+function magnetizeFood(food, head, minX, minY, maxX, maxY) {
+    var dx = food.x - head.x;
+    var dy = food.y - head.y;
+    var dist = Math.abs(dx) + Math.abs(dy);
+    if (dist <= 1) return food;
+
+    // Normalize direction to -1, 0, or 1 per axis
+    var stepX = dx === 0 ? 0 : (dx > 0 ? -1 : 1);
+    var stepY = dy === 0 ? 0 : (dy > 0 ? -1 : 1);
+
+    // Prefer moving on the dominant axis (larger delta moves first)
+    var newX = food.x;
+    var newY = food.y;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+        newX = food.x + stepX;
+    } else {
+        newY = food.y + stepY;
+    }
+
+    // Clamp to arena bounds
+    newX = Math.max(minX, Math.min(maxX, newX));
+    newY = Math.max(minY, Math.min(maxY, newY));
+
+    return Object.assign({}, food, { x: newX, y: newY });
+}
+
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
     var clean = Object.assign({}, prev, {
@@ -386,6 +415,11 @@ export function tick(prev) {
     if (!newFood) {
         var spawnedPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
         newFood = Object.assign({}, spawnedPos, { type: pickFoodType() });
+    }
+
+    // Magnet effect: move food one cell closer to snake head each tick
+    if (newFood && newActivePowerUp && newActivePowerUp.type === 'magnet') {
+        newFood = magnetizeFood(newFood, newHead, newArenaMinX, newArenaMinY, newArenaMaxX, newArenaMaxY);
     }
 
     // Power-up spawning
