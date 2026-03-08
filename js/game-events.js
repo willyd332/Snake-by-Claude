@@ -3,6 +3,7 @@
 import { CANVAS_SIZE, GRID_SIZE, CELL_SIZE, INVINCIBLE_TICKS } from './constants.js';
 import { getLevelConfig, randomPosition, randomPositionInBounds } from './state.js';
 import { getPowerUpDef } from './powerups.js';
+import { createComboState } from './combo.js';
 import {
     emitBurst, emitExplosion, emitLevelUpShower, emitPortalSwirl,
     triggerShake,
@@ -12,7 +13,8 @@ import {
 import {
     playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
-    playHunterKillSound, playHunterIntroSound,
+    playHunterKillSound, playHunterIntroSound, playComboSound,
+    playShieldBreakSound,
     getAudioContext, getMasterGain,
 } from './audio.js';
 import { setMusicIntensity, playWaveFanfare, stopMusic } from './music.js';
@@ -41,15 +43,23 @@ export function processPostTickEvents(ctx) {
         ctx.shakeState = triggerShake(SHAKE_FOOD.intensity, SHAKE_FOOD.duration);
         ctx.headFlashState = { remaining: 0.18, duration: 0.18, color: ctx.config.foodColor };
 
-        // Score popup at food position
+        // Score popup at food position — show multiplied value and multiplier label
+        var comboMult = ctx.state._comboMultiplier || 1;
+        var scoreGained = 10 * comboMult;
+        var popupText = comboMult > 1 ? '+' + scoreGained + ' x' + comboMult : '+10';
         ctx.scorePopups = (ctx.scorePopups || []).concat([{
             x: ctx.state._ateFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
             y: ctx.state._ateFoodPos.y * CELL_SIZE + CELL_SIZE / 2,
-            text: '+10',
+            text: popupText,
             alpha: 1,
             vy: -0.8,
-            color: '#fbbf24',
+            color: comboMult > 1 ? '#f59e0b' : '#fbbf24',
         }]);
+
+        // Combo sound on multiplier increase (2x and above)
+        if (ctx.state._comboIncreased && comboMult >= 2) {
+            playComboSound(comboMult);
+        }
 
         // Stats: food eaten + snake length
         recordFoodEaten(ctx.state.snake.length);
@@ -69,6 +79,11 @@ export function processPostTickEvents(ctx) {
         // Length achievements
         if (ctx.state.snake.length >= 20) ctx.tryUnlock('long_snake');
         if (ctx.state.snake.length >= 40) ctx.tryUnlock('serpent_king');
+    }
+
+    // Combo break: flash "COMBO BREAK" when a streak expires
+    if (ctx.state._comboExpired) {
+        ctx.ui.showComboBreak();
     }
 
     // Endless wave-up detection
@@ -173,6 +188,30 @@ export function processPostTickEvents(ctx) {
         if (arenaW <= 6 && arenaH <= 6) ctx.tryUnlock('close_call');
     }
 
+    // Shield broke: absorbed a lethal hit — dramatic flash + particles
+    if (ctx.state._shieldBroke) {
+        playShieldBreakSound();
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#22d3ee', 20, 70, 0.5);
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 10, 40, 0.3);
+        ctx.shakeState = triggerShake(6, 0.25);
+        ctx.scorePopups = (ctx.scorePopups || []).concat([{
+            x: ctx.state.snake[0].x * CELL_SIZE + CELL_SIZE / 2,
+            y: ctx.state.snake[0].y * CELL_SIZE + CELL_SIZE / 2,
+            text: 'SHIELD BROKE!',
+            alpha: 1,
+            vy: -1.0,
+            color: '#22d3ee',
+        }]);
+        ctx.messageEl.textContent = 'SHIELD ABSORBED THE HIT';
+        ctx.messageEl.className = 'active';
+        ctx.messageEl.style.color = '#22d3ee';
+        setTimeout(function() {
+            ctx.messageEl.textContent = '';
+            ctx.messageEl.className = '';
+            ctx.messageEl.style.color = '';
+        }, 1500);
+    }
+
     // Teleport: detect by checking if head moved more than 2 cells (skip on wrap-around levels)
     if (!ctx.state.gameOver && ctx.prevState.started && !ctx.config.wrapAround) {
         var headDx = Math.abs(ctx.state.snake[0].x - ctx.prevState.snake[0].x);
@@ -216,6 +255,7 @@ export function processPostTickEvents(ctx) {
                 powerUpSpawnCounter: 0,
                 _killedByHunter: false,
                 _deathCause: null,
+                combo: createComboState(),
             });
             // Respawn food at safe location
             respawnState = Object.assign({}, respawnState, {

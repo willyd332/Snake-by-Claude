@@ -348,6 +348,45 @@ export function playAchievementSound() {
     shimmer.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
 }
 
+export function playComboSound(multiplier) {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Short ascending ping — pitch scales with multiplier (2x through 5x)
+    var baseFreq = 600 + (multiplier - 2) * 200; // 600, 800, 1000, 1200
+    var tone = createTone(ctx, 'sine', now, now + 0.1);
+    tone.osc.frequency.setValueAtTime(baseFreq, now);
+    tone.osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.07);
+    tone.gain.gain.setValueAtTime(0.15, now);
+    tone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+}
+
+export function playShieldBreakSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Crystal shatter: high descending ping + noise burst
+    var ping = createTone(ctx, 'sine', now, now + 0.3);
+    ping.osc.frequency.setValueAtTime(1800, now);
+    ping.osc.frequency.exponentialRampToValueAtTime(400, now + 0.3);
+    ping.gain.gain.setValueAtTime(0.18, now);
+    ping.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+    // Short high square hit
+    var hit = createTone(ctx, 'square', now, now + 0.1);
+    hit.osc.frequency.setValueAtTime(2400, now);
+    hit.osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+    hit.gain.gain.setValueAtTime(0.1, now);
+    hit.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+    // Noise burst
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.2);
+    buf.gain.gain.setValueAtTime(0.1, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+}
+
 export function playHunterIntroSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

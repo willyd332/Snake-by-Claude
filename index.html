@@ -68,6 +68,18 @@
             color: #ef4444;
         }
 
+        #comboHud .value {
+            color: #f59e0b;
+            font-weight: bold;
+            letter-spacing: 1px;
+            animation: comboPulse 0.4s ease-in-out infinite alternate;
+        }
+
+        @keyframes comboPulse {
+            0% { opacity: 0.85; }
+            100% { opacity: 1; text-shadow: 0 0 8px #f59e0b; }
+        }
+
         canvas {
             border: 2px solid #1a3a5c;
             border-radius: 4px;
@@ -149,6 +161,7 @@
         <div id="powerUpHud"><span class="value" id="powerUpName"></span></div>
         <div id="arenaHud" style="display:none"><span>Arena:</span> <span class="value" id="arenaSize"></span></div>
         <div id="livesHud" style="display:none"><span>Lives:</span> <span class="value" id="lives">3</span></div>
+        <div id="comboHud" style="display:none"><span class="value" id="comboLabel"></span></div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="message">Arrow keys or swipe to start</div>

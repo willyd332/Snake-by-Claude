@@ -417,6 +417,25 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 ctx.lineTo(puCx - 5, puCy + 5);
                 ctx.closePath();
                 ctx.fill();
+            } else if (state.powerUp.type === 'shield') {
+                // Shield icon: hexagon outline
+                ctx.strokeStyle = puDef.color;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for (var si = 0; si < 6; si++) {
+                    var sAngle = (Math.PI / 3) * si - Math.PI / 6;
+                    var sr = 6;
+                    if (si === 0) ctx.moveTo(puCx + Math.cos(sAngle) * sr, puCy + Math.sin(sAngle) * sr);
+                    else ctx.lineTo(puCx + Math.cos(sAngle) * sr, puCy + Math.sin(sAngle) * sr);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                // Inner dot
+                ctx.fillStyle = puDef.color;
+                ctx.beginPath();
+                ctx.arc(puCx, puCy, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 0.5;
             }
 
             ctx.globalAlpha = 1;
@@ -628,6 +647,18 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         dom.arenaSizeEl.textContent = aw + '\u00d7' + ah;
     } else {
         dom.arenaHudEl.style.display = 'none';
+    }
+
+    // Combo HUD indicator
+    if (dom.comboHudEl && dom.comboLabelEl) {
+        var combo = state.combo;
+        var comboMult = combo ? combo.multiplier : 1;
+        if (comboMult >= 2 && state.started && !state.gameOver) {
+            dom.comboHudEl.style.display = 'inline';
+            dom.comboLabelEl.textContent = 'x' + comboMult + ' COMBO!';
+        } else {
+            dom.comboHudEl.style.display = 'none';
+        }
     }
 }
 

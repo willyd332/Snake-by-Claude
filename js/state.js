@@ -3,6 +3,7 @@
 import { GRID_SIZE, INITIAL_LIVES } from './constants.js';
 import { getObstaclePositions, getPortalPositions } from './levels.js';
 import { getHunterPositions } from './hunter.js';
+import { createComboState } from './combo.js';
 
 export function createInitialState() {
     return {
@@ -33,6 +34,8 @@ export function createInitialState() {
         lives: INITIAL_LIVES,
         invincibleTicks: 0,
         wallInset: 0,
+        shieldActive: false,
+        combo: createComboState(),
     };
 }
 

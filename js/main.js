@@ -68,6 +68,8 @@ var dom = {
     levelLabelEl: document.getElementById('levelLabel'),
     livesHudEl: document.getElementById('livesHud'),
     livesEl: document.getElementById('lives'),
+    comboHudEl: document.getElementById('comboHud'),
+    comboLabelEl: document.getElementById('comboLabel'),
 };
 
 var messageEl = document.getElementById('message');
