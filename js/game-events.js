@@ -20,7 +20,7 @@ import {
     playWaveEventPortalStormSound, playWaveEventGoldRushSound,
     getAudioContext, getMasterGain,
 } from './audio.js';
-import { setMusicIntensity, playWaveFanfare, stopMusic } from './music.js';
+import { setMusicIntensity, transitionToWave, playWaveFanfare, stopMusic } from './music.js';
 import { setEndlessHighScore, setEndlessHighWave, getWaveTitle, getGridSizeForWave } from './endless.js';
 import { setGridSize } from './constants.js';
 import {
@@ -32,6 +32,21 @@ import {
 } from './speedrun.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { showWavePreview, dismissWavePreview } from './wave-preview.js';
+
+// --- Helper: compute Manhattan distance to nearest hunter segment ---
+export function computeHunterDistance(state) {
+    if (!state.hunter || !state.hunter.segments || !state.snake || state.snake.length === 0) {
+        return null;
+    }
+    var head = state.snake[0];
+    var minDist = Infinity;
+    var segments = state.hunter.segments;
+    for (var i = 0; i < segments.length; i++) {
+        var d = Math.abs(head.x - segments[i].x) + Math.abs(head.y - segments[i].y);
+        if (d < minDist) minDist = d;
+    }
+    return minDist === Infinity ? null : minDist;
+}
 
 // --- Post-Tick Event Processing ---
 // Handles all game events that occur after a tick: food eaten,
@@ -145,7 +160,7 @@ export function processPostTickEvents(ctx) {
         ctx.prevHunterSegments = null;
         playLevelUpSound();
         playWaveFanfare(getAudioContext(), getMasterGain(), ctx.state.endlessWave);
-        setMusicIntensity(ctx.state.endlessWave, ctx.state.wallInset || 0);
+        transitionToWave(ctx.state.endlessWave, ctx.state.wallInset || 0);
         var waveConfig = ctx.state.endlessConfig;
         ctx.particleSystem = emitLevelUpShower(ctx.particleSystem, CANVAS_SIZE, waveConfig.color);
         ctx.shakeState = triggerShake(SHAKE_WAVE_UP.intensity, SHAKE_WAVE_UP.duration);
@@ -222,12 +237,55 @@ export function processPostTickEvents(ctx) {
         }
     }
 
+    // Frenzy ended: cleanup message
+    if (ctx.state._frenzyEnded) {
+        ctx.messageEl.textContent = 'FRENZY OVER';
+        ctx.messageEl.className = 'powerup-msg';
+        ctx.messageEl.style.color = '#94a3b8';
+        setTimeout(function() {
+            ctx.messageEl.textContent = '';
+            ctx.messageEl.className = '';
+            ctx.messageEl.style.color = '';
+        }, 1000);
+    }
+
+    // Frenzy food collected: particles + popup + achievement tracking
+    if (ctx.state._ateFrenzyFood && ctx.state._ateFrenzyFoodPos) {
+        ctx.prevSnake = null;
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateFrenzyFoodPos.x, ctx.state._ateFrenzyFoodPos.y, '#f97316', 14, 60, 0.5);
+        ctx.shakeState = triggerShake(SHAKE_FOOD.intensity, SHAKE_FOOD.duration);
+        ctx.scorePopups = (ctx.scorePopups || []).concat([{
+            x: ctx.state._ateFrenzyFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
+            y: ctx.state._ateFrenzyFoodPos.y * CELL_SIZE + CELL_SIZE / 2,
+            text: 'FRENZY! x3',
+            alpha: 1,
+            vy: -0.8,
+            color: '#f97316',
+        }]);
+        // Track frenzy food eaten for achievement (all 3 eaten during a single frenzy)
+        ctx.frenzyFoodEatenThisFrenzy = (ctx.frenzyFoodEatenThisFrenzy || 0) + 1;
+        if (ctx.frenzyFoodEatenThisFrenzy >= 3) {
+            ctx.tryUnlock('feeding_frenzy');
+        }
+    }
+
+    // Reset frenzy food eaten counter when frenzy ends or starts
+    if (ctx.state._frenzyEnded || ctx.state._frenzyStarted) {
+        ctx.frenzyFoodEatenThisFrenzy = 0;
+    }
+
     // Arena shrink: shake + update music intensity for wall urgency
     if (ctx.state._shrinkOccurred) {
         playShrinkSound();
         ctx.ui.showShrinkMessage();
         ctx.shakeState = triggerShake(SHAKE_SHRINK.intensity, SHAKE_SHRINK.duration);
-        setMusicIntensity(ctx.state.endlessWave || 1, ctx.state.wallInset || 0);
+        var shrinkHunterDist = computeHunterDistance(ctx.state);
+        setMusicIntensity(
+            ctx.state.endlessWave || 1,
+            ctx.state.wallInset || 0,
+            ctx.state.snake ? ctx.state.snake.length : 1,
+            shrinkHunterDist
+        );
         var arenaW = ctx.state.arenaMaxX - ctx.state.arenaMinX + 1;
         var arenaH = ctx.state.arenaMaxY - ctx.state.arenaMinY + 1;
         if (arenaW <= 8 && arenaH <= 8) ctx.tryUnlock('survivor');
@@ -392,6 +450,8 @@ export function processPostTickEvents(ctx) {
         }
 
         // Final death — true game over
+        // Reset frenzy counter so it doesn't carry into the next game
+        ctx.frenzyFoodEatenThisFrenzy = 0;
         stopMusic();
         recordDeath(ctx.state.level);
         recordBestScore(ctx.state.level, ctx.state.score);

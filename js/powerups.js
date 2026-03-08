@@ -1,12 +1,16 @@
 'use strict';
 
-import { GRID_SIZE, POWER_UP_TYPES, POWER_UP_DESPAWN_TICKS } from './constants.js';
+import { GRID_SIZE, POWER_UP_TYPES, POWER_UP_DESPAWN_TICKS, FRENZY_MIN_WAVE } from './constants.js';
 import { getObstaclePositions, getPortalPositions } from './levels.js';
 import { getHunterPositions } from './hunter.js';
 
-export function spawnPowerUp(snake, walls, obstacles, portals, food, currentPowerUp, hunter) {
+export function spawnPowerUp(snake, walls, obstacles, portals, food, currentPowerUp, hunter, endlessWave) {
     if (currentPowerUp) return currentPowerUp;
-    var typeDef = POWER_UP_TYPES[Math.floor(Math.random() * POWER_UP_TYPES.length)];
+    var availableTypes = POWER_UP_TYPES.filter(function(t) {
+        if (t.type === 'frenzy') return (endlessWave || 1) >= FRENZY_MIN_WAVE;
+        return true;
+    });
+    var typeDef = availableTypes[Math.floor(Math.random() * availableTypes.length)];
     var hunterPositions = hunter ? getHunterPositions(hunter) : [];
     var occupied = (walls || []).concat(snake).concat(getObstaclePositions(obstacles || [])).concat(getPortalPositions(portals || [])).concat(hunterPositions);
     if (food) occupied = occupied.concat([food]);

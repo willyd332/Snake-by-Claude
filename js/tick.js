@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE } from './constants.js';
+import { GRID_SIZE, FRENZY_EXTRA_FOOD, FRENZY_SCORE_MULTIPLIER } from './constants.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { moveObstacles, getObstaclePositions, checkPortalTeleport } from './levels.js';
 import { moveHunter } from './hunter.js';
@@ -83,6 +83,10 @@ export function tick(prev) {
         _waveEventEffects: null,
         _ateBonusFood: false,
         _ateBonusFoodPos: null,
+        _frenzyStarted: false,
+        _frenzyEnded: false,
+        _ateFrenzyFood: false,
+        _ateFrenzyFoodPos: null,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -267,6 +271,10 @@ export function tick(prev) {
         if (clean.waveEvent && isGoldRushActive(clean.waveEvent)) {
             foodScoreMultiplier = Math.max(foodScoreMultiplier, GOLD_RUSH_SCORE_MULTIPLIER);
         }
+        // Frenzy active: all food worth 3x
+        if (clean.activePowerUp && clean.activePowerUp.type === 'frenzy') {
+            foodScoreMultiplier = Math.max(foodScoreMultiplier, FRENZY_SCORE_MULTIPLIER);
+        }
         _scoreGained = eatResult.scoreGained * foodScoreMultiplier;
         newScore = clean.score + _scoreGained;
         _comboMultiplier = eatResult.comboState.multiplier;
@@ -315,6 +323,7 @@ export function tick(prev) {
     var newPowerUp = clean.powerUp;
     var newActivePowerUp = clean.activePowerUp;
     var newPowerUpSpawnCounter = clean.powerUpSpawnCounter;
+    var newFrenzyFood = clean.frenzyFood || [];
 
     // Food type effects: clock triggers time slow, speed triggers speed boost
     if (ate && ateFoodType === 'clock') {
@@ -345,6 +354,7 @@ export function tick(prev) {
         newPowerUp = null;
         newActivePowerUp = null;
         newPowerUpSpawnCounter = 0;
+        newFrenzyFood = [];
         // Reset wave events on new wave
         newWaveEvent = resetWaveEventForNewWave();
     }
@@ -467,6 +477,54 @@ export function tick(prev) {
         newPowerUpSpawnCounter = 0;
     }
 
+    // Frenzy: spawn extra food when frenzy is first activated
+    var frenzyJustStarted = collectedPowerUpType === 'frenzy';
+    if (frenzyJustStarted) {
+        newFrenzyFood = [];
+        for (var fi = 0; fi < FRENZY_EXTRA_FOOD; fi++) {
+            // Exclude regular food and all previously chosen frenzy positions so
+            // frenzy items never overlap each other or the regular food cell.
+            var frenzyExclude = newFood ? [newFood].concat(newFrenzyFood) : newFrenzyFood.slice();
+            var frenzyFoodPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, frenzyExclude[0] || null, newHunter);
+            // If there are multiple cells to exclude, keep re-sampling until we land
+            // on a free cell (handles the case where FRENZY_EXTRA_FOOD > 1).
+            if (frenzyExclude.length > 1) {
+                var maxAttempts = 200;
+                var attempts2 = 0;
+                while (attempts2 < maxAttempts && frenzyExclude.some(function(ex) { return ex.x === frenzyFoodPos.x && ex.y === frenzyFoodPos.y; })) {
+                    frenzyFoodPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
+                    attempts2++;
+                }
+            }
+            newFrenzyFood = newFrenzyFood.concat([{ x: frenzyFoodPos.x, y: frenzyFoodPos.y }]);
+        }
+    }
+
+    // Frenzy: check collection of extra food items
+    var isFrenzyActive = newActivePowerUp && newActivePowerUp.type === 'frenzy';
+    var ateFrenzyFood = false;
+    var ateFrenzyFoodPos = null;
+    if (isFrenzyActive && newFrenzyFood.length > 0) {
+        var remainingFrenzyFood = [];
+        for (var fj = 0; fj < newFrenzyFood.length; fj++) {
+            if (!ateFrenzyFood && newHead.x === newFrenzyFood[fj].x && newHead.y === newFrenzyFood[fj].y) {
+                ateFrenzyFood = true;
+                ateFrenzyFoodPos = newFrenzyFood[fj];
+                var frenzyEatResult = onFoodEaten(newCombo, clean.lastTick);
+                newCombo = frenzyEatResult.comboState;
+                var frenzyScoreGained = frenzyEatResult.scoreGained * FRENZY_SCORE_MULTIPLIER;
+                newScore = newScore + frenzyScoreGained;
+                _scoreGained = _scoreGained + frenzyScoreGained;
+                // Snake grows from frenzy food
+                newSnake = newSnake.concat([newSnake[newSnake.length - 1]]);
+            } else {
+                remainingFrenzyFood = remainingFrenzyFood.concat([newFrenzyFood[fj]]);
+            }
+        }
+        newFrenzyFood = remainingFrenzyFood;
+    }
+
+
     // Decrement power-up despawn timer
     if (newPowerUp) {
         newPowerUp = Object.assign({}, newPowerUp, { ticksLeft: newPowerUp.ticksLeft - 1 });
@@ -487,13 +545,20 @@ export function tick(prev) {
         }
     }
 
+    // Frenzy ended: clean up extra food (detected after decrement)
+    var wasFrenzyActive = clean.activePowerUp && clean.activePowerUp.type === 'frenzy';
+    var frenzyJustEnded = wasFrenzyActive && !(newActivePowerUp && newActivePowerUp.type === 'frenzy') && !frenzyJustStarted;
+    if (frenzyJustEnded) {
+        newFrenzyFood = [];
+    }
+
     // Power-up spawning from config
     var newConfig = getLevelConfig(newLevel, endlessConfig);
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
         var puInterval = getDifficultyPreset(getSettingsRef().difficulty).powerUpFreq;
         if (newPowerUpSpawnCounter >= puInterval) {
-            newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter);
+            newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter, endlessWave);
             newPowerUpSpawnCounter = 0;
         }
     }
@@ -589,6 +654,7 @@ export function tick(prev) {
         combo: newCombo,
         shieldActive: newShieldActive,
         waveEvent: newWaveEvent,
+        frenzyFood: newFrenzyFood,
         _collectedPowerUp: collectedPowerUpType,
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
@@ -605,5 +671,9 @@ export function tick(prev) {
         _waveEventEffects: waveEventEffects,
         _ateBonusFood: ateBonusFood,
         _ateBonusFoodPos: ateBonusFoodPos,
+        _frenzyStarted: frenzyJustStarted,
+        _frenzyEnded: frenzyJustEnded,
+        _ateFrenzyFood: ateFrenzyFood,
+        _ateFrenzyFoodPos: ateFrenzyFoodPos,
     };
 }

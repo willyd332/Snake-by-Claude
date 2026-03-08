@@ -10,7 +10,7 @@ import {
     getAudioContext, getMasterGain,
 } from './audio.js';
 import {
-    startMusic, toggleMusicMute,
+    startMusic, toggleMusicMute, setMusicVolume,
 } from './music.js';
 import { createTitleState } from './screens.js';
 import {
@@ -82,7 +82,10 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
                     setSoundEnabled(updated.sound);
                 }
             } else if (item.type === 'cycle') {
-                cycleSetting(item.key, item.options, direction);
+                var cycled = cycleSetting(item.key, item.options, direction);
+                if (item.key === 'musicLevel') {
+                    setMusicVolume(cycled.musicVolume);
+                }
             }
         },
 

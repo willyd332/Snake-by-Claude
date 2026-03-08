@@ -14,6 +14,14 @@ var DIFFICULTY_PRESETS = {
 };
 
 var DIFFICULTY_ORDER = ['easy', 'normal', 'hard'];
+var MUSIC_VOLUME_ORDER = ['off', 'low', 'medium', 'high'];
+
+var MUSIC_VOLUME_VALUES = {
+    off: 0,
+    low: 0.3,
+    medium: 0.65,
+    high: 1.0,
+};
 
 var SETTINGS_ITEMS = [
     { key: 'difficulty', label: 'Difficulty',    type: 'cycle', options: DIFFICULTY_ORDER },
@@ -21,6 +29,7 @@ var SETTINGS_ITEMS = [
     { key: 'particles',  label: 'Particles',    type: 'toggle' },
     { key: 'screenShake',label: 'Screen Shake',  type: 'toggle' },
     { key: 'sound',      label: 'Sound',         type: 'toggle' },
+    { key: 'musicLevel', label: 'Music',         type: 'cycle', options: MUSIC_VOLUME_ORDER },
     { key: 'highContrast',label: 'High Contrast', type: 'toggle' },
 ];
 
@@ -30,6 +39,8 @@ var DEFAULT_SETTINGS = {
     particles: true,
     screenShake: true,
     sound: true,
+    musicLevel: 'high',
+    musicVolume: 1.0,
     highContrast: false,
 };
 
@@ -91,7 +102,15 @@ export function cycleSetting(key, options, direction) {
     var idx = options.indexOf(current[key]);
     var delta = (direction && direction < 0) ? -1 : 1;
     var next = (idx + delta + options.length) % options.length;
-    return updateSetting(key, options[next]);
+    var result = updateSetting(key, options[next]);
+
+    // When musicLevel changes, sync the numeric musicVolume value
+    if (key === 'musicLevel') {
+        var numericVol = MUSIC_VOLUME_VALUES[options[next]];
+        result = updateSetting('musicVolume', numericVol !== undefined ? numericVol : 1.0);
+    }
+
+    return result;
 }
 
 export function getDifficultyPreset(difficultyKey) {

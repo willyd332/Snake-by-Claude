@@ -36,11 +36,17 @@ export var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
 export var SHIELD_DURATION = 225; // ~15 seconds at ~15 ticks/sec
 export var MAGNET_DURATION = 300; // ~10 seconds at ~15 ticks/sec — food attracted toward snake head
 
+export var FRENZY_DURATION = 25;       // ticks at doubled speed
+export var FRENZY_EXTRA_FOOD = 3;      // extra food items spawned during frenzy
+export var FRENZY_SCORE_MULTIPLIER = 3; // score multiplier for food eaten during frenzy
+export var FRENZY_MIN_WAVE = 10;       // earliest wave frenzy can appear
+
 export var POWER_UP_TYPES = [
     { type: 'timeSlow', name: 'SLOW', color: '#60a5fa', glowColor: '#3b82f6', duration: 40 },
     { type: 'ghost', name: 'GHOST', color: '#e2e8f0', glowColor: '#94a3b8', duration: 30 },
     { type: 'shield', name: 'SHIELD', color: '#22d3ee', glowColor: '#06b6d4', duration: SHIELD_DURATION },
     { type: 'magnet', name: 'MAGNET', color: '#fbbf24', glowColor: '#f59e0b', duration: MAGNET_DURATION },
+    { type: 'frenzy', name: 'FRENZY', color: '#f97316', glowColor: '#ef4444', duration: FRENZY_DURATION },
 ];
 
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];

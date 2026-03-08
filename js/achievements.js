@@ -34,6 +34,7 @@ export var ACHIEVEMENTS = [
     { id: 'close_call', name: 'Close Call', desc: 'Arena shrinks to 6x6', category: 'skill' },
     { id: 'hunter_survivor', name: 'Hunter Survivor', desc: 'Survive ALPHA for a full wave', category: 'skill' },
     { id: 'iron_will', name: 'Iron Will', desc: 'Reach wave 5 without losing a life', category: 'skill' },
+    { id: 'feeding_frenzy', name: 'Feeding Frenzy', desc: 'Eat all 3 frenzy food items during a Frenzy', category: 'skill' },
     // Secrets (4)
     { id: 'rainbow_road', name: 'Rainbow Road', desc: 'Activate Konami code', category: 'secret' },
     { id: 'red_pill', name: 'Red Pill', desc: 'Enter the data stream', category: 'secret' },

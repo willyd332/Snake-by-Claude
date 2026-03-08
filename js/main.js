@@ -21,7 +21,8 @@ import {
 } from './particles.js';
 import { setSoundEnabled, playAchievementSound } from './audio.js';
 import { getEndlessHighScore, getEndlessHighWave } from './endless.js';
-import { processPostTickEvents } from './game-events.js';
+import { processPostTickEvents, computeHunterDistance } from './game-events.js';
+import { setMusicIntensity } from './music.js';
 import {
     createReplayBuffer, recordFrame, startReplay,
 } from './replay.js';
@@ -227,6 +228,9 @@ function gameLoop(timestamp) {
     if (g.state.activePowerUp && g.state.activePowerUp.type === 'speedBoost') {
         speed = Math.round(speed / 1.5);
     }
+    if (g.state.activePowerUp && g.state.activePowerUp.type === 'frenzy') {
+        speed = Math.round(speed / 2);
+    }
     // Wave event: SPEED_BURST increases speed by multiplier
     if (g.state.waveEvent && isSpeedBurstActive(g.state.waveEvent)) {
         speed = Math.round(speed / SPEED_BURST_MULTIPLIER);
@@ -404,6 +408,19 @@ function gameLoop(timestamp) {
             applyEventCtx(g, eventCtx);
         }
 
+        // --- Per-tick adaptive music update ---
+        // Updates music intensity based on current game state (snake length,
+        // hunter proximity) for smooth real-time adaptation.
+        if (g.state.started && !g.state.gameOver) {
+            var tickHunterDist = computeHunterDistance(g.state);
+            setMusicIntensity(
+                g.state.endlessWave || 1,
+                g.state.wallInset || 0,
+                g.state.snake ? g.state.snake.length : 1,
+                tickHunterDist
+            );
+        }
+
         // Sync canvas dimensions if grid size changed
         if (canvas.width !== CANVAS_SIZE) {
             canvas.width = CANVAS_SIZE;
@@ -415,7 +432,15 @@ function gameLoop(timestamp) {
     if (g.state.activePowerUp && g.state.started && !g.state.gameOver && g.particleSystem.particles.length < 200) {
         var puDef = getPowerUpDef(g.state.activePowerUp.type);
         if (puDef) {
-            g.particleSystem = emitSparkle(g.particleSystem, g.state.snake[0].x, g.state.snake[0].y, puDef.glowColor);
+            // Frenzy: emit more intense trail along entire snake body
+            if (g.state.activePowerUp.type === 'frenzy') {
+                var frenzyTrailSeg = Math.floor(Math.random() * Math.min(g.state.snake.length, 4));
+                var frenzyColors = ['#ef4444', '#f97316', '#fbbf24'];
+                var frenzyColor = frenzyColors[Math.floor(Math.random() * frenzyColors.length)];
+                g.particleSystem = emitSparkle(g.particleSystem, g.state.snake[frenzyTrailSeg].x, g.state.snake[frenzyTrailSeg].y, frenzyColor);
+            } else {
+                g.particleSystem = emitSparkle(g.particleSystem, g.state.snake[0].x, g.state.snake[0].y, puDef.glowColor);
+            }
         }
     }
 

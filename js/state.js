@@ -37,6 +37,7 @@ export function createInitialState() {
         shieldActive: false,
         combo: createComboState(),
         waveEvent: null,
+        frenzyFood: [],
     };
 }
 

@@ -481,8 +481,54 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 ctx.lineTo(puCx + 5, puCy - 5);
                 ctx.stroke();
                 ctx.lineWidth = 0.5;
+            } else if (state.powerUp.type === 'frenzy') {
+                // Frenzy icon: red/orange pulsing orb with exclamation mark
+                var frenzyOrb1 = Math.sin(Date.now() / 100) * 0.4 + 0.6;
+                var frenzyOrb2 = Math.sin(Date.now() / 100 + Math.PI) * 0.4 + 0.6;
+                // Outer glow ring
+                ctx.globalAlpha = puPulse * frenzyOrb1 * 0.5;
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(puCx, puCy, 8, 0, Math.PI * 2);
+                ctx.stroke();
+                // Inner orb (orange)
+                ctx.globalAlpha = puPulse * frenzyOrb2;
+                ctx.fillStyle = '#f97316';
+                ctx.beginPath();
+                ctx.arc(puCx, puCy, 5, 0, Math.PI * 2);
+                ctx.fill();
+                // Exclamation mark
+                ctx.globalAlpha = puPulse;
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(puCx - 1, puCy - 4, 2, 5);
+                ctx.fillRect(puCx - 1, puCy + 2, 2, 2);
+                ctx.lineWidth = 0.5;
             }
 
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    // Frenzy extra food items
+    if (state.frenzyFood && state.frenzyFood.length > 0) {
+        var frenzyFoodPulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
+        for (var ffi = 0; ffi < state.frenzyFood.length; ffi++) {
+            var ffx = state.frenzyFood[ffi].x * CELL_SIZE + CELL_SIZE / 2;
+            var ffy = state.frenzyFood[ffi].y * CELL_SIZE + CELL_SIZE / 2;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 12;
+            ctx.globalAlpha = frenzyFoodPulse;
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.arc(ffx, ffy, CELL_SIZE / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            // Inner highlight
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(ffx - 2, ffy - 2, 2, 0, Math.PI * 2);
+            ctx.fill();
             ctx.globalAlpha = 1;
             ctx.shadowBlur = 0;
         }
@@ -949,6 +995,16 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.globalAlpha = 0.04 + Math.sin(Date.now() / 400) * 0.02;
         ctx.fillStyle = '#fbbf24';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.restore();
+    }
+
+    // Frenzy: red pulsing screen edge
+    if (state.activePowerUp && state.activePowerUp.type === 'frenzy' && state.started && !state.gameOver) {
+        var frenzyEdgePulse = Math.sin(Date.now() / 80) * 0.4 + 0.5;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(239, 68, 68, ' + frenzyEdgePulse + ')';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, CANVAS_SIZE - 4, CANVAS_SIZE - 4);
         ctx.restore();
     }
 }

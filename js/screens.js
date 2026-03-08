@@ -329,13 +329,22 @@ export function renderSettings(ctx, settingsState) {
             ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
             ctx.fillText(isOn ? 'ON' : 'OFF', valueX, ry + 21);
         } else if (item.type === 'cycle') {
-            var label = getDifficultyLabel(value);
-            var diffColors = { Easy: '#22c55e', Normal: '#eab308', Hard: '#ef4444' };
-            var diffColor = diffColors[label] || '#e0e0e0';
-            ctx.fillStyle = diffColor;
+            var cycleLabel;
+            var cycleColor;
+            if (item.key === 'difficulty') {
+                cycleLabel = getDifficultyLabel(value);
+                var diffColors = { Easy: '#22c55e', Normal: '#eab308', Hard: '#ef4444' };
+                cycleColor = diffColors[cycleLabel] || '#e0e0e0';
+            } else {
+                // Generic cycle display: capitalize the value string
+                cycleLabel = String(value).charAt(0).toUpperCase() + String(value).slice(1);
+                var musicColors = { Off: '#ef4444', Low: '#eab308', Medium: '#22c55e', High: '#4a9eff' };
+                cycleColor = musicColors[cycleLabel] || '#e0e0e0';
+            }
+            ctx.fillStyle = cycleColor;
             ctx.globalAlpha = isSelected ? 0.9 : 0.6;
             ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
-            ctx.fillText('\u25C0 ' + label + ' \u25B6', valueX, ry + 21);
+            ctx.fillText('\u25C0 ' + cycleLabel + ' \u25B6', valueX, ry + 21);
             ctx.globalAlpha = 1;
         }
     }
