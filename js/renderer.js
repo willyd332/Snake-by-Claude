@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, ENDLESS_GRID_SIZE } from './constants.js';
+import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE } from './constants.js';
 import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import { manhattanDistance } from './hunter.js';
@@ -191,37 +191,6 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.strokeStyle = 'rgba(239, 68, 68, ' + shrinkPulse + ')';
         ctx.lineWidth = 2;
         ctx.strokeRect(arenaMinPx + 1, arenaMinPy + 1, arenaW - 2, arenaH - 2);
-        ctx.lineWidth = 0.5;
-    }
-
-    // Expanding walls: fill the inset border zone with a distinct style
-    if (state.wallInset > 0 && state.started) {
-        var inset = state.wallInset;
-        var gridSize = ENDLESS_GRID_SIZE || GRID_SIZE;
-        var wallPulse = Math.sin(Date.now() / 600) * 0.15 + 0.55;
-        ctx.fillStyle = 'rgba(80, 10, 10, ' + wallPulse + ')';
-        // Top band
-        ctx.fillRect(0, 0, gridSize * CELL_SIZE, inset * CELL_SIZE);
-        // Bottom band
-        ctx.fillRect(0, (gridSize - inset) * CELL_SIZE, gridSize * CELL_SIZE, inset * CELL_SIZE);
-        // Left band (excluding corners already drawn)
-        ctx.fillRect(0, inset * CELL_SIZE, inset * CELL_SIZE, (gridSize - inset * 2) * CELL_SIZE);
-        // Right band (excluding corners already drawn)
-        ctx.fillRect((gridSize - inset) * CELL_SIZE, inset * CELL_SIZE, inset * CELL_SIZE, (gridSize - inset * 2) * CELL_SIZE);
-
-        // Glowing inner edge line
-        var edgePulse = Math.sin(Date.now() / 350) * 0.25 + 0.65;
-        ctx.strokeStyle = 'rgba(239, 68, 68, ' + edgePulse + ')';
-        ctx.lineWidth = hc ? 2.5 : 1.5;
-        ctx.shadowColor = '#ef4444';
-        ctx.shadowBlur = hc ? 10 : 5;
-        ctx.strokeRect(
-            inset * CELL_SIZE + 0.5,
-            inset * CELL_SIZE + 0.5,
-            (gridSize - inset * 2) * CELL_SIZE - 1,
-            (gridSize - inset * 2) * CELL_SIZE - 1
-        );
-        ctx.shadowBlur = 0;
         ctx.lineWidth = 0.5;
     }
 

@@ -14,7 +14,8 @@ import {
     getAudioContext, getMasterGain,
 } from './audio.js';
 import { setMusicIntensity, playWaveFanfare, stopMusic } from './music.js';
-import { setEndlessHighScore, setEndlessHighWave, getWaveTitle } from './endless.js';
+import { setEndlessHighScore, setEndlessHighWave, getWaveTitle, getGridSizeForWave } from './endless.js';
+import { setGridSize } from './constants.js';
 import {
     recordFoodEaten, recordDeath, recordPortalUse,
     recordPowerUpCollected, recordBestScore, recordEndlessWave,
@@ -60,6 +61,9 @@ export function processPostTickEvents(ctx) {
     // Endless wave-up detection
     if (ctx.state.endlessWave > (ctx.prevState.endlessWave || 0)) {
         recordEndlessWave(ctx.state.endlessWave);
+
+        // Expand the grid on wave transition
+        setGridSize(getGridSizeForWave(ctx.state.endlessWave));
 
         // Wave milestone achievements
         if (ctx.state.endlessWave >= 2) ctx.tryUnlock('first_wave');
@@ -171,13 +175,8 @@ export function processPostTickEvents(ctx) {
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 16, 50, 0.4);
             ctx.shakeState = triggerShake(5, 0.2);
 
-            // Respawn snake at a safe position
-            var wallInset = ctx.state.wallInset || 0;
-            var spawnMinX = wallInset;
-            var spawnMinY = wallInset;
-            var spawnMaxX = GRID_SIZE - 1 - wallInset;
-            var spawnMaxY = GRID_SIZE - 1 - wallInset;
-            var spawnPos = randomPositionInBounds([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, spawnMinX, spawnMinY, spawnMaxX, spawnMaxY);
+            // Respawn snake at a safe position within current grid
+            var spawnPos = randomPositionInBounds([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1);
             var spawnSnake = [spawnPos];
             var newLives = ctx.state.lives - 1;
             var respawnState = Object.assign({}, ctx.state, {
@@ -196,7 +195,7 @@ export function processPostTickEvents(ctx) {
             });
             // Respawn food at safe location
             respawnState = Object.assign({}, respawnState, {
-                food: randomPositionInBounds(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, spawnMinX, spawnMinY, spawnMaxX, spawnMaxY),
+                food: randomPositionInBounds(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1),
             });
             ctx.state = respawnState;
             ctx.hunterTrailHistory = [];

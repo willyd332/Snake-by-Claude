@@ -36,6 +36,15 @@ export function createInitialState() {
     };
 }
 
+function isNearObstacle(pos, obPositions) {
+    for (var i = 0; i < obPositions.length; i++) {
+        var dx = Math.abs(pos.x - obPositions[i].x);
+        var dy = Math.abs(pos.y - obPositions[i].y);
+        if (dx <= 2 && dy <= 2) return true;
+    }
+    return false;
+}
+
 export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter) {
     var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
     var portalPositions = portals ? getPortalPositions(portals) : [];
@@ -51,7 +60,10 @@ export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter
         };
         attempts++;
         if (attempts > 1000) return pos;
-    } while (occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
+    } while (
+        occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }) ||
+        (attempts <= 500 && isNearObstacle(pos, obPositions))
+    );
     return pos;
 }
 
@@ -72,7 +84,10 @@ export function randomPositionInBounds(snake, walls, obstacles, portals, powerUp
         };
         attempts++;
         if (attempts > 1000) return pos;
-    } while (occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
+    } while (
+        occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }) ||
+        (attempts <= 500 && isNearObstacle(pos, obPositions))
+    );
     return pos;
 }
 

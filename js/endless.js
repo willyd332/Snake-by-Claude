@@ -1,30 +1,29 @@
 'use strict';
 
-import { GRID_SIZE, ENDLESS_GRID_SIZE, LEVEL_CONFIG } from './constants.js';
+import { ENDLESS_GRID_SIZE, LEVEL_CONFIG } from './constants.js';
 
 // Food eaten per wave before advancing
 export var ENDLESS_FOOD_PER_WAVE = 3;
 
-// Expanding walls: inset grows by 1 on each side every N waves
-var WALL_INSET_WAVE_INTERVAL = 3;
-var WALL_INSET_MIN_PLAYABLE = 8;
+// Expanding map: grid grows by 2 cells every 5 waves, capped at 40
+var GRID_EXPAND_WAVE_INTERVAL = 5;
+var GRID_EXPAND_AMOUNT = 2;
+var GRID_MAX_SIZE = 40;
 
-export function getWallInsetForWave(wave) {
-    var gridSize = ENDLESS_GRID_SIZE || GRID_SIZE;
-    var maxInset = Math.floor((gridSize - WALL_INSET_MIN_PLAYABLE) / 2);
-    var inset = Math.floor(wave / WALL_INSET_WAVE_INTERVAL);
-    return Math.min(inset, maxInset);
+export function getGridSizeForWave(wave) {
+    var expansions = Math.floor((wave - 1) / GRID_EXPAND_WAVE_INTERVAL);
+    return Math.min(ENDLESS_GRID_SIZE + expansions * GRID_EXPAND_AMOUNT, GRID_MAX_SIZE);
 }
 
 // Wave names for narrative flavor
 var WAVE_TITLES = {
     3: 'Walls rise.',
-    5: 'The patrol begins.',
+    5: 'The arena expands.',
     7: 'Portals tear open.',
     9: 'Darkness descends.',
     11: 'Borders dissolve.',
     13: 'ALPHA awakens.',
-    16: 'The arena contracts.',
+    16: 'The grid stretches.',
     20: 'Everything converges.',
 };
 
