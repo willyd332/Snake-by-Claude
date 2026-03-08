@@ -60,6 +60,15 @@ import {
     restartGame, goToTitle, onRestartLevel,
 } from './game-context.js';
 import { runReplayFrame } from './replay-loop.js';
+import {
+    createDeathAnimation, updateDeathAnimation, renderDeathAnimation,
+    isDeathAnimationActive, emitDeathParticles,
+    createLevelTransition, updateLevelTransition, renderLevelTransition,
+    isLevelTransitionActive, emitCelebrationParticles,
+} from './transitions.js';
+import {
+    createSpeedrunState, renderSpeedrunTimer, renderSplitOverlay, resumeSpeedrunTimer,
+} from './speedrun.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -112,9 +121,13 @@ var g = {
     replayBuffer: createReplayBuffer(),
     replayState: null,
     replayDeathContext: null,
+    deathAnimation: null,
+    levelTransition: null,
+    levelUpEventCtx: null,
     levelStartTime: 0,
     gameSessionStartTime: 0,
     titleMenuIndex: null,
+    speedrunState: createSpeedrunState(),
 
     // Game state
     state: createInitialState(),
@@ -222,6 +235,8 @@ var gameCallbacks = {
         showGameplayUI(hudEl, titleEl, messageEl);
         g.prevSnake = null;
         g.prevHunterSegments = null;
+        // Resume speedrun timer now that gameplay resumes
+        g.speedrunState = resumeSpeedrunTimer(g.speedrunState);
         // Reset lastTick so game doesn't try to catch up on elapsed time
         g.state = Object.assign({}, g.state, { lastTick: 0 });
     },
@@ -614,13 +629,106 @@ function gameLoop(timestamp) {
         g.replayState = replayResult.replayState;
 
         if (replayResult.done) {
-            // Replay finished — process stashed death events
+            // Replay finished — start death animation before processing events
+            if (g.replayDeathContext) {
+                var deathConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
+                g.deathAnimation = createDeathAnimation(
+                    g.state.snake,
+                    deathConfig.color,
+                    g.state._killedByHunter
+                );
+            }
+        } else {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+    }
+
+    // --- Death Animation Mode ---
+    if (g.deathAnimation) {
+        g.deathAnimation = updateDeathAnimation(g.deathAnimation);
+
+        // Emit explosion particles on first 'explode' phase frame
+        if (g.deathAnimation && g.deathAnimation.phase === 'explode' && !g.deathAnimation.particlesEmitted) {
+            var deathFx = emitDeathParticles(g.deathAnimation, g.particleSystem, g.shakeState);
+            g.particleSystem = deathFx.particleSystem;
+            g.shakeState = deathFx.shakeState;
+            g.deathAnimation = Object.assign({}, g.deathAnimation, { particlesEmitted: true });
+        }
+
+        if (!g.deathAnimation) {
+            // Death animation complete — now process stashed death events
             if (g.replayDeathContext) {
                 processPostTickEvents(g.replayDeathContext);
                 applyEventCtx(g, g.replayDeathContext);
                 g.replayDeathContext = null;
             }
         } else {
+            // Render game underneath, then death overlay
+            var deathAnimConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
+            var deathRenderState = Object.assign({}, g.state, { gameOver: false });
+            var deathInterp = {
+                progress: 0, prevSnake: null, prevHunter: null,
+                hunterTrail: [], trailHistory: [],
+                highScore: g.endlessMode ? getEndlessHighScore() : g.highScore,
+                endlessHighWave: g.endlessMode ? getEndlessHighWave() : 0,
+            };
+
+            var deathOffset = frameSettings.screenShake ? getShakeOffset(g.shakeState) : { x: 0, y: 0 };
+            ctx.save();
+            ctx.translate(deathOffset.x, deathOffset.y);
+
+            render(ctx, deathRenderState, konamiActivated, dom, deathInterp);
+            renderMatrixRain(ctx, matrixState);
+            renderDeathAnimation(ctx, g.deathAnimation);
+            if (frameSettings.particles) {
+                renderParticles(ctx, g.particleSystem);
+            }
+
+            ctx.restore();
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+    }
+
+    // --- Level Transition Mode ---
+    if (g.levelTransition) {
+        g.levelTransition = updateLevelTransition(g.levelTransition);
+
+        // Emit celebration particles on first frame
+        if (g.levelTransition && !g.levelTransition.celebrateParticlesEmitted) {
+            var celebFx = emitCelebrationParticles(g.levelTransition, g.particleSystem, g.shakeState);
+            g.particleSystem = celebFx.particleSystem;
+            g.shakeState = celebFx.shakeState;
+            g.levelTransition = Object.assign({}, g.levelTransition, { celebrateParticlesEmitted: true });
+        }
+
+        if (!g.levelTransition) {
+            // Transition complete — process the stashed level-up events
+            if (g.levelUpEventCtx) {
+                processPostTickEvents(g.levelUpEventCtx);
+                applyEventCtx(g, g.levelUpEventCtx);
+                g.levelUpEventCtx = null;
+            }
+        } else {
+            // Render game underneath, then transition overlay
+            var transOffset = frameSettings.screenShake ? getShakeOffset(g.shakeState) : { x: 0, y: 0 };
+            ctx.save();
+            ctx.translate(transOffset.x, transOffset.y);
+
+            render(ctx, g.state, konamiActivated, dom, {
+                progress: 0, prevSnake: null, prevHunter: null,
+                hunterTrail: [], trailHistory: [],
+                highScore: g.endlessMode ? getEndlessHighScore() : g.highScore,
+                endlessHighWave: g.endlessMode ? getEndlessHighWave() : 0,
+            });
+            renderMatrixRain(ctx, matrixState);
+            if (frameSettings.particles) {
+                renderParticles(ctx, g.particleSystem);
+            }
+            renderLevelTransition(ctx, g.levelTransition);
+
+            ctx.restore();
             requestAnimationFrame(gameLoop);
             return;
         }
@@ -657,9 +765,31 @@ function gameLoop(timestamp) {
         // Check for final death — start replay instead of immediate game-over
         var isFinalDeath = g.state.gameOver && !prevState.gameOver && g.state.lives <= 1;
         if (isFinalDeath && g.replayBuffer.frames.length > 0 && !g.replayState) {
-            // Stash the death context and start replay
+            // Stash the death context — replay plays first, then death animation
             g.replayDeathContext = buildEventCtx(g, prevState, prevLevel, config, navDeps);
             g.replayState = startReplay(g.replayBuffer, speed);
+        } else if (isFinalDeath && g.replayBuffer.frames.length === 0) {
+            // Final death with no replay buffer — go straight to death animation
+            var noReplayConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
+            g.replayDeathContext = buildEventCtx(g, prevState, prevLevel, config, navDeps);
+            g.deathAnimation = createDeathAnimation(
+                g.state.snake,
+                noReplayConfig.color,
+                g.state._killedByHunter
+            );
+        } else if (!g.endlessMode && g.state.level > prevLevel) {
+            // Level-up detected — start transition animation, defer events
+            var lvlConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
+            var prevConfig = getLevelConfig(prevLevel, null);
+            g.levelUpEventCtx = buildEventCtx(g, prevState, prevLevel, config, navDeps);
+            g.levelTransition = createLevelTransition(
+                prevLevel,
+                g.state.level,
+                prevState.snake[0],
+                lvlConfig.color,
+                prevConfig.color,
+                g.state.score
+            );
         } else {
             // Normal flow: process post-tick events immediately
             var eventCtx = buildEventCtx(g, prevState, prevLevel, config, navDeps);
@@ -709,6 +839,15 @@ function gameLoop(timestamp) {
     }
 
     ctx.restore();
+
+    // Speedrun timer overlay (rendered outside shake transform)
+    if (g.state.started && !g.state.gameOver && g.speedrunState) {
+        renderSpeedrunTimer(ctx, g.speedrunState, true);
+        var splitStillShowing = renderSplitOverlay(ctx, g.speedrunState.splitOverlay);
+        if (!splitStillShowing && g.speedrunState.splitOverlay) {
+            g.speedrunState = Object.assign({}, g.speedrunState, { splitOverlay: null });
+        }
+    }
 
     // Fragment text overlay (rendered outside shake transform)
     if (g.fragmentTextState) {

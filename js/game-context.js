@@ -19,6 +19,7 @@ import { getEndlessConfig, setEndlessHighScore, setEndlessHighWave } from './end
 import { createReplayBuffer } from './replay.js';
 import { playHunterIntroSound } from './audio.js';
 import { recordGameStart, recordGameTime } from './stats.js';
+import { createSpeedrunState, resetSpeedrun } from './speedrun.js';
 
 // --- Screen UI helpers ---
 // These are exported so game-loop code can reference them directly.
@@ -100,6 +101,9 @@ export function startGameAtLevel(g, deps, level) {
     g.replayBuffer = createReplayBuffer();
     g.replayState = null;
     g.replayDeathContext = null;
+    g.deathAnimation = null;
+    g.levelTransition = null;
+    g.levelUpEventCtx = null;
 
     var diffPreset = getDifficultyPreset(getSettings().difficulty);
     g.state = createInitialState();
@@ -125,6 +129,7 @@ export function startGameAtLevel(g, deps, level) {
         playHunterIntroSound();
     }
 
+    g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     g.levelStartTime = Date.now();
     g.gameSessionStartTime = Date.now();
     recordGameStart();
@@ -152,6 +157,9 @@ export function startEndlessMode(g, deps) {
     g.replayBuffer = createReplayBuffer();
     g.replayState = null;
     g.replayDeathContext = null;
+    g.deathAnimation = null;
+    g.levelTransition = null;
+    g.levelUpEventCtx = null;
 
     var wave1Config = getEndlessConfig(1);
     var endlessDiffPreset = getDifficultyPreset(getSettings().difficulty);
@@ -167,6 +175,7 @@ export function startEndlessMode(g, deps) {
     g.fragmentTextState = null;
     g.hunterIntroState = null;
 
+    g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     deps.dom.levelLabelEl.textContent = 'Wave:';
     g.gameSessionStartTime = Date.now();
     recordGameStart();
@@ -191,6 +200,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         fragmentTextState: g.fragmentTextState, hunterIntroState: g.hunterIntroState,
         endingState: g.endingState, storyScreenState: g.storyScreenState,
         currentScreen: g.currentScreen, endlessMode: g.endlessMode, config: config,
+        speedrunState: g.speedrunState,
         messageEl: deps.messageEl, dom: deps.dom, ui: deps.ui,
         tryUnlock: deps.tryUnlock, checkAllEndings: deps.checkAllEndings,
         spawnFragmentForLevel: deps.spawnFragmentForLevel,
@@ -212,6 +222,7 @@ export function applyEventCtx(g, eventCtx) {
     g.endingState = eventCtx.endingState;
     g.storyScreenState = eventCtx.storyScreenState;
     g.currentScreen = eventCtx.currentScreen;
+    g.speedrunState = eventCtx.speedrunState;
 }
 
 // --- Gameplay action helpers ---
@@ -230,6 +241,7 @@ export function restartGame(g, deps, newDir) {
         localStorage.setItem('snake-highscore', String(g.highScore));
         deps.dom.highScoreEl.textContent = g.highScore;
     }
+    g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     deps.ui.clearTimers();
     g.particleSystem = createParticleSystem();
     g.shakeState = createShakeState();
@@ -242,6 +254,9 @@ export function restartGame(g, deps, newDir) {
     g.replayBuffer = createReplayBuffer();
     g.replayState = null;
     g.replayDeathContext = null;
+    g.deathAnimation = null;
+    g.levelTransition = null;
+    g.levelUpEventCtx = null;
     var restartDiff = getDifficultyPreset(getSettings().difficulty);
     setGridSize(g.endlessMode ? ENDLESS_GRID_SIZE : (LEVEL_GRID_SIZE[g.startingLevel] || 20));
     deps.canvas.width = CANVAS_SIZE;

@@ -23,6 +23,9 @@ import {
     recordFoodEaten, recordDeath, recordLevelComplete, recordPortalUse,
     recordPowerUpCollected, recordBestScore, recordEndlessWave,
 } from './stats.js';
+import {
+    startSpeedrunTimer, recordLevelSplit, stopSpeedrunTimer, pauseSpeedrunTimer,
+} from './speedrun.js';
 
 // --- Post-Tick Event Processing ---
 // Handles all game events that occur after a tick: food eaten, level up,
@@ -47,6 +50,11 @@ export function processPostTickEvents(ctx) {
 
         // Stats: food eaten + snake length
         recordFoodEaten(ctx.state.snake.length);
+
+        // Speedrun: start timer on first food eaten
+        if (ctx.speedrunState && !ctx.speedrunState.running) {
+            ctx.speedrunState = startSpeedrunTimer(ctx.speedrunState);
+        }
 
         // Score achievements
         if (ctx.state.score >= 100) ctx.tryUnlock('first_byte');
@@ -77,6 +85,10 @@ export function processPostTickEvents(ctx) {
         ctx.currentScreen = 'ending';
         ctx.hideGameplayUI();
         ctx.ui.clearTimers();
+        // Speedrun: stop timer on game completion
+        if (ctx.speedrunState) {
+            ctx.speedrunState = stopSpeedrunTimer(ctx.speedrunState);
+        }
     }
 
     // Endless wave-up detection
@@ -139,6 +151,11 @@ export function processPostTickEvents(ctx) {
         recordLevelComplete(ctx.prevLevel, levelTimeMs);
         recordBestScore(ctx.prevLevel, ctx.state.score);
 
+        // Speedrun: record split for completed level
+        if (ctx.speedrunState) {
+            ctx.speedrunState = recordLevelSplit(ctx.speedrunState, ctx.prevLevel);
+        }
+
         // Speed demon: cleared prev level in under 20s
         if (ctx.levelStartTime > 0 && (Date.now() - ctx.levelStartTime) < 20000) {
             ctx.tryUnlock('speed_demon');
@@ -172,6 +189,10 @@ export function processPostTickEvents(ctx) {
             ctx.currentScreen = 'story_screen';
             ctx.hideGameplayUI();
             ctx.ui.clearTimers();
+            // Pause speedrun timer while story screen is displayed
+            if (ctx.speedrunState) {
+                ctx.speedrunState = pauseSpeedrunTimer(ctx.speedrunState);
+            }
         } else {
             ctx.ui.showLevelUp(ctx.state.level);
         }
@@ -337,6 +358,11 @@ export function processPostTickEvents(ctx) {
         // Final death — true game over
         recordDeath(ctx.state.level);
         recordBestScore(ctx.state.level, ctx.state.score);
+
+        // Speedrun: stop timer on final death
+        if (ctx.speedrunState) {
+            ctx.speedrunState = stopSpeedrunTimer(ctx.speedrunState);
+        }
 
         // Save endless high scores on death
         if (ctx.endlessMode) {
