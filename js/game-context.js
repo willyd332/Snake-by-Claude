@@ -19,7 +19,10 @@ import {
 } from './streak.js';
 import { createSpeedrunState, resetSpeedrun } from './speedrun.js';
 import { createWaveEventState } from './wave-events.js';
-import { dismissPowerUpChoice } from './power-up-choice.js';
+import {
+    createModifierScreenState, getActiveModifierIds, getModifierStatePatch,
+    computeModifierMultiplier,
+} from './modifiers.js';
 
 // --- Screen UI helpers ---
 
@@ -39,9 +42,7 @@ export function hideGameplayUI(hudEl, titleEl, messageEl) {
 
 export function switchToTitle(g, deps) {
     stopMusic();
-    dismissPowerUpChoice();
     g.waveTransitionActive = false;
-    g.powerUpChoiceActive = false;
     g.currentScreen = 'title';
     g.titleMenuIndex = null;
     setGridSize(20);
@@ -58,6 +59,12 @@ export function switchToGallery(g, deps) {
     hideGameplayUI(deps.hudEl, deps.titleEl, deps.messageEl);
 }
 
+export function switchToModifiers(g, deps) {
+    g.currentScreen = 'modifiers';
+    g.modifierScreenState = createModifierScreenState();
+    hideGameplayUI(deps.hudEl, deps.titleEl, deps.messageEl);
+}
+
 export function switchToSettings(g, deps) {
     g.currentScreen = 'settings';
     g.settingsState = createSettingsState();
@@ -65,10 +72,8 @@ export function switchToSettings(g, deps) {
 }
 
 export function startEndlessMode(g, deps) {
-    dismissPowerUpChoice();
     g.currentScreen = 'gameplay';
     g.waveTransitionActive = false;
-    g.powerUpChoiceActive = false;
     setGridSize(ENDLESS_GRID_SIZE);
     deps.canvas.width = CANVAS_SIZE;
     deps.canvas.height = CANVAS_SIZE;
@@ -92,13 +97,19 @@ export function startEndlessMode(g, deps) {
     var endlessDiffPreset = getDifficultyPreset(getSettings().difficulty);
 
     g.state = createInitialState();
+    var modPatch = getModifierStatePatch(getActiveModifierIds());
     g.state = Object.assign({}, g.state, {
         level: 1,
         endlessWave: 1,
         endlessConfig: wave1Config,
         lives: endlessDiffPreset.livesCount,
         waveEvent: createWaveEventState(),
-    });
+    }, modPatch);
+    // One Life modifier overrides lives (already in patch), but ensure it takes effect
+    // even if difficulty preset sets more lives
+    if (modPatch.lives !== undefined) {
+        g.state = Object.assign({}, g.state, { lives: modPatch.lives });
+    }
 
     g.hunterIntroState = null;
 
@@ -198,9 +209,7 @@ export function applyEventCtx(g, eventCtx) {
 
 export function restartGame(g, deps, newDir) {
     stopMusic();
-    dismissPowerUpChoice();
     g.waveTransitionActive = false;
-    g.powerUpChoiceActive = false;
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;
@@ -262,6 +271,7 @@ export function restartGame(g, deps, newDir) {
     }
 
     var w1Config = getEndlessConfig(1);
+    var restartModPatch = getModifierStatePatch(getActiveModifierIds());
     g.state = createInitialState();
     g.state = Object.assign({}, g.state, {
         level: 1,
@@ -272,7 +282,10 @@ export function restartGame(g, deps, newDir) {
         lives: restartDiff.livesCount,
         waveEvent: createWaveEventState(),
         score: streakBonus,
-    });
+    }, restartModPatch);
+    if (restartModPatch.lives !== undefined) {
+        g.state = Object.assign({}, g.state, { lives: restartModPatch.lives });
+    }
     g.state = Object.assign({}, g.state, {
         food: randomPosition(g.state.snake, g.state.walls, g.state.obstacles, g.state.portals, g.state.powerUp, g.state.hunter),
     });

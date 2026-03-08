@@ -49,9 +49,8 @@ import { createGameCallbacks } from './game-callbacks.js';
 import { showRunSummary } from './run-summary.js';
 import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
 import { getCurrentStreak, getStreakBonus, STREAK_VISUAL_THRESHOLD } from './streak.js';
-import { getTwoPowerUpChoices, spawnPowerUpOfType } from './powerups.js';
-import { showPowerUpChoice, dismissPowerUpChoice, isPowerUpChoiceActive } from './power-up-choice.js';
 import { createBackgroundState, updateBackground, renderBackground } from './background.js';
+import { createModifierScreenState, renderModifierScreen, isModifierActive } from './modifiers.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -120,8 +119,8 @@ var g = {
     runPrevHighScore: 0,
     summaryVisible: false,
     waveTransitionActive: false,
-    powerUpChoiceActive: false,
     streakRingEmitted: false,
+    modifierScreenState: createModifierScreenState(),
 
     // Game state
     state: createInitialState(),
@@ -233,6 +232,12 @@ function gameLoop(timestamp) {
         return;
     }
 
+    if (g.currentScreen === 'modifiers') {
+        renderModifierScreen(ctx, g.modifierScreenState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (g.currentScreen === 'settings') {
         renderSettings(ctx, g.settingsState);
         requestAnimationFrame(gameLoop);
@@ -263,6 +268,10 @@ function gameLoop(timestamp) {
     // Wave event: SPEED_BURST increases speed by multiplier
     if (g.state.waveEvent && isSpeedBurstActive(g.state.waveEvent)) {
         speed = Math.round(speed / SPEED_BURST_MULTIPLIER);
+    }
+    // Modifier: SPEED DEMON — 30% faster (lower tick interval = faster)
+    if (isModifierActive(g.state, 'speed_demon')) {
+        speed = Math.round(speed * 0.7);
     }
 
     // --- Death Replay Mode ---
@@ -373,8 +382,8 @@ function gameLoop(timestamp) {
 
     var elapsed = timestamp - g.state.lastTick;
 
-    // Pause game tick processing while wave transition or power-up choice overlay is showing
-    if (g.waveTransitionActive || g.powerUpChoiceActive) {
+    // Pause game tick processing while wave transition is showing
+    if (g.waveTransitionActive) {
         // Keep lastTick current so the snake doesn't lurch forward on resume
         g.state = Object.assign({}, g.state, { lastTick: timestamp });
         elapsed = 0;
@@ -427,11 +436,13 @@ function gameLoop(timestamp) {
         if (isFinalDeath) {
             g.gameSessionEndTime = Date.now();
         }
-        if (isFinalDeath && g.replayBuffer.frames.length > 0 && !g.replayState) {
+        // ONE LIFE modifier: skip replay entirely, go straight to death animation
+        var skipReplay = isModifierActive(g.state, 'one_life');
+        if (isFinalDeath && g.replayBuffer.frames.length > 0 && !g.replayState && !skipReplay) {
             g.scorePopups = [];
             g.replayDeathContext = buildEventCtx(g, prevState, prevLevel, config, navDeps);
             g.replayState = startReplay(g.replayBuffer, speed);
-        } else if (isFinalDeath && g.replayBuffer.frames.length === 0) {
+        } else if (isFinalDeath && (g.replayBuffer.frames.length === 0 || skipReplay)) {
             var noReplayConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
             g.replayDeathContext = buildEventCtx(g, prevState, prevLevel, config, navDeps);
             g.deathAnimation = createDeathAnimation(
@@ -446,31 +457,6 @@ function gameLoop(timestamp) {
             processPostTickEvents(eventCtx);
             applyEventCtx(g, eventCtx);
 
-            // Power-up choice: if the tick flagged a pending choice, pause and show UI
-            if (g.state._powerUpChoicePending && !g.powerUpChoiceActive && g.state.started && !g.state.gameOver) {
-                g.powerUpChoiceActive = true;
-                var choiceWave = g.state.endlessWave;
-                var choices = getTwoPowerUpChoices(choiceWave);
-                showPowerUpChoice(choices).then(function(chosenIndex) {
-                    // -1 means dismissed (game over, restart, etc.)
-                    if (chosenIndex >= 0 && chosenIndex < choices.length && g.state.started && !g.state.gameOver) {
-                        var chosenDef = choices[chosenIndex];
-                        var spawned = spawnPowerUpOfType(
-                            chosenDef,
-                            g.state.snake,
-                            g.state.walls,
-                            g.state.obstacles,
-                            g.state.portals,
-                            g.state.food,
-                            g.state.hunter
-                        );
-                        if (spawned) {
-                            g.state = Object.assign({}, g.state, { powerUp: spawned });
-                        }
-                    }
-                    g.powerUpChoiceActive = false;
-                });
-            }
         }
 
         // --- Per-tick adaptive music update ---

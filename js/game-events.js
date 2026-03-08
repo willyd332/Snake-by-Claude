@@ -38,7 +38,6 @@ import {
 } from './speedrun.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { showWavePreview, dismissWavePreview } from './wave-preview.js';
-import { dismissPowerUpChoice } from './power-up-choice.js';
 
 // --- Helper: compute Manhattan distance to nearest hunter segment ---
 export function computeHunterDistance(state) {
@@ -528,7 +527,6 @@ export function processPostTickEvents(ctx) {
     // Death detected: check lives for respawn or game over
     if (ctx.state.gameOver && !ctx.prevState.gameOver) {
         dismissWavePreview();
-        dismissPowerUpChoice();
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         ctx.hunterIntroState = null;

@@ -49,8 +49,6 @@ export var POWER_UP_TYPES = [
     { type: 'frenzy', name: 'FRENZY', color: '#f97316', glowColor: '#ef4444', duration: FRENZY_DURATION, icon: '\uD83D\uDD25', desc: 'Double speed, 3x score, extra food' },
 ];
 
-export var POWER_UP_CHOICE_TIMEOUT_MS = 5000;
-
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
 
 // --- Score Multiplier Zones ---

@@ -11,6 +11,7 @@ import { moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
+import { isModifierActive } from './modifiers.js';
 import { onFoodEaten, checkComboExpiry, createComboState, COMBO_BASE_SCORE } from './combo.js';
 import {
     tickWaveEvent, checkBonusFoodCollection, resetWaveEventForNewWave,
@@ -188,7 +189,7 @@ export function tick(prev) {
         _ateFrenzyFood: false,
         _ateFrenzyFoodPos: null,
         _activeZone: null,
-        _powerUpChoicePending: false,
+        _hungryLost: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -196,7 +197,23 @@ export function tick(prev) {
     var dir = clean.nextDirection;
     if (dir.x === 0 && dir.y === 0) return clean;
 
+    // GLASS SNAKE modifier: die if player tries a direction on the same axis as current
+    // (effectively prevents any reversal-like maneuver — you can only turn perpendicular)
+    if (isModifierActive(clean, 'glass_snake') && clean.direction.x !== 0 || clean.direction.y !== 0) {
+        var isReversal = (dir.x + clean.direction.x === 0 && dir.y + clean.direction.y === 0);
+        if (isReversal) {
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self' });
+        }
+    }
+
     var config = getLevelConfig(clean.level, clean.endlessConfig);
+
+    // SHRINKING WORLD modifier: double the shrink speed by halving the interval
+    if (isModifierActive(clean, 'shrinking_world') && config.shrinkingArena && config.shrinkInterval) {
+        config = Object.assign({}, config, {
+            shrinkInterval: Math.max(1, Math.floor(config.shrinkInterval / 2)),
+        });
+    }
     var isGhost = clean.activePowerUp && clean.activePowerUp.type === 'ghost';
     var isInvincible = clean.invincibleTicks > 0;
     var isShielded = clean.shieldActive;
@@ -679,14 +696,15 @@ export function tick(prev) {
         newFrenzyFood = [];
     }
 
-    // Power-up spawning from config — triggers a choice UI instead of auto-spawning
-    var powerUpChoicePending = false;
+    // Power-up spawning from config — spawn one at a random position
+    // HARDCORE modifier: completely disables power-up spawning
     var newConfig = getLevelConfig(newLevel, endlessConfig);
-    if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
+    var hardcoreActive = isModifierActive(clean, 'hardcore');
+    if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType && !hardcoreActive) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
         var puInterval = getDifficultyPreset(getSettingsRef().difficulty).powerUpFreq;
         if (newPowerUpSpawnCounter >= puInterval) {
-            powerUpChoicePending = true;
+            newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter, endlessWave);
             newPowerUpSpawnCounter = 0;
         }
     }
@@ -751,6 +769,27 @@ export function tick(prev) {
         newWaveEvent = Object.assign({}, newWaveEvent, { bonusFood: bonusResult.bonusFood });
     }
 
+    // --- HUNGRY modifier: lose a tail segment every 8 moves ---
+    var HUNGRY_INTERVAL = 8;
+    var newHungryCounter = clean.hungryCounter || 0;
+    var hungryLost = false;
+    if (isModifierActive(clean, 'hungry')) {
+        newHungryCounter = newHungryCounter + 1;
+        if (newHungryCounter >= HUNGRY_INTERVAL && newSnake.length > 1) {
+            newSnake = newSnake.slice(0, -1);
+            newHungryCounter = 0;
+            hungryLost = true;
+        }
+    }
+
+    // --- Apply modifier score multiplier ---
+    var modifierMultiplier = clean.modifierMultiplier || 1;
+    if (modifierMultiplier > 1 && _scoreGained > 0) {
+        var bonusFromModifiers = Math.round(_scoreGained * (modifierMultiplier - 1));
+        newScore = newScore + bonusFromModifiers;
+        _scoreGained = _scoreGained + bonusFromModifiers;
+    }
+
     return {
         snake: newSnake,
         direction: dir,
@@ -759,7 +798,7 @@ export function tick(prev) {
         walls: newWalls,
         obstacles: newObstacles,
         portals: newPortals,
-        powerUp: newPowerUp,
+        powerUp: hardcoreActive ? null : newPowerUp,
         activePowerUp: newActivePowerUp,
         powerUpSpawnCounter: newPowerUpSpawnCounter,
         hunter: newHunter,
@@ -783,6 +822,10 @@ export function tick(prev) {
         shieldActive: newShieldActive,
         waveEvent: newWaveEvent,
         frenzyFood: newFrenzyFood,
+        modifiers: clean.modifiers || [],
+        modifierMultiplier: modifierMultiplier,
+        hungryCounter: newHungryCounter,
+        fogActive: clean.fogActive || false,
         _collectedPowerUp: collectedPowerUpType,
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
@@ -805,6 +848,6 @@ export function tick(prev) {
         _ateFrenzyFoodPos: ateFrenzyFoodPos,
         scoreZones: newScoreZones,
         _activeZone: _activeZone,
-        _powerUpChoicePending: powerUpChoicePending,
+        _hungryLost: hungryLost,
     };
 }
