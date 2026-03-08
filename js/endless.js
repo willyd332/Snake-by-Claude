@@ -158,6 +158,7 @@ export function generateEndlessWalls(wave) {
 export function generateEndlessObstacles(wave) {
     if (wave < 5) return [];
 
+    var GRID_SIZE = getGridSizeForWave(wave);
     var obstacles = [];
     var numObs = Math.min(1 + Math.floor((wave - 4) / 3), 4);
     var seed = wave * 6271 + 3;
@@ -200,6 +201,7 @@ export function generateEndlessObstacles(wave) {
 export function generateEndlessPortals(wave) {
     if (wave < 7) return [];
 
+    var GRID_SIZE = getGridSizeForWave(wave);
     var numPortals = Math.min(1 + Math.floor((wave - 6) / 5), 3);
     var portals = [];
     var seed = wave * 5381 + 7;
@@ -231,6 +233,7 @@ export function generateEndlessPortals(wave) {
 // Hunter generation for endless mode
 export function generateEndlessHunter(wave) {
     if (wave < 13) return null;
+    var GRID_SIZE = getGridSizeForWave(wave);
     return {
         segments: [
             { x: GRID_SIZE - 3, y: GRID_SIZE - 3 },

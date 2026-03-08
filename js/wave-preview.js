@@ -72,8 +72,6 @@ var MECHANIC_DESCRIPTORS = [
 // Returns a list of mechanic descriptions active for the given wave.
 // Prioritises newly introduced mechanics and the most impactful ones.
 function detectActiveMechanics(wave) {
-    var config = getEndlessConfig(wave);
-    var prevConfig = wave > 1 ? getEndlessConfig(wave - 1) : null;
     var active = [];
     var newlyIntroduced = [];
 
@@ -97,9 +95,8 @@ function detectActiveMechanics(wave) {
     }
 
     // Speed info: compute percentage increase from base
-    var baseSpeed = 145;
-    var currentSpeed = Math.max(40, baseSpeed - wave * 5);
-    var speedIncrease = Math.round((1 - currentSpeed / baseSpeed) * 100);
+    var currentSpeed = getEndlessConfig(wave).speed;
+    var speedIncrease = Math.round((1 - currentSpeed / 145) * 100);
     var speedEntry = {
         icon: '\u26A1',
         label: 'Speed +' + speedIncrease + '%',
