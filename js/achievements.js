@@ -1,6 +1,7 @@
 'use strict';
 
 import { CANVAS_SIZE } from './constants.js';
+import { renderStats, getStatsRowCount } from './stats.js';
 
 // --- Storage Keys ---
 var STORAGE_KEY = 'snake-achievements';
@@ -180,7 +181,8 @@ export function createGalleryState() {
 export function getGalleryItemCount(tab) {
     if (tab === 0) return ACHIEVEMENTS.length;
     if (tab === 1) return SKINS.length;
-    return TRAILS.length;
+    if (tab === 2) return TRAILS.length;
+    return getStatsRowCount();
 }
 
 export function renderGallery(ctx, gs) {
@@ -197,9 +199,9 @@ export function renderGallery(ctx, gs) {
     ctx.fillText('TROPHIES', CANVAS_SIZE / 2, 30);
 
     // Tabs
-    var tabs = ['Achievements', 'Skins', 'Trails'];
-    var tabSpacing = 100;
-    var tabStartX = CANVAS_SIZE / 2 - tabSpacing;
+    var tabs = ['Achievements', 'Skins', 'Trails', 'Stats'];
+    var tabSpacing = 80;
+    var tabStartX = CANVAS_SIZE / 2 - tabSpacing * 1.5;
     for (var t = 0; t < tabs.length; t++) {
         var tx = tabStartX + t * tabSpacing;
         ctx.fillStyle = t === tab ? '#fbbf24' : 'rgba(150, 150, 170, 0.4)';
@@ -220,8 +222,10 @@ export function renderGallery(ctx, gs) {
         renderAchievementsList(ctx, gs, unlocked);
     } else if (tab === 1) {
         renderRewardList(ctx, SKINS, getActiveSkin(), gs.selectedIndex, unlocked);
-    } else {
+    } else if (tab === 2) {
         renderRewardList(ctx, TRAILS, getActiveTrail(), gs.selectedIndex, unlocked);
+    } else {
+        renderStats(ctx, gs.scrollOffset);
     }
 
     // Count
@@ -235,9 +239,12 @@ export function renderGallery(ctx, gs) {
     // Footer
     ctx.fillStyle = 'rgba(150, 150, 170, 0.4)';
     ctx.font = '10px Courier New';
-    var hint = tab === 0
-        ? '\u2191\u2193 Scroll  \u00b7  \u2190\u2192 Tab  \u00b7  ESC Back'
-        : '\u2191\u2193 Select  \u00b7  ENTER Equip  \u00b7  \u2190\u2192 Tab  \u00b7  ESC Back';
+    var hint;
+    if (tab === 0 || tab === 3) {
+        hint = '\u2191\u2193 Scroll  \u00b7  \u2190\u2192 Tab  \u00b7  ESC Back';
+    } else {
+        hint = '\u2191\u2193 Select  \u00b7  ENTER Equip  \u00b7  \u2190\u2192 Tab  \u00b7  ESC Back';
+    }
     ctx.fillText(hint, CANVAS_SIZE / 2, CANVAS_SIZE - 16);
     ctx.textAlign = 'left';
 }

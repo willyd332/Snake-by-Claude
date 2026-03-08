@@ -16,6 +16,10 @@ import { getFragmentForLevel, collectFragment, getCollectedFragments } from './f
 import { setHighestLevel } from './screens.js';
 import { createEndingState, unlockEnding, createStoryScreenState } from './story.js';
 import { setEndlessHighScore, setEndlessHighWave, getWaveTitle } from './endless.js';
+import {
+    recordFoodEaten, recordDeath, recordLevelComplete, recordPortalUse,
+    recordPowerUpCollected, recordBestScore, recordEndlessWave,
+} from './stats.js';
 
 // --- Post-Tick Event Processing ---
 // Handles all game events that occur after a tick: food eaten, level up,
@@ -37,6 +41,9 @@ export function processPostTickEvents(ctx) {
         playEatSound();
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateFoodPos.x, ctx.state._ateFoodPos.y, ctx.config.foodColor, 12, 60, 0.5);
         ctx.shakeState = triggerShake(2, 0.1);
+
+        // Stats: food eaten + snake length
+        recordFoodEaten(ctx.state.snake.length);
 
         // Score achievements
         if (ctx.state.score >= 100) ctx.tryUnlock('first_byte');
@@ -63,6 +70,7 @@ export function processPostTickEvents(ctx) {
 
     // Endless wave-up detection
     if (ctx.endlessMode && ctx.state.endlessWave > (ctx.prevState.endlessWave || 0)) {
+        recordEndlessWave(ctx.state.endlessWave);
         if (ctx.state.endlessWave >= 10) ctx.tryUnlock('endurance');
         if (ctx.state.endlessWave >= 25) ctx.tryUnlock('marathoner');
         ctx.prevSnake = null;
@@ -115,6 +123,11 @@ export function processPostTickEvents(ctx) {
         if (ctx.state.level >= 10) ctx.tryUnlock('the_core');
         if (ctx.prevLevel === 8) ctx.tryUnlock('untouchable');
 
+        // Stats: level completed with time and score
+        var levelTimeMs = ctx.levelStartTime > 0 ? Date.now() - ctx.levelStartTime : 0;
+        recordLevelComplete(ctx.prevLevel, levelTimeMs);
+        recordBestScore(ctx.prevLevel, ctx.state.score);
+
         // Speed demon: cleared prev level in under 20s
         if (ctx.levelStartTime > 0 && (Date.now() - ctx.levelStartTime) < 20000) {
             ctx.tryUnlock('speed_demon');
@@ -155,6 +168,7 @@ export function processPostTickEvents(ctx) {
 
     // Power-up collected: sparkle burst
     if (ctx.state._collectedPowerUp) {
+        recordPowerUpCollected();
         if (ctx.state._collectedPowerUp === 'ghost') ctx.tryUnlock('ghost_rider');
         var collectedDef = getPowerUpDef(ctx.state._collectedPowerUp);
         if (collectedDef) {
@@ -204,6 +218,7 @@ export function processPostTickEvents(ctx) {
         var headDx = Math.abs(ctx.state.snake[0].x - ctx.prevState.snake[0].x);
         var headDy = Math.abs(ctx.state.snake[0].y - ctx.prevState.snake[0].y);
         if (headDx > 2 || headDy > 2) {
+            recordPortalUse();
             playPortalSound();
             var portalColor = ctx.config.portalColor || '#8b5cf6';
             ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, ctx.prevState.snake[0].x, ctx.prevState.snake[0].y, portalColor);
@@ -260,6 +275,9 @@ export function processPostTickEvents(ctx) {
         }
 
         // Final death — true game over
+        recordDeath(ctx.state.level);
+        recordBestScore(ctx.state.level, ctx.state.score);
+
         // Save endless high scores on death
         if (ctx.endlessMode) {
             setEndlessHighScore(ctx.state.score);

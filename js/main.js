@@ -53,6 +53,7 @@ import {
     SKINS, TRAILS, setActiveSkin, setActiveTrail, isSkinUnlocked, isTrailUnlocked,
 } from './achievements.js';
 import { playAchievementSound } from './audio.js';
+import { recordGameStart, recordGameTime } from './stats.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -101,6 +102,7 @@ var galleryState = createGalleryState();
 var settingsState = createSettingsState();
 var snakeTrailHistory = [];
 var levelStartTime = 0;
+var gameSessionStartTime = 0;
 var titleMenuIndex = null;
 
 // --- Game State ---
@@ -252,6 +254,8 @@ function startGameAtLevel(level) {
     }
 
     levelStartTime = Date.now();
+    gameSessionStartTime = Date.now();
+    recordGameStart();
     updateLivesHUD(diffPreset.livesCount);
     messageEl.textContent = 'Arrow keys or swipe to start';
     messageEl.className = '';
@@ -286,6 +290,8 @@ function startEndlessMode() {
     hunterIntroState = null;
 
     dom.levelLabelEl.textContent = 'Wave:';
+    gameSessionStartTime = Date.now();
+    recordGameStart();
     updateLivesHUD(endlessDiffPreset.livesCount);
 
     messageEl.textContent = 'ENDLESS MODE \u2014 Swipe or press arrow to begin';
@@ -423,15 +429,15 @@ var gameCallbacks = {
     },
     onGalleryTabChange: function(delta) {
         var newTab = galleryState.tab + delta;
-        if (newTab >= 0 && newTab <= 2) {
+        if (newTab >= 0 && newTab <= 3) {
             playMenuNavigateSound();
             galleryState = Object.assign({}, galleryState, { tab: newTab, scrollOffset: 0, selectedIndex: 0 });
         }
     },
     onGalleryNavigate: function(delta) {
         var count = getGalleryItemCount(galleryState.tab);
-        if (galleryState.tab === 0) {
-            // Achievements tab: scroll
+        if (galleryState.tab === 0 || galleryState.tab === 3) {
+            // Achievements/Stats tabs: scroll
             var newScroll = galleryState.scrollOffset + delta;
             newScroll = Math.max(0, Math.min(count - 1, newScroll));
             if (newScroll !== galleryState.scrollOffset) {
@@ -561,6 +567,10 @@ var gameCallbacks = {
     },
 
     restartGame: function(newDir) {
+        if (gameSessionStartTime > 0) {
+            recordGameTime(Date.now() - gameSessionStartTime);
+            gameSessionStartTime = 0;
+        }
         if (endlessMode) {
             setEndlessHighScore(state.score);
             setEndlessHighWave(state.endlessWave);
@@ -630,6 +640,10 @@ var gameCallbacks = {
     },
 
     goToTitle: function() {
+        if (gameSessionStartTime > 0) {
+            recordGameTime(Date.now() - gameSessionStartTime);
+            gameSessionStartTime = 0;
+        }
         if (endlessMode) {
             setEndlessHighScore(state.score);
             setEndlessHighWave(state.endlessWave);
@@ -642,6 +656,10 @@ var gameCallbacks = {
     },
 
     onRestartLevel: function() {
+        if (gameSessionStartTime > 0) {
+            recordGameTime(Date.now() - gameSessionStartTime);
+            gameSessionStartTime = 0;
+        }
         if (endlessMode) {
             setEndlessHighScore(state.score);
             setEndlessHighWave(state.endlessWave);
