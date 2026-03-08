@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, MAX_LEVEL } from './constants.js';
+import { CANVAS_SIZE, MAX_LEVEL, setGridSize, LEVEL_GRID_SIZE, ENDLESS_GRID_SIZE, getGridOffset } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
 import { render } from './renderer.js';
@@ -148,7 +148,8 @@ function spawnFragmentForLevel(level, foodEaten) {
     if (!fragData) return null;
     if (isFragmentCollected(level)) return null;
     if (foodEaten < fragData.requiresFood) return null;
-    return { x: fragData.position.x, y: fragData.position.y };
+    var off = getGridOffset();
+    return { x: fragData.position.x + off, y: fragData.position.y + off };
 }
 
 function updateLivesHUD(lives) {
@@ -178,6 +179,9 @@ function switchToTitle() {
     currentScreen = 'title';
     endlessMode = false;
     titleMenuIndex = null;
+    setGridSize(20);
+    canvas.width = CANVAS_SIZE;
+    canvas.height = CANVAS_SIZE;
     dom.levelLabelEl.textContent = 'Level:';
     titleState = createTitleState();
     hideGameplayUI();
@@ -219,6 +223,9 @@ function startGameAtLevel(level) {
     currentScreen = 'gameplay';
     endlessMode = false;
     startingLevel = level;
+    setGridSize(LEVEL_GRID_SIZE[level] || 20);
+    canvas.width = CANVAS_SIZE;
+    canvas.height = CANVAS_SIZE;
     showGameplayUI();
     ui.clearTimers();
     particleSystem = createParticleSystem();
@@ -266,6 +273,9 @@ function startEndlessMode() {
     currentScreen = 'gameplay';
     endlessMode = true;
     startingLevel = 0;
+    setGridSize(ENDLESS_GRID_SIZE);
+    canvas.width = CANVAS_SIZE;
+    canvas.height = CANVAS_SIZE;
     showGameplayUI();
     ui.clearTimers();
     particleSystem = createParticleSystem();
@@ -589,6 +599,9 @@ var gameCallbacks = {
         hunterTrailHistory = [];
         snakeTrailHistory = [];
         var restartDiff = getDifficultyPreset(getSettings().difficulty);
+        setGridSize(endlessMode ? ENDLESS_GRID_SIZE : (LEVEL_GRID_SIZE[startingLevel] || 20));
+        canvas.width = CANVAS_SIZE;
+        canvas.height = CANVAS_SIZE;
         state = createInitialState();
         if (endlessMode) {
             var w1Config = getEndlessConfig(1);
@@ -831,6 +844,12 @@ function gameLoop(timestamp) {
         endingState = eventCtx.endingState;
         storyScreenState = eventCtx.storyScreenState;
         currentScreen = eventCtx.currentScreen;
+
+        // Sync canvas dimensions if grid size changed (level transition)
+        if (canvas.width !== CANVAS_SIZE) {
+            canvas.width = CANVAS_SIZE;
+            canvas.height = CANVAS_SIZE;
+        }
     }
 
     // Active power-up sparkle trail (every frame, throttled by particle count)

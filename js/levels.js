@@ -1,5 +1,36 @@
 'use strict';
 
+import { getGridOffset } from './constants.js';
+
+function offsetWalls(walls, off) {
+    if (off === 0) return walls;
+    return walls.map(function(w) { return { x: w.x + off, y: w.y + off }; });
+}
+
+function offsetObstacles(obstacles, off) {
+    if (off === 0) return obstacles;
+    return obstacles.map(function(ob) {
+        return {
+            x: ob.x + off,
+            y: ob.y + off,
+            path: ob.path.map(function(p) { return p + off; }),
+            axis: ob.axis,
+            pathIndex: ob.pathIndex,
+            dir: ob.dir,
+        };
+    });
+}
+
+function offsetPortals(portals, off) {
+    if (off === 0) return portals;
+    return portals.map(function(p) {
+        return {
+            a: { x: p.a.x + off, y: p.a.y + off },
+            b: { x: p.b.x + off, y: p.b.y + off },
+        };
+    });
+}
+
 export function generateWalls(level) {
     var walls = [];
     if (level <= 1) return walls;
@@ -9,7 +40,7 @@ export function generateWalls(level) {
         [8, 9, 10, 11].forEach(function(x) { walls.push({ x: x, y: 14 }); });
         [8, 9, 10, 11].forEach(function(y) { walls.push({ x: 5, y: y }); });
         [8, 9, 10, 11].forEach(function(y) { walls.push({ x: 14, y: y }); });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 3) {
@@ -21,7 +52,7 @@ export function generateWalls(level) {
         [14, 15, 16].forEach(function(y) { walls.push({ x: 10, y: y }); });
         walls.push({ x: 3, y: 3 }, { x: 16, y: 3 });
         walls.push({ x: 3, y: 16 }, { x: 16, y: 16 });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 4) {
@@ -30,7 +61,7 @@ export function generateWalls(level) {
         [5, 6, 7, 8, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 15 }); });
         [5, 6, 7, 8, 12, 13, 14].forEach(function(y) { walls.push({ x: 4, y: y }); });
         [5, 6, 7, 8, 12, 13, 14].forEach(function(y) { walls.push({ x: 15, y: y }); });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 5) {
@@ -42,7 +73,7 @@ export function generateWalls(level) {
         [12, 13, 14, 15].forEach(function(y) { walls.push({ x: 16, y: y }); });
         [0, 1, 2, 3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 10 }); });
         [12, 13, 14, 15, 16, 17, 18, 19].forEach(function(x) { walls.push({ x: x, y: 9 }); });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 6) {
@@ -59,7 +90,7 @@ export function generateWalls(level) {
         walls.push({ x: 18, y: 13 });
         walls.push({ x: 2, y: 18 }, { x: 3, y: 18 });
         walls.push({ x: 9, y: 17 });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 7) {
@@ -73,7 +104,7 @@ export function generateWalls(level) {
         walls.push({ x: 14, y: 9 });
         walls.push({ x: 8, y: 15 });
         walls.push({ x: 11, y: 4 });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 9) {
@@ -83,7 +114,7 @@ export function generateWalls(level) {
         walls.push({ x: 13, y: 14 }, { x: 14, y: 14 });
         walls.push({ x: 9, y: 9 }, { x: 10, y: 9 });
         walls.push({ x: 9, y: 10 }, { x: 10, y: 10 });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     if (level === 10) {
@@ -100,7 +131,7 @@ export function generateWalls(level) {
         walls.push({ x: 10, y: 16 });
         walls.push({ x: 3, y: 10 });
         walls.push({ x: 16, y: 9 });
-        return walls;
+        return offsetWalls(walls, getGridOffset());
     }
 
     // Level 8: Sparse cover barriers
@@ -115,7 +146,7 @@ export function generateWalls(level) {
     walls.push({ x: 3, y: 9 }, { x: 3, y: 10 });
     walls.push({ x: 16, y: 9 }, { x: 16, y: 10 });
 
-    return walls;
+    return offsetWalls(walls, getGridOffset());
 }
 
 export function filterWallsFromSnake(walls, snake) {
@@ -126,62 +157,63 @@ export function filterWallsFromSnake(walls, snake) {
 
 export function generateObstacles(level) {
     if (level < 3) return [];
+    var off = getGridOffset();
 
     if (level === 3) {
-        return [
+        return offsetObstacles([
             { x: 8, y: 9, path: [8, 9, 10, 11], axis: 'x', pathIndex: 0, dir: 1 },
             { x: 11, y: 10, path: [11, 10, 9, 8], axis: 'x', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     if (level === 4) {
-        return [
+        return offsetObstacles([
             { x: 9, y: 1, path: [1, 2, 3], axis: 'y', pathIndex: 0, dir: 1 },
             { x: 1, y: 9, path: [1, 2, 3], axis: 'x', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     if (level === 5) {
-        return [
+        return offsetObstacles([
             { x: 8, y: 9, path: [8, 9, 10, 11], axis: 'x', pathIndex: 0, dir: 1 },
             { x: 11, y: 10, path: [11, 10, 9, 8], axis: 'x', pathIndex: 0, dir: 1 },
             { x: 4, y: 5, path: [5, 6, 7], axis: 'y', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     if (level === 6) {
-        return [
+        return offsetObstacles([
             { x: 5, y: 7, path: [5, 6, 7, 8, 9], axis: 'x', pathIndex: 0, dir: 1 },
             { x: 14, y: 13, path: [13, 12, 11, 10], axis: 'y', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     if (level === 7) {
-        return [
+        return offsetObstacles([
             { x: 3, y: 5, path: [3, 4, 5, 6, 7, 8], axis: 'x', pathIndex: 0, dir: 1 },
             { x: 15, y: 10, path: [10, 11, 12, 13, 14, 15], axis: 'y', pathIndex: 0, dir: 1 },
             { x: 11, y: 14, path: [11, 12, 13, 14, 15, 16], axis: 'x', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     if (level === 9) {
-        return [
+        return offsetObstacles([
             { x: 7, y: 7, path: [7, 8, 9, 10, 11, 12], axis: 'x', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     if (level === 10) {
-        return [
+        return offsetObstacles([
             { x: 5, y: 5, path: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], axis: 'x', pathIndex: 0, dir: 1 },
             { x: 14, y: 14, path: [14, 13, 12, 11, 10, 9, 8, 7, 6, 5], axis: 'y', pathIndex: 0, dir: 1 },
-        ];
+        ], off);
     }
 
     // Level 8
-    return [
+    return offsetObstacles([
         { x: 6, y: 6, path: [6, 7, 8], axis: 'x', pathIndex: 0, dir: 1 },
         { x: 13, y: 13, path: [13, 12, 11], axis: 'y', pathIndex: 0, dir: 1 },
-    ];
+    ], off);
 }
 
 export function moveObstacles(obstacles) {
@@ -207,23 +239,25 @@ export function getObstaclePositions(obstacles) {
 }
 
 export function generatePortals(level) {
+    var off = getGridOffset();
+
     if (level === 5) {
-        return [
+        return offsetPortals([
             { a: { x: 5, y: 5 }, b: { x: 14, y: 14 } },
             { a: { x: 1, y: 15 }, b: { x: 18, y: 4 } },
-        ];
+        ], off);
     }
 
     if (level === 6) {
-        return [
+        return offsetPortals([
             { a: { x: 2, y: 2 }, b: { x: 17, y: 17 } },
-        ];
+        ], off);
     }
 
     if (level === 10) {
-        return [
+        return offsetPortals([
             { a: { x: 4, y: 4 }, b: { x: 15, y: 15 } },
-        ];
+        ], off);
     }
 
     return [];

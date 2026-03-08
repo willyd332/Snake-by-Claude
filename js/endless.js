@@ -100,8 +100,9 @@ export function generateEndlessWalls(wave) {
         var cx = 2 + Math.floor(r1.value * (GRID_SIZE - 5));
         var cy = 2 + Math.floor(r2.value * (GRID_SIZE - 5));
 
-        // Keep spawn area (8-12, 8-12) clear
-        if (cx >= 8 && cx <= 12 && cy >= 8 && cy <= 12) {
+        // Keep spawn area clear (center ±2)
+        var center = Math.floor(GRID_SIZE / 2);
+        if (cx >= center - 2 && cx <= center + 2 && cy >= center - 2 && cy <= center + 2) {
             cx = (cx + 6) % (GRID_SIZE - 4) + 2;
         }
 
@@ -135,10 +136,11 @@ export function generateEndlessWalls(wave) {
         }
     }
 
-    // Clear spawn area (snake starts at 10,10) and hunter spawn area
+    // Clear spawn area (snake starts at center) and hunter spawn area
+    var ctr = Math.floor(GRID_SIZE / 2);
     walls = walls.filter(function(w) {
-        var inSpawn = w.x >= 7 && w.x <= 13 && w.y >= 7 && w.y <= 13;
-        var inHunterSpawn = w.y === 17 && w.x >= 16 && w.x <= 19;
+        var inSpawn = w.x >= ctr - 3 && w.x <= ctr + 3 && w.y >= ctr - 3 && w.y <= ctr + 3;
+        var inHunterSpawn = w.y === GRID_SIZE - 3 && w.x >= GRID_SIZE - 4 && w.x <= GRID_SIZE - 1;
         return !inSpawn && !inHunterSpawn;
     });
 
@@ -223,7 +225,11 @@ export function generateEndlessPortals(wave) {
 export function generateEndlessHunter(wave) {
     if (wave < 13) return null;
     return {
-        segments: [{ x: 17, y: 17 }, { x: 18, y: 17 }, { x: 19, y: 17 }],
+        segments: [
+            { x: GRID_SIZE - 3, y: GRID_SIZE - 3 },
+            { x: GRID_SIZE - 2, y: GRID_SIZE - 3 },
+            { x: GRID_SIZE - 1, y: GRID_SIZE - 3 },
+        ],
         direction: { x: -1, y: 0 },
         moveCounter: 0,
         growPending: 0,

@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE, FOOD_TO_LEVEL_UP, MAX_LEVEL, POWER_UP_SPAWN_INTERVAL } from './constants.js';
+import { GRID_SIZE, FOOD_TO_LEVEL_UP, MAX_LEVEL, POWER_UP_SPAWN_INTERVAL, setGridSize, LEVEL_GRID_SIZE, LEVEL_UP_INVINCIBLE_TICKS } from './constants.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { generateWalls, filterWallsFromSnake, generateObstacles, moveObstacles, getObstaclePositions, generatePortals, checkPortalTeleport } from './levels.js';
 import { generateHunter, moveHunter } from './hunter.js';
@@ -220,6 +220,7 @@ export function tick(prev) {
             // Normal mode: level up
             newLevel = clean.level + 1;
             newFoodEaten = 0;
+            setGridSize(LEVEL_GRID_SIZE[newLevel] || 20);
             newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
             newObstacles = generateObstacles(newLevel);
             newPortals = generatePortals(newLevel);
@@ -355,7 +356,7 @@ export function tick(prev) {
         endlessWave: endlessWave,
         endlessConfig: endlessConfig,
         lives: clean.lives,
-        invincibleTicks: isInvincible ? clean.invincibleTicks - 1 : 0,
+        invincibleTicks: (newLevel !== clean.level) ? LEVEL_UP_INVINCIBLE_TICKS : (isInvincible ? clean.invincibleTicks - 1 : 0),
         _collectedPowerUp: collectedPowerUpType,
         _collectedFragment: collectedFragment,
         _collectedFragmentLevel: collectedFragmentLevel,

@@ -4,6 +4,25 @@ export var GRID_SIZE = 20;
 export var CELL_SIZE = 20;
 export var CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
 export var FOOD_TO_LEVEL_UP = 5;
+
+// Per-level grid sizes (design base is 20)
+export var LEVEL_GRID_SIZE = {
+    1: 20, 2: 20, 3: 20, 4: 20, 5: 20,
+    6: 22, 7: 22,
+    8: 24, 9: 24,
+    10: 28,
+};
+export var ENDLESS_GRID_SIZE = 24;
+export var LEVEL_UP_INVINCIBLE_TICKS = 10;
+
+export function setGridSize(size) {
+    GRID_SIZE = size;
+    CANVAS_SIZE = size * CELL_SIZE;
+}
+
+export function getGridOffset() {
+    return Math.floor((GRID_SIZE - 20) / 2);
+}
 export var INITIAL_LIVES = 3;
 export var INVINCIBLE_TICKS = 15;
 export var POWER_UP_SPAWN_INTERVAL = 15;

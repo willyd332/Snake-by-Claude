@@ -6,7 +6,7 @@ import { getHunterPositions } from './hunter.js';
 
 export function createInitialState() {
     return {
-        snake: [{ x: 10, y: 10 }],
+        snake: [{ x: Math.floor(GRID_SIZE / 2), y: Math.floor(GRID_SIZE / 2) }],
         direction: { x: 0, y: 0 },
         nextDirection: { x: 0, y: 0 },
         food: null,

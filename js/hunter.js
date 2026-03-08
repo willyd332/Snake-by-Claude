@@ -6,17 +6,26 @@ import { getObstaclePositions } from './levels.js';
 export function generateHunter(level) {
     var config = LEVEL_CONFIG[level];
     if (!config || !config.hunterEnabled) return null;
-    // Level 10: corner walls block default spawn; start in open space
+    // Level 10: corner walls block default spawn; start in open space near bottom
     if (level === 10) {
         return {
-            segments: [{ x: 14, y: 18 }, { x: 15, y: 18 }, { x: 16, y: 18 }],
+            segments: [
+                { x: GRID_SIZE - 6, y: GRID_SIZE - 2 },
+                { x: GRID_SIZE - 5, y: GRID_SIZE - 2 },
+                { x: GRID_SIZE - 4, y: GRID_SIZE - 2 },
+            ],
             direction: { x: -1, y: 0 },
             moveCounter: 0,
             growPending: 0,
         };
     }
+    // Default: spawn near bottom-right corner
     return {
-        segments: [{ x: 17, y: 17 }, { x: 18, y: 17 }, { x: 19, y: 17 }],
+        segments: [
+            { x: GRID_SIZE - 3, y: GRID_SIZE - 3 },
+            { x: GRID_SIZE - 2, y: GRID_SIZE - 3 },
+            { x: GRID_SIZE - 1, y: GRID_SIZE - 3 },
+        ],
         direction: { x: -1, y: 0 },
         moveCounter: 0,
         growPending: 0,
