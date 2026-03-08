@@ -100,6 +100,7 @@ export function startGameAtLevel(g, deps, level) {
     g.snakeTrailHistory = [];
     g.replayBuffer = createReplayBuffer();
     g.replayState = null;
+    g.replaySkipRequested = false;
     g.replayDeathContext = null;
     g.deathAnimation = null;
     g.levelTransition = null;
@@ -156,6 +157,7 @@ export function startEndlessMode(g, deps) {
     g.snakeTrailHistory = [];
     g.replayBuffer = createReplayBuffer();
     g.replayState = null;
+    g.replaySkipRequested = false;
     g.replayDeathContext = null;
     g.deathAnimation = null;
     g.levelTransition = null;
@@ -252,6 +254,7 @@ export function restartGame(g, deps, newDir) {
     g.snakeTrailHistory = [];
     g.replayBuffer = createReplayBuffer();
     g.replayState = null;
+    g.replaySkipRequested = false;
     g.replayDeathContext = null;
     g.deathAnimation = null;
     g.levelTransition = null;

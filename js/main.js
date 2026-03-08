@@ -45,7 +45,7 @@ import {
     createGalleryState, renderGallery,
 } from './achievements.js';
 import {
-    showGameplayUI, hideGameplayUI,
+    hideGameplayUI,
     switchToTitle,
     buildEventCtx, applyEventCtx,
 } from './game-context.js';
