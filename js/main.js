@@ -60,12 +60,8 @@ import {
     restartGame, goToTitle, onRestartLevel,
 } from './game-context.js';
 import { runReplayFrame } from './replay-loop.js';
-import {
-    createDeathAnimation, updateDeathAnimation, renderDeathAnimation,
-    isDeathAnimationActive, emitDeathParticles,
-    createLevelTransition, updateLevelTransition, renderLevelTransition,
-    isLevelTransitionActive, emitCelebrationParticles,
-} from './transitions.js';
+import { createDeathAnimation, createLevelTransition } from './transitions.js';
+import { runDeathAnimFrame, runLevelTransitionFrame } from './transition-loop.js';
 import {
     createSpeedrunState, renderSpeedrunTimer, renderSplitOverlay, resumeSpeedrunTimer,
 } from './speedrun.js';
@@ -646,46 +642,25 @@ function gameLoop(timestamp) {
 
     // --- Death Animation Mode ---
     if (g.deathAnimation) {
-        g.deathAnimation = updateDeathAnimation(g.deathAnimation);
+        var deathResult = runDeathAnimFrame({
+            ctx: ctx, deathAnimation: g.deathAnimation,
+            particleSystem: g.particleSystem, shakeState: g.shakeState,
+            gameState: g.state, konamiActivated: konamiActivated, dom: dom,
+            matrixState: matrixState, frameSettings: frameSettings,
+            endlessMode: g.endlessMode, highScore: g.highScore,
+        });
+        g.deathAnimation = deathResult.deathAnimation;
+        g.particleSystem = deathResult.particleSystem;
+        g.shakeState = deathResult.shakeState;
 
-        // Emit explosion particles on first 'explode' phase frame
-        if (g.deathAnimation && g.deathAnimation.phase === 'explode' && !g.deathAnimation.particlesEmitted) {
-            var deathFx = emitDeathParticles(g.deathAnimation, g.particleSystem, g.shakeState);
-            g.particleSystem = deathFx.particleSystem;
-            g.shakeState = deathFx.shakeState;
-            g.deathAnimation = Object.assign({}, g.deathAnimation, { particlesEmitted: true });
-        }
-
-        if (!g.deathAnimation) {
-            // Death animation complete — now process stashed death events
+        if (deathResult.done) {
+            // Death animation complete — process stashed death events
             if (g.replayDeathContext) {
                 processPostTickEvents(g.replayDeathContext);
                 applyEventCtx(g, g.replayDeathContext);
                 g.replayDeathContext = null;
             }
         } else {
-            // Render game underneath, then death overlay
-            var deathAnimConfig = getLevelConfig(g.state.level, g.state.endlessConfig);
-            var deathRenderState = Object.assign({}, g.state, { gameOver: false });
-            var deathInterp = {
-                progress: 0, prevSnake: null, prevHunter: null,
-                hunterTrail: [], trailHistory: [],
-                highScore: g.endlessMode ? getEndlessHighScore() : g.highScore,
-                endlessHighWave: g.endlessMode ? getEndlessHighWave() : 0,
-            };
-
-            var deathOffset = frameSettings.screenShake ? getShakeOffset(g.shakeState) : { x: 0, y: 0 };
-            ctx.save();
-            ctx.translate(deathOffset.x, deathOffset.y);
-
-            render(ctx, deathRenderState, konamiActivated, dom, deathInterp);
-            renderMatrixRain(ctx, matrixState);
-            renderDeathAnimation(ctx, g.deathAnimation);
-            if (frameSettings.particles) {
-                renderParticles(ctx, g.particleSystem);
-            }
-
-            ctx.restore();
             requestAnimationFrame(gameLoop);
             return;
         }
@@ -693,42 +668,25 @@ function gameLoop(timestamp) {
 
     // --- Level Transition Mode ---
     if (g.levelTransition) {
-        g.levelTransition = updateLevelTransition(g.levelTransition);
+        var transResult = runLevelTransitionFrame({
+            ctx: ctx, levelTransition: g.levelTransition,
+            particleSystem: g.particleSystem, shakeState: g.shakeState,
+            gameState: g.state, konamiActivated: konamiActivated, dom: dom,
+            matrixState: matrixState, frameSettings: frameSettings,
+            endlessMode: g.endlessMode, highScore: g.highScore,
+        });
+        g.levelTransition = transResult.levelTransition;
+        g.particleSystem = transResult.particleSystem;
+        g.shakeState = transResult.shakeState;
 
-        // Emit celebration particles on first frame
-        if (g.levelTransition && !g.levelTransition.celebrateParticlesEmitted) {
-            var celebFx = emitCelebrationParticles(g.levelTransition, g.particleSystem, g.shakeState);
-            g.particleSystem = celebFx.particleSystem;
-            g.shakeState = celebFx.shakeState;
-            g.levelTransition = Object.assign({}, g.levelTransition, { celebrateParticlesEmitted: true });
-        }
-
-        if (!g.levelTransition) {
-            // Transition complete — process the stashed level-up events
+        if (transResult.done) {
+            // Transition complete — process stashed level-up events
             if (g.levelUpEventCtx) {
                 processPostTickEvents(g.levelUpEventCtx);
                 applyEventCtx(g, g.levelUpEventCtx);
                 g.levelUpEventCtx = null;
             }
         } else {
-            // Render game underneath, then transition overlay
-            var transOffset = frameSettings.screenShake ? getShakeOffset(g.shakeState) : { x: 0, y: 0 };
-            ctx.save();
-            ctx.translate(transOffset.x, transOffset.y);
-
-            render(ctx, g.state, konamiActivated, dom, {
-                progress: 0, prevSnake: null, prevHunter: null,
-                hunterTrail: [], trailHistory: [],
-                highScore: g.endlessMode ? getEndlessHighScore() : g.highScore,
-                endlessHighWave: g.endlessMode ? getEndlessHighWave() : 0,
-            });
-            renderMatrixRain(ctx, matrixState);
-            if (frameSettings.particles) {
-                renderParticles(ctx, g.particleSystem);
-            }
-            renderLevelTransition(ctx, g.levelTransition);
-
-            ctx.restore();
             requestAnimationFrame(gameLoop);
             return;
         }
