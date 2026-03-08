@@ -116,6 +116,7 @@ export function startEndlessMode(g, deps) {
     g.runPowerUpCollectedThisWave = false;
     g.runConsecutiveHunterWaves = 0;
     g.runEverCollectedPowerUp = false;
+    g.runZoneFoodsThisWave = 0;
     resetStreak();
     g.streakRingEmitted = false;
     recordGameStart();
@@ -154,6 +155,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         runConsecutiveHunterWaves: g.runConsecutiveHunterWaves || 0,
         runEverCollectedPowerUp: g.runEverCollectedPowerUp || false,
         runFoodEaten: g.runFoodEaten || 0,
+        runZoneFoodsThisWave: g.runZoneFoodsThisWave || 0,
         recordPowerUpTypeCollected: recordPowerUpTypeCollected,
         recordShieldHit: recordShieldHit,
         getAllPowerUpTypesCollected: getAllPowerUpTypesCollected,
@@ -186,6 +188,7 @@ export function applyEventCtx(g, eventCtx) {
     g.runConsecutiveHunterWaves = eventCtx.runConsecutiveHunterWaves;
     g.runEverCollectedPowerUp = eventCtx.runEverCollectedPowerUp;
     g.runFoodEaten = eventCtx.runFoodEaten;
+    g.runZoneFoodsThisWave = eventCtx.runZoneFoodsThisWave;
 }
 
 // --- Gameplay action helpers ---
@@ -235,6 +238,7 @@ export function restartGame(g, deps, newDir) {
     g.runPowerUpCollectedThisWave = false;
     g.runConsecutiveHunterWaves = 0;
     g.runEverCollectedPowerUp = false;
+    g.runZoneFoodsThisWave = 0;
 
     var restartDiff = getDifficultyPreset(getSettings().difficulty);
     setGridSize(ENDLESS_GRID_SIZE);

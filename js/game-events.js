@@ -173,8 +173,8 @@ export function processPostTickEvents(ctx) {
 
         // Track foods eaten in score zone per wave (for quick_draw) and zone_hunter
         if (ctx.state._activeZone) {
-            ctx.zoneFoodsThisWave = (ctx.zoneFoodsThisWave || 0) + 1;
-            if (ctx.zoneFoodsThisWave >= 3) {
+            ctx.runZoneFoodsThisWave = (ctx.runZoneFoodsThisWave || 0) + 1;
+            if (ctx.runZoneFoodsThisWave >= 3) {
                 ctx.tryUnlock('quick_draw');
             }
             // Zone hunter: eat food in a x3 multiplier zone
@@ -260,7 +260,7 @@ export function processPostTickEvents(ctx) {
 
         // Reset per-wave tracking
         ctx.runPowerUpCollectedThisWave = false;
-        ctx.zoneFoodsThisWave = 0;
+        ctx.runZoneFoodsThisWave = 0;
 
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
@@ -629,8 +629,6 @@ export function processPostTickEvents(ctx) {
         if (longHaulStats.totalTimePlayed >= 10 * 60 * 1000) ctx.tryUnlock('long_haul');
 
         // Completionist: check if all other achievements are now unlocked
-        var unlocked = unlockAchievement === undefined ? [] : [];
-        // We check via isAchievementUnlocked imported from achievements.js
         var allUnlocked = ACHIEVEMENTS.filter(function(a) { return a.id !== 'completionist'; }).every(function(a) {
             return isAchievementUnlocked(a.id);
         });
