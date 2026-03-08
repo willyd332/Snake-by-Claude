@@ -154,10 +154,9 @@ function scheduleMelodyNotes(state, ctx, destination) {
         osc.start(startTime);
         osc.stop(endTime + 0.05);
 
-        osc.onended = function() {
-            osc.disconnect();
-            noteGain.disconnect();
-        };
+        osc.onended = (function(o, g) {
+            return function() { o.disconnect(); g.disconnect(); };
+        })(osc, noteGain);
 
         scheduled.push({ osc: osc, gain: noteGain });
     }
@@ -228,6 +227,7 @@ function createNoiseBuffer(ctx) {
 
 export function playWaveFanfare(audioCtx, masterGain, wave) {
     if (!audioCtx || !masterGain) return;
+    if (musicState && musicState.muted) return;
 
     var now = audioCtx.currentTime;
     var tier = getIntensityTier(wave);
@@ -346,7 +346,7 @@ export function stopMusic() {
             musicState.musicGain.gain.linearRampToValueAtTime(0, t + 0.5);
         }
     } catch (e) { /* AudioContext may be closed */ }
-    musicState = Object.assign({}, musicState, { running: false });
+    musicState = null;
 }
 
 export function setMusicIntensity(wave, wallInset) {

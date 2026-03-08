@@ -161,6 +161,15 @@ export function setupInput(callbacks) {
             }
         }
 
+        // M key: toggle music mute (during gameplay)
+        if ((e.key === 'm' || e.key === 'M') && state.started && !state.gameOver) {
+            e.preventDefault();
+            if (callbacks.onToggleMusic) {
+                callbacks.onToggleMusic();
+            }
+            return;
+        }
+
         var newDir = DIRECTION_MAP[e.key];
         if (!newDir) return;
 
@@ -173,15 +182,6 @@ export function setupInput(callbacks) {
 
         if (!state.started) {
             callbacks.startGame(newDir);
-            return;
-        }
-
-        // M key: toggle music mute (during gameplay)
-        if ((e.key === 'm' || e.key === 'M') && state.started && !state.gameOver) {
-            e.preventDefault();
-            if (callbacks.onToggleMusic) {
-                callbacks.onToggleMusic();
-            }
             return;
         }
 
