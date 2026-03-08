@@ -28,6 +28,7 @@ import {
     startSpeedrunTimer, stopSpeedrunTimer,
 } from './speedrun.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
+import { showWavePreview, dismissWavePreview } from './wave-preview.js';
 
 // --- Post-Tick Event Processing ---
 // Handles all game events that occur after a tick: food eaten,
@@ -147,6 +148,9 @@ export function processPostTickEvents(ctx) {
         ctx.shakeState = triggerShake(SHAKE_WAVE_UP.intensity, SHAKE_WAVE_UP.duration);
         ctx.hunterTrailHistory = [];
 
+        // Show wave preview overlay (non-blocking -- gameplay continues underneath)
+        showWavePreview(ctx.state.endlessWave, waveConfig.color);
+
         // ALPHA intro on first hunter wave
         if (ctx.state.hunter && !(ctx.prevState.hunter)) {
             ctx.hunterIntroState = { text: 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON', startTime: Date.now() };
@@ -252,6 +256,7 @@ export function processPostTickEvents(ctx) {
 
     // Death detected: check lives for respawn or game over
     if (ctx.state.gameOver && !ctx.prevState.gameOver) {
+        dismissWavePreview();
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         ctx.hunterIntroState = null;
