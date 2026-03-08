@@ -89,6 +89,23 @@ export function generateWalls(level) {
         return walls;
     }
 
+    if (level === 10) {
+        // Corner L-shaped shelters — cover from the hunter
+        walls.push({ x: 2, y: 2 }, { x: 3, y: 2 }, { x: 2, y: 3 });
+        walls.push({ x: 16, y: 2 }, { x: 17, y: 2 }, { x: 17, y: 3 });
+        walls.push({ x: 2, y: 16 }, { x: 2, y: 17 }, { x: 3, y: 17 });
+        walls.push({ x: 16, y: 16 }, { x: 16, y: 17 }, { x: 17, y: 16 });
+        // Center corridor walls — create a gap to thread through
+        walls.push({ x: 9, y: 8 }, { x: 10, y: 8 });
+        walls.push({ x: 9, y: 11 }, { x: 10, y: 11 });
+        // Mid-edge anchors — force path decisions in the fog
+        walls.push({ x: 9, y: 3 });
+        walls.push({ x: 10, y: 16 });
+        walls.push({ x: 3, y: 10 });
+        walls.push({ x: 16, y: 9 });
+        return walls;
+    }
+
     // Level 8: Sparse cover barriers
     walls.push({ x: 9, y: 9 }, { x: 10, y: 9 });
     walls.push({ x: 9, y: 10 }, { x: 10, y: 10 });
@@ -158,6 +175,13 @@ export function generateObstacles(level) {
         ];
     }
 
+    if (level === 10) {
+        return [
+            { x: 5, y: 5, path: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], axis: 'x', pathIndex: 0, dir: 1 },
+            { x: 14, y: 14, path: [14, 13, 12, 11, 10, 9, 8, 7, 6, 5], axis: 'y', pathIndex: 0, dir: 1 },
+        ];
+    }
+
     // Level 8
     return [
         { x: 6, y: 6, path: [6, 7, 8], axis: 'x', pathIndex: 0, dir: 1 },
@@ -198,6 +222,12 @@ export function generatePortals(level) {
     if (level === 6) {
         return [
             { a: { x: 2, y: 2 }, b: { x: 17, y: 17 } },
+        ];
+    }
+
+    if (level === 10) {
+        return [
+            { a: { x: 4, y: 4 }, b: { x: 15, y: 15 } },
         ];
     }
 

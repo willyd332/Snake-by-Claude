@@ -17,6 +17,7 @@ export var LEVEL_CONFIG = {
     7: { speed: 55,  color: '#eab308', foodColor: '#f43f5e', wallColor: '#5c4200', bgAccent: '#0a0800', gridAlpha: 0.04, obstacleColor: '#b45309', portalColor: null, fogRadius: null, wrapAround: true, powerUpsEnabled: true },
     8: { speed: 65,  color: '#dc2626', foodColor: '#34d399', wallColor: '#7f1d1d', bgAccent: '#0a0505', gridAlpha: 0.03, obstacleColor: '#b91c1c', portalColor: null, fogRadius: null, wrapAround: true, powerUpsEnabled: true, hunterEnabled: true, hunterColor: '#f97316', hunterTickInterval: 3 },
     9: { speed: 75,  color: '#14b8a6', foodColor: '#fbbf24', wallColor: '#115e59', bgAccent: '#042f2e', gridAlpha: 0.03, obstacleColor: '#0d9488', portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: true, hunterEnabled: false, hunterColor: null, hunterTickInterval: null, shrinkingArena: true, shrinkInterval: 3 },
+    10: { speed: 50, color: '#e2e8f0', foodColor: '#ff4444', wallColor: '#475569', bgAccent: '#080810', gridAlpha: 0.02, obstacleColor: '#64748b', portalColor: '#f472b6', fogRadius: 4, wrapAround: false, powerUpsEnabled: true, hunterEnabled: true, hunterColor: '#ff6600', hunterTickInterval: 2, shrinkingArena: true, shrinkInterval: 4 },
 };
 
 export var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
@@ -35,6 +36,7 @@ export var LEVEL_NARRATIVES = {
     7: 'The walls dissolve. The world folds in on itself.',
     8: 'It awakens. Something ancient hunts you now.',
     9: 'The walls remember. And they are closing in.',
+    10: 'Everything converges. Every trial. Every nightmare. This is the end.',
 };
 
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
