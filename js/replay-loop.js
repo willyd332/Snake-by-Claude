@@ -107,8 +107,22 @@ export function runReplayFrame(params) {
     params.ctx.save();
     params.ctx.translate(replayOffset.x, replayOffset.y);
 
+    // Use a no-op DOM stub during replay to prevent HUD updates with replayed values
+    var noopDom = new Proxy({}, {
+        get: function(target, prop) {
+            return new Proxy({}, {
+                set: function() { return true; },
+                get: function(t, p) {
+                    if (p === 'style') return new Proxy({}, { set: function() { return true; } });
+                    if (p === 'classList') return { add: function() {}, remove: function() {}, toggle: function() {} };
+                    return function() {};
+                },
+            });
+        },
+    });
+
     // Use the actual game renderer with the reconstructed state
-    render(params.ctx, replayGameState, params.konamiActivated, params.dom, replayInterp);
+    render(params.ctx, replayGameState, params.konamiActivated, noopDom, replayInterp);
 
     renderMatrixRain(params.ctx, params.matrixState);
     if (params.frameSettings.particles) {

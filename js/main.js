@@ -307,6 +307,7 @@ function gameLoop(timestamp) {
         // Check for final death — start replay instead of immediate game-over
         var isFinalDeath = g.state.gameOver && !prevState.gameOver && g.state.lives <= 1;
         if (isFinalDeath && g.replayBuffer.frames.length > 0 && !g.replayState) {
+            g.scorePopups = [];
             g.replayDeathContext = buildEventCtx(g, prevState, prevLevel, config, navDeps);
             g.replayState = startReplay(g.replayBuffer, speed);
         } else if (isFinalDeath && g.replayBuffer.frames.length === 0) {
@@ -364,7 +365,7 @@ function gameLoop(timestamp) {
     if (frameSettings.particles) {
         renderParticles(ctx, g.particleSystem);
     }
-    if (g.state.started && !g.replayState) {
+    if (g.state.started && !g.replayState && !g.deathAnimation) {
         renderScorePopups(ctx, g.scorePopups);
     }
 
