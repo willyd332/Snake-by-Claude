@@ -302,7 +302,12 @@ export function tick(prev) {
                     return collides(seg, shrinkCells);
                 });
                 if (snakeCrushed && !isInvincible) {
-                    return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush' });
+                    if (isShielded) {
+                        isShielded = false;
+                        clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
+                    } else {
+                        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush', shieldActive: false });
+                    }
                 }
                 if (newFood && collides(newFood, shrinkCells)) {
                     newFood = null;

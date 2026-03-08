@@ -32,9 +32,12 @@ export var LEVEL_CONFIG = {
 
 export var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
 
+export var SHIELD_DURATION = 225; // ~15 seconds at ~15 ticks/sec
+
 export var POWER_UP_TYPES = [
     { type: 'timeSlow', name: 'SLOW', color: '#60a5fa', glowColor: '#3b82f6', duration: 40 },
     { type: 'ghost', name: 'GHOST', color: '#e2e8f0', glowColor: '#94a3b8', duration: 30 },
+    { type: 'shield', name: 'SHIELD', color: '#22d3ee', glowColor: '#06b6d4', duration: SHIELD_DURATION },
 ];
 
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];

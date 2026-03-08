@@ -544,6 +544,35 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineWidth = 0.5;
     }
 
+    // Shield aura around head (uses interpolated position)
+    if (state.shieldActive && state.started && !state.gameOver) {
+        var shieldPulse = Math.sin(Date.now() / 200) * 0.25 + 0.6;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(34, 211, 238, ' + shieldPulse + ')';
+        ctx.shadowColor = '#06b6d4';
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(
+            interpHeadX * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadY * CELL_SIZE + CELL_SIZE / 2,
+            CELL_SIZE / 2 + 4, 0, Math.PI * 2
+        );
+        ctx.stroke();
+        // Second outer ring for depth
+        ctx.globalAlpha = shieldPulse * 0.4;
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(
+            interpHeadX * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadY * CELL_SIZE + CELL_SIZE / 2,
+            CELL_SIZE / 2 + 7, 0, Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.restore();
+    }
+
     // Game over overlay
     if (state.gameOver) {
         var goDeathCause = state._deathCause || 'boundary';
