@@ -1058,3 +1058,106 @@ test.describe('Snake Game — Secrets & Easter Eggs', () => {
     expect(errors.length).toBe(0)
   })
 })
+
+// === ACHIEVEMENTS ===
+test.describe('Snake Game — Achievements', () => {
+  test('achievements module exports all required functions', async ({ page }) => {
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/achievements.js')
+      return {
+        hasAchievements: Array.isArray(mod.ACHIEVEMENTS) && mod.ACHIEVEMENTS.length === 20,
+        hasSkins: Array.isArray(mod.SKINS) && mod.SKINS.length >= 6,
+        hasTrails: Array.isArray(mod.TRAILS) && mod.TRAILS.length >= 4,
+        hasUnlock: typeof mod.unlockAchievement === 'function',
+        hasGetUnlocked: typeof mod.getUnlockedAchievements === 'function',
+        hasIsUnlocked: typeof mod.isAchievementUnlocked === 'function',
+        hasPopup: typeof mod.createPopupState === 'function',
+        hasRenderPopup: typeof mod.renderPopup === 'function',
+        hasGallery: typeof mod.createGalleryState === 'function',
+        hasRenderGallery: typeof mod.renderGallery === 'function',
+        hasSkinFuncs: typeof mod.getActiveSkin === 'function' && typeof mod.setActiveSkin === 'function',
+        hasTrailFuncs: typeof mod.getActiveTrail === 'function' && typeof mod.setActiveTrail === 'function',
+      }
+    })
+    expect(exports.hasAchievements).toBe(true)
+    expect(exports.hasSkins).toBe(true)
+    expect(exports.hasTrails).toBe(true)
+    expect(exports.hasUnlock).toBe(true)
+    expect(exports.hasGetUnlocked).toBe(true)
+    expect(exports.hasIsUnlocked).toBe(true)
+    expect(exports.hasPopup).toBe(true)
+    expect(exports.hasRenderPopup).toBe(true)
+    expect(exports.hasGallery).toBe(true)
+    expect(exports.hasRenderGallery).toBe(true)
+    expect(exports.hasSkinFuncs).toBe(true)
+    expect(exports.hasTrailFuncs).toBe(true)
+  })
+
+  test('achievement unlock persists in localStorage', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/achievements.js')
+      // Unlock first_byte
+      const ach = mod.unlockAchievement('first_byte')
+      const isUnlocked = mod.isAchievementUnlocked('first_byte')
+      const stored = JSON.parse(localStorage.getItem('snake-achievements') || '[]')
+      // Try duplicate unlock — should return null
+      const dupe = mod.unlockAchievement('first_byte')
+      return {
+        achName: ach ? ach.name : null,
+        isUnlocked,
+        storedContains: stored.indexOf('first_byte') !== -1,
+        dupeIsNull: dupe === null,
+      }
+    })
+    expect(result.achName).toBe('First Byte')
+    expect(result.isUnlocked).toBe(true)
+    expect(result.storedContains).toBe(true)
+    expect(result.dupeIsNull).toBe(true)
+  })
+
+  test('gallery screen is accessible from title via T key', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(300)
+    await page.keyboard.press('t')
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: 'tests/screenshots/07-gallery.png', fullPage: true })
+    // Press ESC to go back
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    expect(errors.length).toBe(0)
+  })
+
+  test('skin and trail selection works', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/achievements.js')
+      // Default values
+      const defaultSkin = mod.getActiveSkin()
+      const defaultTrail = mod.getActiveTrail()
+      // Set new values
+      mod.setActiveSkin('neon')
+      mod.setActiveTrail('fade')
+      const newSkin = mod.getActiveSkin()
+      const newTrail = mod.getActiveTrail()
+      // Check unlock status — default should be unlocked, neon should not (requires first_byte)
+      const defaultUnlocked = mod.isSkinUnlocked('default')
+      const neonLocked = !mod.isSkinUnlocked('neon')
+      // Unlock first_byte, then neon should be unlocked
+      mod.unlockAchievement('first_byte')
+      const neonNowUnlocked = mod.isSkinUnlocked('neon')
+      return { defaultSkin, defaultTrail, newSkin, newTrail, defaultUnlocked, neonLocked, neonNowUnlocked }
+    })
+    expect(result.defaultSkin).toBe('default')
+    expect(result.defaultTrail).toBe('none')
+    expect(result.newSkin).toBe('neon')
+    expect(result.newTrail).toBe('fade')
+    expect(result.defaultUnlocked).toBe(true)
+    expect(result.neonLocked).toBe(true)
+    expect(result.neonNowUnlocked).toBe(true)
+  })
+})

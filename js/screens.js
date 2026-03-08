@@ -318,8 +318,12 @@ export function renderTitleScreen(ctx, titleState) {
     ctx.font = '13px Courier New';
     ctx.fillText('E \u2014 Endless Mode', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 92);
 
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.4)';
+    ctx.font = '13px Courier New';
+    ctx.fillText('T \u2014 Trophies', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 112);
+
     // Level dots
-    var dotY = CANVAS_SIZE / 2 + 116;
+    var dotY = CANVAS_SIZE / 2 + 136;
     var dotSpacing = 28;
     var dotsStartX = CANVAS_SIZE / 2 - (dotSpacing * (MAX_LEVEL - 1)) / 2;
     for (var lv = 1; lv <= MAX_LEVEL; lv++) {

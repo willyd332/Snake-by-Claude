@@ -18,7 +18,7 @@ import {
     hasPrologueSeen, markPrologueSeen,
     createPrologueState, renderPrologue,
     createStoryScreenState, renderStoryScreen,
-    createEndingState, renderEndingScreen, isEndingComplete, unlockEnding,
+    createEndingState, renderEndingScreen, isEndingComplete, unlockEnding, getUnlockedEndings,
 } from './story.js';
 import {
     createParticleSystem, updateParticles, renderParticles,
@@ -35,7 +35,7 @@ import {
 } from './audio.js';
 import {
     FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected, collectFragment,
-    renderFragmentOverlay, renderCodex,
+    getCollectedFragments, renderFragmentOverlay, renderCodex,
 } from './fragments.js';
 import { createArchiveState, renderArchive, getArchiveMaxScroll } from './archive.js';
 import {
@@ -49,6 +49,13 @@ import {
     createMatrixState, updateMatrixState, renderMatrixRain,
     renderDevConsole,
 } from './secrets.js';
+import {
+    unlockAchievement, createPopupState, renderPopup,
+    createGalleryState, renderGallery, getGalleryItemCount,
+    SKINS, TRAILS, setActiveSkin, setActiveTrail,
+    isSkinUnlocked, isTrailUnlocked, getActiveSkin, getActiveTrail,
+} from './achievements.js';
+import { playAchievementSound } from './audio.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -76,7 +83,7 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex', 'archive'
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex', 'archive', 'gallery'
 var showPrologue = !hasPrologueSeen();
 var currentScreen = showPrologue ? 'prologue' : 'title';
 var prologueState = showPrologue ? createPrologueState() : null;
@@ -89,6 +96,11 @@ var archiveState = createArchiveState();
 var fragmentTextState = null;
 var hunterIntroState = null;
 var hunterTrailHistory = [];
+var achievementPopup = null;
+var achievementPopupQueue = [];
+var galleryState = createGalleryState();
+var snakeTrailHistory = [];
+var levelStartTime = 0;
 
 // --- Game State ---
 var state = createInitialState();
@@ -106,6 +118,22 @@ dom.highScoreEl.textContent = highScore;
 
 // --- UI ---
 var ui = createUI(messageEl);
+
+// --- Achievement Helpers ---
+function tryUnlock(id) {
+    var ach = unlockAchievement(id);
+    if (ach) {
+        achievementPopupQueue.push(createPopupState(ach));
+        playAchievementSound();
+    }
+}
+
+function checkAllEndings() {
+    var endings = getUnlockedEndings();
+    if (endings.awakening && endings.deletion && endings.loop) {
+        tryUnlock('all_endings');
+    }
+}
 
 // --- Fragment Helpers ---
 function spawnFragmentForLevel(level, foodEaten) {
@@ -149,6 +177,12 @@ function switchToArchive(initialTab) {
     hideGameplayUI();
 }
 
+function switchToGallery() {
+    currentScreen = 'gallery';
+    galleryState = createGalleryState();
+    hideGameplayUI();
+}
+
 function switchToLevelSelect() {
     currentScreen = 'levelSelect';
     levelSelectState = Object.assign({}, createLevelSelectState(), {
@@ -168,6 +202,7 @@ function startGameAtLevel(level) {
     prevSnake = null;
     prevHunterSegments = null;
     hunterTrailHistory = [];
+    snakeTrailHistory = [];
 
     state = createInitialState();
     // Set up for the chosen level
@@ -192,6 +227,7 @@ function startGameAtLevel(level) {
         playHunterIntroSound();
     }
 
+    levelStartTime = Date.now();
     messageEl.textContent = 'Press any arrow key to start';
     messageEl.className = '';
     messageEl.style.color = '';
@@ -208,6 +244,7 @@ function startEndlessMode() {
     prevSnake = null;
     prevHunterSegments = null;
     hunterTrailHistory = [];
+    snakeTrailHistory = [];
 
     var wave1Config = getEndlessConfig(1);
 
@@ -291,6 +328,11 @@ setupInput({
         playMenuSelectSound();
         startEndlessMode();
     },
+    onTitleGallery: function() {
+        initAudio();
+        playMenuSelectSound();
+        switchToGallery();
+    },
 
     // Archive actions
     onArchiveBack: function() {
@@ -310,6 +352,53 @@ setupInput({
         if (newOffset !== archiveState.scrollOffset) {
             playMenuNavigateSound();
             archiveState = Object.assign({}, archiveState, { scrollOffset: newOffset });
+        }
+    },
+
+    // Gallery actions
+    onGalleryBack: function() {
+        playMenuNavigateSound();
+        switchToTitle();
+    },
+    onGalleryTabChange: function(delta) {
+        var newTab = galleryState.tab + delta;
+        if (newTab >= 0 && newTab <= 2) {
+            playMenuNavigateSound();
+            galleryState = Object.assign({}, galleryState, { tab: newTab, scrollOffset: 0, selectedIndex: 0 });
+        }
+    },
+    onGalleryNavigate: function(delta) {
+        var count = getGalleryItemCount(galleryState.tab);
+        if (galleryState.tab === 0) {
+            // Achievements tab: scroll
+            var newScroll = galleryState.scrollOffset + delta;
+            newScroll = Math.max(0, Math.min(count - 1, newScroll));
+            if (newScroll !== galleryState.scrollOffset) {
+                playMenuNavigateSound();
+                galleryState = Object.assign({}, galleryState, { scrollOffset: newScroll, selectedIndex: newScroll });
+            }
+        } else {
+            // Skins/Trails: select
+            var newIdx = Math.max(0, Math.min(count - 1, galleryState.selectedIndex + delta));
+            if (newIdx !== galleryState.selectedIndex) {
+                playMenuNavigateSound();
+                galleryState = Object.assign({}, galleryState, { selectedIndex: newIdx });
+            }
+        }
+    },
+    onGallerySelect: function() {
+        if (galleryState.tab === 1) {
+            var skin = SKINS[galleryState.selectedIndex];
+            if (skin && isSkinUnlocked(skin.id)) {
+                playMenuSelectSound();
+                setActiveSkin(skin.id);
+            }
+        } else if (galleryState.tab === 2) {
+            var trail = TRAILS[galleryState.selectedIndex];
+            if (trail && isTrailUnlocked(trail.id)) {
+                playMenuSelectSound();
+                setActiveTrail(trail.id);
+            }
         }
     },
 
@@ -355,6 +444,7 @@ setupInput({
         konamiActivated = !konamiActivated;
         localStorage.setItem('snake-konami', String(konamiActivated));
         markSecretFound('konami');
+        tryUnlock('rainbow_road');
         messageEl.textContent = konamiActivated ? 'RAINBOW MODE ACTIVATED' : 'RAINBOW MODE OFF';
         messageEl.className = konamiActivated ? 'rainbow' : 'active';
         setTimeout(function() {
@@ -374,6 +464,10 @@ setupInput({
 
             if (result.name === 'invert') {
                 applyInvertFilter(canvas);
+                tryUnlock('upside_down');
+            }
+            if (result.name === 'matrix') {
+                tryUnlock('red_pill');
             }
 
             var messages = {
@@ -402,6 +496,7 @@ setupInput({
         initAudio();
         playSecretSound();
         toggleDevConsole();
+        tryUnlock('root_access');
     },
 
     restartGame: function(newDir) {
@@ -421,6 +516,7 @@ setupInput({
         fragmentTextState = null;
         hunterIntroState = null;
         hunterTrailHistory = [];
+        snakeTrailHistory = [];
         state = createInitialState();
         if (endlessMode) {
             var w1Config = getEndlessConfig(1);
@@ -553,6 +649,12 @@ function gameLoop(timestamp) {
         return;
     }
 
+    if (currentScreen === 'gallery') {
+        renderGallery(ctx, galleryState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (currentScreen === 'levelSelect') {
         renderLevelSelect(ctx, levelSelectState);
         requestAnimationFrame(gameLoop);
@@ -584,6 +686,12 @@ function gameLoop(timestamp) {
             hunterTrailHistory = [state.hunter.segments[0]].concat(hunterTrailHistory.slice(0, 2));
         }
 
+        // --- Snake Trail Tracking ---
+        if (state.started && !state.gameOver && prevSnake) {
+            var tail = prevSnake[prevSnake.length - 1];
+            snakeTrailHistory = [tail].concat(snakeTrailHistory.slice(0, 7));
+        }
+
         // --- Particle Events ---
 
         // Food eaten: burst at food position, skip interpolation (snake grew)
@@ -592,6 +700,11 @@ function gameLoop(timestamp) {
             playEatSound();
             particleSystem = emitBurst(particleSystem, state._ateFoodPos.x, state._ateFoodPos.y, config.foodColor, 12, 60, 0.5);
             shakeState = triggerShake(2, 0.1);
+
+            // Score achievements
+            if (state.score >= 100) tryUnlock('first_byte');
+            if (state.score >= 500) tryUnlock('data_hoarder');
+            if (state.score >= 1000) tryUnlock('megabyte');
         }
 
         // Awakening ending: eat enough food on Level 10 while alive (normal mode only)
@@ -604,6 +717,8 @@ function gameLoop(timestamp) {
             playLevelUpSound();
             endingState = createEndingState('awakening');
             unlockEnding('awakening');
+            tryUnlock('transcendence');
+            checkAllEndings();
             currentScreen = 'ending';
             hideGameplayUI();
             ui.clearTimers();
@@ -611,6 +726,8 @@ function gameLoop(timestamp) {
 
         // Endless wave-up detection
         if (endlessMode && state.endlessWave > (prevState.endlessWave || 0)) {
+            if (state.endlessWave >= 10) tryUnlock('endurance');
+            if (state.endlessWave >= 25) tryUnlock('marathoner');
             prevSnake = null;
             prevHunterSegments = null;
             playLevelUpSound();
@@ -655,6 +772,18 @@ function gameLoop(timestamp) {
             prevHunterSegments = null;
             playLevelUpSound();
             setHighestLevel(state.level);
+
+            // Progression achievements
+            if (prevLevel === 1) tryUnlock('boot_sequence');
+            if (state.level >= 5) tryUnlock('deep_dive');
+            if (state.level >= 10) tryUnlock('the_core');
+            if (prevLevel === 8) tryUnlock('untouchable');
+
+            // Speed demon: cleared prev level in under 20s
+            if (levelStartTime > 0 && (Date.now() - levelStartTime) < 20000) {
+                tryUnlock('speed_demon');
+            }
+            levelStartTime = Date.now();
             var newConfig = getLevelConfig(state.level);
             particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, newConfig.color);
             shakeState = triggerShake(4, 0.3);
@@ -690,6 +819,7 @@ function gameLoop(timestamp) {
 
         // Power-up collected: sparkle burst
         if (state._collectedPowerUp) {
+            if (state._collectedPowerUp === 'ghost') tryUnlock('ghost_rider');
             var collectedDef = getPowerUpDef(state._collectedPowerUp);
             if (collectedDef) {
                 playPowerUpCollectSound();
@@ -705,6 +835,10 @@ function gameLoop(timestamp) {
             if (fragData) {
                 playFragmentCollectSound();
                 collectFragment(fragLevel);
+                // Fragment achievements (check after collecting)
+                var totalFrags = getCollectedFragments().length;
+                if (totalFrags >= 5) tryUnlock('archaeologist');
+                if (totalFrags >= 10) tryUnlock('full_archive');
                 fragmentTextState = { text: fragData.text, startTime: Date.now() };
                 particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, '#4a9eff', 20, 70, 0.8);
                 shakeState = triggerShake(3, 0.15);
@@ -724,6 +858,9 @@ function gameLoop(timestamp) {
             playShrinkSound();
             ui.showShrinkMessage();
             shakeState = triggerShake(5, 0.25);
+            var arenaW = state.arenaMaxX - state.arenaMinX + 1;
+            var arenaH = state.arenaMaxY - state.arenaMinY + 1;
+            if (arenaW <= 8 && arenaH <= 8) tryUnlock('survivor');
         }
 
         // Teleport: detect by checking if head moved more than 2 cells (skip on wrap-around levels)
@@ -771,6 +908,7 @@ function gameLoop(timestamp) {
                 var deathEndingType = state.foodEaten >= DELETION_FOOD_THRESHOLD ? 'deletion' : 'loop';
                 endingState = createEndingState(deathEndingType);
                 unlockEnding(deathEndingType);
+                checkAllEndings();
                 currentScreen = 'ending';
                 hideGameplayUI();
                 ui.clearTimers();
@@ -796,6 +934,7 @@ function gameLoop(timestamp) {
         prevSnake: prevSnake,
         prevHunter: prevHunterSegments,
         hunterTrail: hunterTrailHistory,
+        trailHistory: snakeTrailHistory,
         highScore: endlessMode ? getEndlessHighScore() : highScore,
         endlessHighWave: endlessMode ? getEndlessHighWave() : 0,
     };
@@ -840,6 +979,17 @@ function gameLoop(timestamp) {
             ctx.restore();
         } else if (introElapsed >= 3500) {
             hunterIntroState = null;
+        }
+    }
+
+    // Achievement popup (rendered outside shake transform, on all gameplay screens)
+    if (!achievementPopup && achievementPopupQueue.length > 0) {
+        achievementPopup = achievementPopupQueue.shift();
+    }
+    if (achievementPopup) {
+        var popupActive = renderPopup(ctx, achievementPopup);
+        if (!popupActive) {
+            achievementPopup = null;
         }
     }
 

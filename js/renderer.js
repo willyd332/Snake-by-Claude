@@ -5,6 +5,7 @@ import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import { renderEnvironment } from './environment.js';
 import { manhattanDistance } from './hunter.js';
+import { getActiveSkin, getActiveTrail } from './achievements.js';
 
 function getDeathMessage(deathCause, level, config) {
     if (deathCause === 'hunter') {
@@ -461,7 +462,15 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.shadowBlur = 0;
     }
 
-    // Snake (with sub-cell interpolation)
+    // Trail effect (rendered before snake)
+    var trailHistory = interp ? interp.trailHistory : null;
+    var activeTrail = getActiveTrail();
+    if (trailHistory && trailHistory.length > 0 && activeTrail !== 'none' && state.started && !state.gameOver) {
+        renderTrailEffect(ctx, trailHistory, config, activeTrail);
+    }
+
+    // Snake (with sub-cell interpolation + skin support)
+    var activeSkin = getActiveSkin();
     var interpHeadX = state.snake[0].x;
     var interpHeadY = state.snake[0].y;
     state.snake.forEach(function(seg, i) {
@@ -478,20 +487,15 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         }
         var alpha = 1 - (i / state.snake.length) * 0.5;
         if (isGhost) alpha *= 0.45;
+        var segColor;
         if (konamiActivated) {
             var hue = ((Date.now() / 10) + i * 20) % 360;
-            ctx.fillStyle = 'hsl(' + hue + ', 80%, 60%)';
+            segColor = 'hsl(' + hue + ', 80%, 60%)';
         } else {
-            ctx.fillStyle = config.color;
+            segColor = config.color;
         }
         ctx.globalAlpha = alpha;
-        var padding = i === 0 ? 1 : 2;
-        ctx.fillRect(
-            drawX * CELL_SIZE + padding,
-            drawY * CELL_SIZE + padding,
-            CELL_SIZE - padding * 2,
-            CELL_SIZE - padding * 2
-        );
+        renderSnakeSegment(ctx, drawX, drawY, i, state.snake.length, segColor, activeSkin);
     });
     ctx.globalAlpha = 1;
 
@@ -638,4 +642,115 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     } else {
         dom.arenaHudEl.style.display = 'none';
     }
+}
+
+// --- Skin Rendering ---
+function renderSnakeSegment(ctx, drawX, drawY, index, total, color, skin) {
+    var px = drawX * CELL_SIZE;
+    var py = drawY * CELL_SIZE;
+    var isHead = index === 0;
+    var pad = isHead ? 1 : 2;
+
+    switch (skin) {
+        case 'neon':
+            ctx.strokeStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = isHead ? 10 : 6;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(px + pad + 0.5, py + pad + 0.5, CELL_SIZE - pad * 2 - 1, CELL_SIZE - pad * 2 - 1);
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0.5;
+            break;
+
+        case 'pixel':
+            ctx.fillStyle = color;
+            var innerPad = isHead ? 3 : 4;
+            ctx.fillRect(px + innerPad, py + innerPad, CELL_SIZE - innerPad * 2, CELL_SIZE - innerPad * 2);
+            // Corner dots
+            ctx.fillRect(px + pad, py + pad, 2, 2);
+            ctx.fillRect(px + CELL_SIZE - pad - 2, py + pad, 2, 2);
+            ctx.fillRect(px + pad, py + CELL_SIZE - pad - 2, 2, 2);
+            ctx.fillRect(px + CELL_SIZE - pad - 2, py + CELL_SIZE - pad - 2, 2, 2);
+            break;
+
+        case 'spectral':
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+            ctx.globalAlpha *= 0.6;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'digital':
+            ctx.fillStyle = color;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            // Binary overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            if (index % 2 === 0) {
+                ctx.fillRect(px + pad, py + pad, (CELL_SIZE - pad * 2) / 2, CELL_SIZE - pad * 2);
+            } else {
+                ctx.fillRect(px + pad + (CELL_SIZE - pad * 2) / 2, py + pad, (CELL_SIZE - pad * 2) / 2, CELL_SIZE - pad * 2);
+            }
+            break;
+
+        case 'chrome':
+            var grad = ctx.createLinearGradient(px, py, px, py + CELL_SIZE);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.3, color);
+            grad.addColorStop(0.7, color);
+            grad.addColorStop(1, '#333333');
+            ctx.fillStyle = grad;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            break;
+
+        default:
+            ctx.fillStyle = color;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            break;
+    }
+}
+
+// --- Trail Rendering ---
+function renderTrailEffect(ctx, trailHistory, config, trailType) {
+    ctx.save();
+    for (var i = 0; i < trailHistory.length; i++) {
+        var pos = trailHistory[i];
+        var trailAlpha = (1 - i / trailHistory.length) * 0.3;
+
+        switch (trailType) {
+            case 'fade':
+                ctx.globalAlpha = trailAlpha;
+                ctx.fillStyle = config.color;
+                ctx.fillRect(
+                    pos.x * CELL_SIZE + 3,
+                    pos.y * CELL_SIZE + 3,
+                    CELL_SIZE - 6,
+                    CELL_SIZE - 6
+                );
+                break;
+
+            case 'sparkle':
+                ctx.globalAlpha = trailAlpha * 1.2;
+                ctx.fillStyle = '#ffffff';
+                var sparkleSize = 2 + Math.sin(Date.now() / 100 + i * 2) * 1;
+                var sx = pos.x * CELL_SIZE + CELL_SIZE / 2 + Math.sin(Date.now() / 200 + i) * 3;
+                var sy = pos.y * CELL_SIZE + CELL_SIZE / 2 + Math.cos(Date.now() / 200 + i) * 3;
+                ctx.beginPath();
+                ctx.arc(sx, sy, sparkleSize, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+
+            case 'digital':
+                ctx.globalAlpha = trailAlpha * 0.8;
+                ctx.fillStyle = config.color;
+                ctx.font = '10px Courier New';
+                ctx.textAlign = 'center';
+                var digit = (i + Math.floor(Date.now() / 200)) % 2 === 0 ? '0' : '1';
+                ctx.fillText(digit, pos.x * CELL_SIZE + CELL_SIZE / 2, pos.y * CELL_SIZE + CELL_SIZE / 2 + 4);
+                ctx.textAlign = 'left';
+                break;
+        }
+    }
+    ctx.restore();
 }

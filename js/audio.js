@@ -300,6 +300,28 @@ export function playSecretSound() {
     tone2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 }
 
+export function playAchievementSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Triumphant ascending chime: bright sine notes with shimmer
+    var notes = [660, 880, 1100, 1320];
+    notes.forEach(function(freq, i) {
+        var t = now + i * 0.07;
+        var tone = createTone(ctx, 'sine', t, t + 0.35);
+        tone.osc.frequency.setValueAtTime(freq, t);
+        tone.gain.gain.setValueAtTime(0, t);
+        tone.gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+        tone.gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    });
+    // Final shimmer
+    var shimmer = createTone(ctx, 'triangle', now + 0.28, now + 0.6);
+    shimmer.osc.frequency.setValueAtTime(1760, now + 0.28);
+    shimmer.gain.gain.setValueAtTime(0.06, now + 0.28);
+    shimmer.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+}
+
 export function playHunterIntroSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

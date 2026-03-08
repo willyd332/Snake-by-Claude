@@ -135,6 +135,46 @@ export function setupInput(callbacks) {
                 callbacks.onTitleEndless();
                 return;
             }
+            if (e.key === 't' || e.key === 'T') {
+                e.preventDefault();
+                callbacks.onTitleGallery();
+                return;
+            }
+            return;
+        }
+
+        // --- Gallery Screen ---
+        if (screen === 'gallery') {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onGalleryBack();
+                return;
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                callbacks.onGalleryTabChange(-1);
+                return;
+            }
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                callbacks.onGalleryTabChange(1);
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onGalleryNavigate(-1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onGalleryNavigate(1);
+                return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                callbacks.onGallerySelect();
+                return;
+            }
             return;
         }
 
