@@ -123,6 +123,39 @@ export function playEatSound() {
     tone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 }
 
+export function playBonusFoodSound(foodType) {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    if (foodType === 'golden') {
+        // Three rising notes — celebratory jingle
+        var goldenNotes = [880, 1108, 1318]; // A5, C#6, E6
+        goldenNotes.forEach(function(freq, i) {
+            var t = now + i * 0.07;
+            var tone = createTone(ctx, 'sine', t, t + 0.18);
+            tone.osc.frequency.setValueAtTime(freq, t);
+            tone.gain.gain.setValueAtTime(0, t);
+            tone.gain.gain.linearRampToValueAtTime(0.28, t + 0.02);
+            tone.gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        });
+    } else if (foodType === 'clock') {
+        // Descending chime — time winding down
+        var clockTone = createTone(ctx, 'triangle', now, now + 0.3);
+        clockTone.osc.frequency.setValueAtTime(1200, now);
+        clockTone.osc.frequency.exponentialRampToValueAtTime(400, now + 0.25);
+        clockTone.gain.gain.setValueAtTime(0.2, now);
+        clockTone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    } else if (foodType === 'speed') {
+        // Short sharp ascending chirp — fast!
+        var speedTone = createTone(ctx, 'sawtooth', now, now + 0.1);
+        speedTone.osc.frequency.setValueAtTime(300, now);
+        speedTone.osc.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+        speedTone.gain.gain.setValueAtTime(0.18, now);
+        speedTone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    }
+}
+
 export function playLevelUpSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

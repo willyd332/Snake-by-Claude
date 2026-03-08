@@ -445,23 +445,101 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
     // Food
     if (state.food) {
-        ctx.fillStyle = config.foodColor;
-        ctx.shadowColor = config.foodColor;
-        ctx.shadowBlur = hc ? 14 : 8;
-        ctx.beginPath();
-        ctx.arc(
-            state.food.x * CELL_SIZE + CELL_SIZE / 2,
-            state.food.y * CELL_SIZE + CELL_SIZE / 2,
-            CELL_SIZE / 2 - 2,
-            0, Math.PI * 2
-        );
-        ctx.fill();
-        if (hc) {
-            ctx.strokeStyle = '#ffffff';
+        var foodType = state.food.type || 'standard';
+        var fcx = state.food.x * CELL_SIZE + CELL_SIZE / 2;
+        var fcy = state.food.y * CELL_SIZE + CELL_SIZE / 2;
+        var foodPulse = Math.sin(Date.now() / 220) * 0.2 + 0.8;
+
+        if (foodType === 'golden') {
+            // Golden apple: larger glowing gold circle with shimmer ring
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = hc ? 18 : 12;
+            ctx.fillStyle = '#f59e0b';
+            ctx.globalAlpha = foodPulse;
+            ctx.beginPath();
+            ctx.arc(fcx, fcy, CELL_SIZE / 2 - 1, 0, Math.PI * 2);
+            ctx.fill();
+            // Inner highlight
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath();
+            ctx.arc(fcx - 2, fcy - 2, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Outer shimmer ring
+            ctx.globalAlpha = foodPulse * 0.4;
+            ctx.strokeStyle = '#fbbf24';
             ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(fcx, fcy, CELL_SIZE / 2 + 2, 0, Math.PI * 2);
             ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.lineWidth = 0.5;
+            ctx.shadowBlur = 0;
+
+        } else if (foodType === 'clock') {
+            // Clock food: cyan circle with clock hands symbol
+            ctx.shadowColor = '#22d3ee';
+            ctx.shadowBlur = hc ? 16 : 10;
+            ctx.fillStyle = '#06b6d4';
+            ctx.globalAlpha = foodPulse;
+            ctx.beginPath();
+            ctx.arc(fcx, fcy, CELL_SIZE / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            // Clock hands
+            ctx.strokeStyle = '#e0f7ff';
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.moveTo(fcx, fcy);
+            ctx.lineTo(fcx, fcy - 3);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(fcx, fcy);
+            ctx.lineTo(fcx + 2.5, fcy + 1);
+            ctx.stroke();
+            ctx.lineWidth = 0.5;
+            ctx.shadowBlur = 0;
+
+        } else if (foodType === 'speed') {
+            // Speed boost: orange/red diamond shape
+            ctx.shadowColor = '#f97316';
+            ctx.shadowBlur = hc ? 16 : 10;
+            ctx.fillStyle = '#ea580c';
+            ctx.globalAlpha = foodPulse;
+            ctx.beginPath();
+            ctx.moveTo(fcx, fcy - (CELL_SIZE / 2 - 1));
+            ctx.lineTo(fcx + (CELL_SIZE / 2 - 1), fcy);
+            ctx.lineTo(fcx, fcy + (CELL_SIZE / 2 - 1));
+            ctx.lineTo(fcx - (CELL_SIZE / 2 - 1), fcy);
+            ctx.closePath();
+            ctx.fill();
+            // Inner highlight
+            ctx.fillStyle = '#fdba74';
+            ctx.globalAlpha = foodPulse * 0.7;
+            ctx.beginPath();
+            ctx.moveTo(fcx, fcy - 3);
+            ctx.lineTo(fcx + 3, fcy);
+            ctx.lineTo(fcx, fcy + 3);
+            ctx.lineTo(fcx - 3, fcy);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+
+        } else {
+            // Standard food
+            ctx.fillStyle = config.foodColor;
+            ctx.shadowColor = config.foodColor;
+            ctx.shadowBlur = hc ? 14 : 8;
+            ctx.beginPath();
+            ctx.arc(fcx, fcy, CELL_SIZE / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            if (hc) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
         }
-        ctx.shadowBlur = 0;
     }
 
     // Trail effect (rendered before snake)
@@ -662,8 +740,16 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     if (state.activePowerUp) {
         var activeDef = getPowerUpDef(state.activePowerUp.type);
         dom.powerUpHudEl.style.display = 'block';
-        dom.powerUpNameEl.textContent = activeDef.name + ' [' + state.activePowerUp.ticksLeft + ']';
-        dom.powerUpNameEl.style.color = activeDef.color;
+        if (activeDef) {
+            dom.powerUpNameEl.textContent = activeDef.name + ' [' + state.activePowerUp.ticksLeft + ']';
+            dom.powerUpNameEl.style.color = activeDef.color;
+        } else if (state.activePowerUp.type === 'speedBoost') {
+            dom.powerUpNameEl.textContent = 'SPEED [' + state.activePowerUp.ticksLeft + ']';
+            dom.powerUpNameEl.style.color = '#f97316';
+        } else {
+            dom.powerUpNameEl.textContent = state.activePowerUp.type + ' [' + state.activePowerUp.ticksLeft + ']';
+            dom.powerUpNameEl.style.color = '#ffffff';
+        }
     } else {
         dom.powerUpHudEl.style.display = 'none';
     }

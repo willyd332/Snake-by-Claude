@@ -14,7 +14,7 @@ import {
     playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playHunterKillSound, playHunterIntroSound, playComboSound,
-    playShieldBreakSound,
+    playShieldBreakSound, playBonusFoodSound,
     getAudioContext, getMasterGain,
 } from './audio.js';
 import { setMusicIntensity, playWaveFanfare, stopMusic } from './music.js';
@@ -38,22 +38,46 @@ export function processPostTickEvents(ctx) {
     // Food eaten: burst at food position, skip interpolation (snake grew)
     if (ctx.state._ateFood && ctx.state._ateFoodPos) {
         ctx.prevSnake = null;
-        playEatSound();
-        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateFoodPos.x, ctx.state._ateFoodPos.y, ctx.config.foodColor, 12, 60, 0.5);
+        var eatFoodType = ctx.state._ateFoodType || 'standard';
+
+        // Distinct colors and sounds per food type
+        var foodParticleColor = ctx.config.foodColor;
+        var foodFlashColor = ctx.config.foodColor;
+        if (eatFoodType === 'golden') {
+            foodParticleColor = '#fbbf24';
+            foodFlashColor = '#fbbf24';
+            playBonusFoodSound('golden');
+        } else if (eatFoodType === 'clock') {
+            foodParticleColor = '#22d3ee';
+            foodFlashColor = '#22d3ee';
+            playBonusFoodSound('clock');
+        } else if (eatFoodType === 'speed') {
+            foodParticleColor = '#f97316';
+            foodFlashColor = '#f97316';
+            playBonusFoodSound('speed');
+        } else {
+            playEatSound();
+        }
+
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateFoodPos.x, ctx.state._ateFoodPos.y, foodParticleColor, 12, 60, 0.5);
         ctx.shakeState = triggerShake(SHAKE_FOOD.intensity, SHAKE_FOOD.duration);
-        ctx.headFlashState = { remaining: 0.18, duration: 0.18, color: ctx.config.foodColor };
+        ctx.headFlashState = { remaining: 0.18, duration: 0.18, color: foodFlashColor };
 
         // Score popup at food position — show actual scored value and multiplier label
         var comboMult = ctx.state._comboMultiplier || 1;
         var scoreGained = ctx.state._scoreGained || 0;
         var popupText = comboMult > 1 ? '+' + scoreGained + ' x' + comboMult : '+' + scoreGained;
+        // Bonus food: prepend label
+        if (eatFoodType === 'golden') popupText = 'GOLDEN! ' + popupText;
+        if (eatFoodType === 'clock') popupText = 'SLOW TIME! ' + popupText;
+        if (eatFoodType === 'speed') popupText = 'SPEED! ' + popupText;
         ctx.scorePopups = (ctx.scorePopups || []).concat([{
             x: ctx.state._ateFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
             y: ctx.state._ateFoodPos.y * CELL_SIZE + CELL_SIZE / 2,
             text: popupText,
             alpha: 1,
             vy: -0.8,
-            color: comboMult > 1 ? '#f59e0b' : '#fbbf24',
+            color: eatFoodType === 'golden' ? '#fbbf24' : eatFoodType === 'clock' ? '#22d3ee' : eatFoodType === 'speed' ? '#f97316' : (comboMult > 1 ? '#f59e0b' : '#fbbf24'),
         }]);
 
         // Combo sound on multiplier increase (2x and above)

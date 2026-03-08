@@ -7,13 +7,36 @@ import { moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
-import { onFoodEaten, checkComboExpiry, createComboState } from './combo.js';
+import { onFoodEaten, checkComboExpiry, createComboState, COMBO_BASE_SCORE } from './combo.js';
+
+// Food type spawn rates (must sum to 1.0)
+var FOOD_TYPE_CHANCES = [
+    { type: 'golden', chance: 0.15 },   // 15% — 3x points
+    { type: 'clock',  chance: 0.10 },   // 10% — slow time for 5 sec
+    { type: 'speed',  chance: 0.10 },   // 10% — speed boost 1.5x for 3 sec
+    // standard fills the remaining 65%
+];
+
+// Durations in ticks (game runs at ~15 ticks/sec; timeSlow doubles tick interval)
+var FOOD_CLOCK_TICKS = 75;   // ~5 sec (slow = double interval so effectively 5s)
+var FOOD_SPEED_TICKS = 45;   // ~3 sec at base speed
+
+function pickFoodType() {
+    var roll = Math.random();
+    var cumulative = 0;
+    for (var i = 0; i < FOOD_TYPE_CHANCES.length; i++) {
+        cumulative += FOOD_TYPE_CHANCES[i].chance;
+        if (roll < cumulative) return FOOD_TYPE_CHANCES[i].type;
+    }
+    return 'standard';
+}
 
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
     var clean = Object.assign({}, prev, {
         _ateFood: false,
         _ateFoodPos: null,
+        _ateFoodType: null,
         _collectedPowerUp: null,
         _shrinkOccurred: false,
         _killedByHunter: false,
@@ -192,10 +215,14 @@ export function tick(prev) {
     var _comboIncreased = false;
     var _scoreGained = 0;
 
+    var ateFoodType = ate ? (clean.food.type || 'standard') : null;
+
     if (ate) {
         var eatResult = onFoodEaten(currentCombo, clean.lastTick);
         newCombo = eatResult.comboState;
-        _scoreGained = eatResult.scoreGained;
+        // Golden apple: 3x base score before combo multiplier
+        var foodScoreMultiplier = ateFoodType === 'golden' ? 3 : 1;
+        _scoreGained = COMBO_BASE_SCORE * foodScoreMultiplier * eatResult.comboState.multiplier;
         newScore = clean.score + _scoreGained;
         _comboMultiplier = eatResult.comboState.multiplier;
         _comboIncreased = eatResult.wasComboIncrease;
@@ -243,6 +270,13 @@ export function tick(prev) {
     var newPowerUp = clean.powerUp;
     var newActivePowerUp = clean.activePowerUp;
     var newPowerUpSpawnCounter = clean.powerUpSpawnCounter;
+
+    // Food type effects: clock triggers time slow, speed triggers speed boost
+    if (ate && ateFoodType === 'clock') {
+        newActivePowerUp = { type: 'timeSlow', ticksLeft: FOOD_CLOCK_TICKS, fromFood: true };
+    } else if (ate && ateFoodType === 'speed') {
+        newActivePowerUp = { type: 'speedBoost', ticksLeft: FOOD_SPEED_TICKS, fromFood: true };
+    }
 
     if (newFoodEaten >= ENDLESS_FOOD_PER_WAVE) {
         endlessWave = endlessWave + 1;
@@ -348,7 +382,8 @@ export function tick(prev) {
 
     // Spawn food if needed
     if (!newFood) {
-        newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
+        var spawnedPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
+        newFood = Object.assign({}, spawnedPos, { type: pickFoodType() });
     }
 
     // Power-up spawning
@@ -439,6 +474,7 @@ export function tick(prev) {
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
         _ateFoodPos: ate ? clean.food : null,
+        _ateFoodType: ateFoodType,
         _killedByHunter: false,
         _deathCause: null,
         _shieldBroke: clean._shieldBroke,
