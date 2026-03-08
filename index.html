@@ -62,6 +62,17 @@
         #message.active {
             color: #4a9eff;
         }
+
+        #message.levelup {
+            color: #f59e0b;
+            font-weight: bold;
+            animation: pulse 0.5s ease-in-out 3;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
     </style>
 </head>
 <body>
@@ -79,29 +90,134 @@
         'use strict';
 
         // --- Constants ---
-        const GRID_SIZE = 20;
-        const CELL_SIZE = 20;
-        const CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
-        const FOOD_TO_LEVEL_UP = 5;
+        var GRID_SIZE = 20;
+        var CELL_SIZE = 20;
+        var CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
+        var FOOD_TO_LEVEL_UP = 5;
 
-        const LEVEL_CONFIG = {
-            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', bgAccent: '#0d1117' },
-            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', bgAccent: '#0d1320' },
-            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', bgAccent: '#130d1a' },
+        var LEVEL_CONFIG = {
+            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null },
+            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null },
+            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed' },
+            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c' },
         };
 
-        const MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
+        var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
+
+        // --- Wall patterns ---
+        function generateWalls(level) {
+            var walls = [];
+            if (level <= 1) return walls;
+
+            if (level === 2) {
+                // Diamond pattern: four short segments around center
+                [8, 9, 10, 11].forEach(function(x) { walls.push({ x: x, y: 5 }); });
+                [8, 9, 10, 11].forEach(function(x) { walls.push({ x: x, y: 14 }); });
+                [8, 9, 10, 11].forEach(function(y) { walls.push({ x: 5, y: y }); });
+                [8, 9, 10, 11].forEach(function(y) { walls.push({ x: 14, y: y }); });
+                return walls;
+            }
+
+            if (level === 3) {
+                // Corridor pattern with pillars
+                [2, 3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 6 }); });
+                [12, 13, 14, 15, 16, 17].forEach(function(x) { walls.push({ x: x, y: 6 }); });
+                [2, 3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 13 }); });
+                [12, 13, 14, 15, 16, 17].forEach(function(x) { walls.push({ x: x, y: 13 }); });
+                [3, 4, 5].forEach(function(y) { walls.push({ x: 10, y: y }); });
+                [14, 15, 16].forEach(function(y) { walls.push({ x: 10, y: y }); });
+                walls.push({ x: 3, y: 3 }, { x: 16, y: 3 });
+                walls.push({ x: 3, y: 16 }, { x: 16, y: 16 });
+                return walls;
+            }
+
+            // Level 4: cage ring with cardinal gaps
+            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 4 }); });
+            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 15 }); });
+            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 4, y: y }); });
+            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 15, y: y }); });
+            // Inner cross pillars
+            walls.push({ x: 9, y: 7 }, { x: 10, y: 7 });
+            walls.push({ x: 9, y: 12 }, { x: 10, y: 12 });
+            walls.push({ x: 7, y: 9 }, { x: 7, y: 10 });
+            walls.push({ x: 12, y: 9 }, { x: 12, y: 10 });
+
+            return walls;
+        }
+
+        function filterWallsFromSnake(walls, snake) {
+            return walls.filter(function(w) {
+                return !snake.some(function(seg) { return seg.x === w.x && seg.y === w.y; });
+            });
+        }
+
+        // --- Moving obstacles ---
+        function generateObstacles(level) {
+            if (level < 3) return [];
+
+            if (level === 3) {
+                // Two horizontal patrols through corridor gaps
+                return [
+                    { x: 8, y: 9, path: [8, 9, 10, 11], axis: 'x', pathIndex: 0, dir: 1 },
+                    { x: 11, y: 10, path: [11, 10, 9, 8], axis: 'x', pathIndex: 0, dir: 1 },
+                ];
+            }
+
+            // Level 4: four patrols circling through cage gaps
+            return [
+                { x: 9, y: 1, path: [1, 2, 3], axis: 'y', pathIndex: 0, dir: 1 },
+                { x: 10, y: 16, path: [16, 17, 18], axis: 'y', pathIndex: 0, dir: 1 },
+                { x: 1, y: 9, path: [1, 2, 3], axis: 'x', pathIndex: 0, dir: 1 },
+                { x: 18, y: 10, path: [18, 17, 16], axis: 'x', pathIndex: 0, dir: 1 },
+            ];
+        }
+
+        function moveObstacles(obstacles) {
+            return obstacles.map(function(ob) {
+                var nextIdx = ob.pathIndex + ob.dir;
+                var newDir = ob.dir;
+                if (nextIdx >= ob.path.length || nextIdx < 0) {
+                    newDir = -ob.dir;
+                    nextIdx = ob.pathIndex + newDir;
+                }
+                var newOb = { x: ob.x, y: ob.y, path: ob.path, axis: ob.axis, pathIndex: nextIdx, dir: newDir };
+                if (ob.axis === 'x') {
+                    newOb.x = ob.path[nextIdx];
+                } else {
+                    newOb.y = ob.path[nextIdx];
+                }
+                return newOb;
+            });
+        }
+
+        function getObstaclePositions(obstacles) {
+            return obstacles.map(function(ob) { return { x: ob.x, y: ob.y }; });
+        }
 
         // --- Canvas setup ---
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
+        var canvas = document.getElementById('game');
+        var ctx = canvas.getContext('2d');
         canvas.width = CANVAS_SIZE;
         canvas.height = CANVAS_SIZE;
 
-        const scoreEl = document.getElementById('score');
-        const levelEl = document.getElementById('level');
-        const highScoreEl = document.getElementById('highScore');
-        const messageEl = document.getElementById('message');
+        var scoreEl = document.getElementById('score');
+        var levelEl = document.getElementById('level');
+        var highScoreEl = document.getElementById('highScore');
+        var messageEl = document.getElementById('message');
+
+        // --- Level-up message ---
+        var levelUpTimer = null;
+
+        function showLevelUp(level) {
+            messageEl.textContent = 'LEVEL ' + level + '!';
+            messageEl.className = 'levelup';
+            if (levelUpTimer) clearTimeout(levelUpTimer);
+            levelUpTimer = setTimeout(function() {
+                messageEl.textContent = '';
+                messageEl.className = '';
+                levelUpTimer = null;
+            }, 2000);
+        }
 
         // --- State ---
         function createInitialState() {
@@ -110,6 +226,8 @@
                 direction: { x: 0, y: 0 },
                 nextDirection: { x: 0, y: 0 },
                 food: null,
+                walls: [],
+                obstacles: [],
                 score: 0,
                 level: 1,
                 foodEaten: 0,
@@ -119,19 +237,21 @@
             };
         }
 
-        let state = createInitialState();
-        let highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
+        var state = createInitialState();
+        var highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
         highScoreEl.textContent = highScore;
 
         // --- Pure helpers ---
-        function randomPosition(snake) {
-            let pos;
+        function randomPosition(snake, walls, obstacles) {
+            var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
+            var occupied = (walls || []).concat(snake).concat(obPositions);
+            var pos;
             do {
                 pos = {
                     x: Math.floor(Math.random() * GRID_SIZE),
                     y: Math.floor(Math.random() * GRID_SIZE),
                 };
-            } while (snake.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
+            } while (occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
             return pos;
         }
 
@@ -154,15 +274,37 @@
             var head = prev.snake[0];
             var newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
-            // Wall collision
+            // Wall boundary collision
             if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                 newHead.y < 0 || newHead.y >= GRID_SIZE) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
             }
 
-            // Self collision (check against current body, excluding tail if not eating)
+            // Wall obstacle collision
+            if (collides(newHead, prev.walls)) {
+                return Object.assign({}, prev, { gameOver: true, direction: dir });
+            }
+
+            // Self collision
             if (collides(newHead, prev.snake)) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
+            }
+
+            // Moving obstacle collision
+            if (prev.obstacles.length > 0 && collides(newHead, getObstaclePositions(prev.obstacles))) {
+                return Object.assign({}, prev, { gameOver: true, direction: dir });
+            }
+
+            // Move obstacles
+            var newObstacles = prev.obstacles.length > 0 ? moveObstacles(prev.obstacles) : prev.obstacles;
+
+            // Check if obstacle moved onto snake body
+            if (newObstacles.length > 0) {
+                var obPositions = getObstaclePositions(newObstacles);
+                var snakeHit = obPositions.some(function(op) { return collides(op, [newHead].concat(prev.snake)); });
+                if (snakeHit) {
+                    return Object.assign({}, prev, { gameOver: true, direction: dir });
+                }
             }
 
             var ate = prev.food && newHead.x === prev.food.x && newHead.y === prev.food.y;
@@ -170,17 +312,20 @@
             var newScore = ate ? prev.score + 10 : prev.score;
             var newFoodEaten = ate ? prev.foodEaten + 1 : prev.foodEaten;
             var newLevel = prev.level;
+            var newWalls = prev.walls;
             var newFood = ate ? null : prev.food;
 
             // Level up check
             if (newFoodEaten >= FOOD_TO_LEVEL_UP && newLevel < MAX_LEVEL) {
                 newLevel = prev.level + 1;
                 newFoodEaten = 0;
+                newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
+                newObstacles = generateObstacles(newLevel);
             }
 
-            // Spawn food if needed
+            // Spawn food if needed (avoid snake, walls, and obstacles)
             if (!newFood) {
-                newFood = randomPosition(newSnake);
+                newFood = randomPosition(newSnake, newWalls, newObstacles);
             }
 
             return {
@@ -188,6 +333,8 @@
                 direction: dir,
                 nextDirection: dir,
                 food: newFood,
+                walls: newWalls,
+                obstacles: newObstacles,
                 score: newScore,
                 level: newLevel,
                 foodEaten: newFoodEaten,
@@ -205,8 +352,8 @@
             ctx.fillStyle = config.bgAccent;
             ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-            // Grid lines (subtle)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            // Grid lines (subtle, varies by level)
+            ctx.strokeStyle = 'rgba(255, 255, 255, ' + config.gridAlpha + ')';
             ctx.lineWidth = 0.5;
             for (var i = 0; i <= GRID_SIZE; i++) {
                 ctx.beginPath();
@@ -217,6 +364,51 @@
                 ctx.moveTo(0, i * CELL_SIZE);
                 ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
                 ctx.stroke();
+            }
+
+            // Walls
+            if (s.walls.length > 0 && config.wallColor) {
+                ctx.shadowColor = config.wallColor;
+                ctx.shadowBlur = 4;
+                s.walls.forEach(function(w) {
+                    ctx.fillStyle = config.wallColor;
+                    ctx.fillRect(
+                        w.x * CELL_SIZE + 1,
+                        w.y * CELL_SIZE + 1,
+                        CELL_SIZE - 2,
+                        CELL_SIZE - 2
+                    );
+                    // Inner highlight
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+                    ctx.fillRect(
+                        w.x * CELL_SIZE + 3,
+                        w.y * CELL_SIZE + 3,
+                        CELL_SIZE - 6,
+                        CELL_SIZE - 6
+                    );
+                });
+                ctx.shadowBlur = 0;
+            }
+
+            // Moving obstacles
+            if (s.obstacles.length > 0 && config.obstacleColor) {
+                s.obstacles.forEach(function(ob) {
+                    var cx = ob.x * CELL_SIZE + CELL_SIZE / 2;
+                    var cy = ob.y * CELL_SIZE + CELL_SIZE / 2;
+                    // Pulsing glow
+                    ctx.shadowColor = config.obstacleColor;
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = config.obstacleColor;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, CELL_SIZE / 2 - 1, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Bright center dot
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
             }
 
             // Food
@@ -287,7 +479,6 @@
             e.preventDefault();
 
             if (state.gameOver) {
-                // Update high score
                 if (state.score > highScore) {
                     highScore = state.score;
                     localStorage.setItem('snake-highscore', String(highScore));
@@ -297,7 +488,7 @@
                 state = Object.assign({}, state, {
                     started: true,
                     nextDirection: newDir,
-                    food: randomPosition(state.snake),
+                    food: randomPosition(state.snake, state.walls, state.obstacles),
                 });
                 messageEl.textContent = '';
                 messageEl.className = '';
@@ -308,7 +499,7 @@
                 state = Object.assign({}, state, {
                     started: true,
                     nextDirection: newDir,
-                    food: randomPosition(state.snake),
+                    food: randomPosition(state.snake, state.walls, state.obstacles),
                 });
                 messageEl.textContent = '';
                 messageEl.className = '';
@@ -328,8 +519,13 @@
             var elapsed = timestamp - state.lastTick;
 
             if (elapsed >= config.speed) {
+                var prevLevel = state.level;
                 state = tick(Object.assign({}, state, { lastTick: timestamp }));
                 state = Object.assign({}, state, { lastTick: timestamp });
+
+                if (state.level > prevLevel) {
+                    showLevelUp(state.level);
+                }
             }
 
             render(state);
