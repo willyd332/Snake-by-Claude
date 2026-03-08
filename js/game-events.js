@@ -52,6 +52,12 @@ export function processPostTickEvents(ctx) {
         if (ctx.state.score >= 100) ctx.tryUnlock('first_byte');
         if (ctx.state.score >= 500) ctx.tryUnlock('data_hoarder');
         if (ctx.state.score >= 1000) ctx.tryUnlock('megabyte');
+
+        // Boss: first food eaten on Level 10
+        if (ctx.state.level === MAX_LEVEL && ctx.state.foodEaten === 1) ctx.tryUnlock('first_blood');
+
+        // Boss: ate food during active shockwave
+        if (ctx.state._bossAteInShockwave) ctx.tryUnlock('calm_in_storm');
     }
 
     // Awakening ending: eat enough food on Level 10 while alive (normal mode only)
@@ -65,6 +71,8 @@ export function processPostTickEvents(ctx) {
         ctx.endingState = createEndingState('awakening');
         unlockEnding('awakening');
         ctx.tryUnlock('transcendence');
+        ctx.tryUnlock('ghost_of_machine');
+        if (!ctx.state.bossCloneHitThisRun) ctx.tryUnlock('no_clone_casualty');
         ctx.checkAllEndings();
         ctx.currentScreen = 'ending';
         ctx.hideGameplayUI();
@@ -243,6 +251,11 @@ export function processPostTickEvents(ctx) {
     // Boss shockwave activation: alarming crunch as arena closes
     if (ctx.state._bossShockwaveActivated) {
         playBossShockwaveSound();
+    }
+
+    // Boss Phase 3 survival: 30 seconds = ~200 ticks at ~6.7 ticks/sec
+    if (ctx.state.bossState && ctx.state.bossState.phase === 3 && ctx.state.bossPhase3Ticks >= 200) {
+        ctx.tryUnlock('boss_phase3_survivor');
     }
 
     // Arena shrink: shake

@@ -8,7 +8,7 @@ var STORAGE_KEY = 'snake-achievements';
 var SKIN_KEY = 'snake-active-skin';
 var TRAIL_KEY = 'snake-active-trail';
 
-// --- Achievement Definitions (20 total) ---
+// --- Achievement Definitions (25 total) ---
 export var ACHIEVEMENTS = [
     { id: 'first_byte', name: 'First Byte', desc: 'Score 100 points', category: 'score' },
     { id: 'data_hoarder', name: 'Data Hoarder', desc: 'Score 500 points', category: 'score' },
@@ -30,6 +30,11 @@ export var ACHIEVEMENTS = [
     { id: 'speed_demon', name: 'Speed Demon', desc: 'Clear a level in under 20s', category: 'skill' },
     { id: 'untouchable', name: 'Untouchable', desc: 'Survive Level 8', category: 'skill' },
     { id: 'survivor', name: 'Survivor', desc: 'Arena shrinks to 8x8', category: 'skill' },
+    { id: 'first_blood', name: 'First Blood', desc: 'Eat first food in the ALPHA boss fight', category: 'boss' },
+    { id: 'calm_in_storm', name: 'Calm in the Storm', desc: 'Eat food during an active shockwave', category: 'boss' },
+    { id: 'no_clone_casualty', name: 'No Clone Casualty', desc: 'Complete Level 10 without a shadow clone hit', category: 'boss' },
+    { id: 'boss_phase3_survivor', name: 'Berserk Survivor', desc: 'Survive Phase 3 for 30 seconds', category: 'boss' },
+    { id: 'ghost_of_machine', name: 'Ghost of the Machine', desc: 'Defeat the ALPHA boss', category: 'boss' },
 ];
 
 var CATEGORY_COLORS = {
@@ -39,6 +44,7 @@ var CATEGORY_COLORS = {
     collect: '#4a9eff',
     endless: '#ef4444',
     skill: '#06b6d4',
+    boss: '#ff4400',
 };
 
 var CATEGORY_NAMES = {
@@ -48,6 +54,7 @@ var CATEGORY_NAMES = {
     collect: 'COLLECTION',
     endless: 'ENDLESS',
     skill: 'SKILL',
+    boss: 'BOSS',
 };
 
 // --- Skin Definitions ---

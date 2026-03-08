@@ -1066,7 +1066,7 @@ test.describe('Snake Game — Achievements', () => {
     const exports = await page.evaluate(async () => {
       const mod = await import('/js/achievements.js')
       return {
-        hasAchievements: Array.isArray(mod.ACHIEVEMENTS) && mod.ACHIEVEMENTS.length === 20,
+        hasAchievements: Array.isArray(mod.ACHIEVEMENTS) && mod.ACHIEVEMENTS.length === 25,
         hasSkins: Array.isArray(mod.SKINS) && mod.SKINS.length >= 6,
         hasTrails: Array.isArray(mod.TRAILS) && mod.TRAILS.length >= 4,
         hasUnlock: typeof mod.unlockAchievement === 'function',

@@ -24,6 +24,7 @@ export function tick(prev) {
         _bossPulseTriggered: false,
         _bossPhaseChanged: false,
         _bossShockwaveActivated: false,
+        _bossAteInShockwave: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -335,6 +336,9 @@ export function tick(prev) {
     var bossPulseTriggered = false;
     var bossPhaseChanged = false;
     var bossShockwaveActivated = false;
+    var bossAteInShockwave = false;
+    var newBossPhase3Ticks = clean.bossPhase3Ticks || 0;
+    var newBossCloneHitThisRun = clean.bossCloneHitThisRun || false;
 
     if (newLevel === MAX_LEVEL && clean.endlessWave === 0) {
         // Tick the boss state machine
@@ -364,6 +368,7 @@ export function tick(prev) {
         if (newBossState && newBossState.shadowClones.length > 0) {
             if (checkShadowCloneCollision(newHead, newBossState.shadowClones)) {
                 bossCloneHit = true;
+                newBossCloneHitThisRun = true;
                 newScore = Math.max(0, newScore - getShadowCloneHitPenalty());
             }
         }
@@ -380,9 +385,19 @@ export function tick(prev) {
                 newSnake = pushSnakeInward(newSnake, swBounds);
             }
         }
+
+        // Boss achievement tracking
+        if (newBossState && newBossState.phase === 3) {
+            newBossPhase3Ticks = newBossPhase3Ticks + 1;
+        }
+        if (ate && newBossState && newBossState.shockwaveActive) {
+            bossAteInShockwave = true;
+        }
     } else if (newLevel !== MAX_LEVEL || clean.endlessWave > 0) {
         // Reset boss state when not on Level 10
         newBossState = null;
+        newBossPhase3Ticks = 0;
+        newBossCloneHitThisRun = false;
     }
 
     // Power-up spawning
@@ -437,5 +452,8 @@ export function tick(prev) {
         _bossPulseTriggered: bossPulseTriggered,
         _bossPhaseChanged: bossPhaseChanged,
         _bossShockwaveActivated: bossShockwaveActivated,
+        _bossAteInShockwave: bossAteInShockwave,
+        bossPhase3Ticks: newBossPhase3Ticks,
+        bossCloneHitThisRun: newBossCloneHitThisRun,
     };
 }
