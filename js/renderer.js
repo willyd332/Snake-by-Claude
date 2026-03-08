@@ -6,6 +6,131 @@ import { getPowerUpDef } from './powerups.js';
 import { renderEnvironment } from './environment.js';
 import { manhattanDistance } from './hunter.js';
 
+function getDeathMessage(deathCause, level, config) {
+    if (deathCause === 'hunter') {
+        return 'ALPHA found you. Its jaws close around your data. Protocol complete.';
+    }
+    if (deathCause === 'arena' || deathCause === 'crush') {
+        return 'The walls close in. Memory reclaimed. Process terminated.';
+    }
+    if (deathCause === 'obstacle') {
+        return 'The patrol caught you. These corridors don\'t forgive mistakes.';
+    }
+    if (config.fogRadius) {
+        return 'Lost in the dark. The fog swallows your light whole.';
+    }
+    if (deathCause === 'self') {
+        return 'You consumed yourself. The data loop closes.';
+    }
+    if (deathCause === 'wall') {
+        return 'The structure holds firm. Your light scatters against the walls.';
+    }
+    return 'The grid reclaims you. Your light fades into the structure.';
+}
+
+function renderWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
+    var words = text.split(' ');
+    var line = '';
+    var lineY = y;
+    for (var n = 0; n < words.length; n++) {
+        var testLine = line + (line ? ' ' : '') + words[n];
+        var metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line) {
+            ctx.fillText(line, x, lineY);
+            line = words[n];
+            lineY += lineHeight;
+        } else {
+            line = testLine;
+        }
+    }
+    if (line) {
+        ctx.fillText(line, x, lineY);
+    }
+}
+
+function renderDeathIcon(ctx, x, y, deathCause, config) {
+    ctx.save();
+    switch (deathCause) {
+        case 'hunter':
+            ctx.fillStyle = '#f97316';
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(x - 10, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 10, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        case 'self':
+            ctx.strokeStyle = config.color;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = config.color;
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0.3, Math.PI * 1.8);
+            ctx.stroke();
+            ctx.fillStyle = config.color;
+            ctx.beginPath();
+            var selfTipX = x + 12 * Math.cos(0.3);
+            var selfTipY = y + 12 * Math.sin(0.3);
+            ctx.moveTo(selfTipX + 5, selfTipY - 1);
+            ctx.lineTo(selfTipX - 1, selfTipY + 5);
+            ctx.lineTo(selfTipX - 1, selfTipY - 5);
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'obstacle':
+            ctx.strokeStyle = config.obstacleColor || '#f97316';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = config.obstacleColor || '#f97316';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(x, y - 14);
+            ctx.lineTo(x + 14, y + 10);
+            ctx.lineTo(x - 14, y + 10);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fillStyle = config.obstacleColor || '#f97316';
+            ctx.font = 'bold 14px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText('!', x, y + 7);
+            break;
+        case 'arena':
+        case 'crush':
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(x - 6, y - 14);
+            ctx.lineTo(x - 14, y);
+            ctx.lineTo(x - 6, y + 14);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x + 6, y - 14);
+            ctx.lineTo(x + 14, y);
+            ctx.lineTo(x + 6, y + 14);
+            ctx.stroke();
+            break;
+        default:
+            ctx.strokeStyle = config.wallColor || config.color;
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = config.wallColor || config.color;
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(x - 12, y - 12);
+            ctx.lineTo(x + 12, y + 12);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x + 12, y - 12);
+            ctx.lineTo(x - 12, y + 12);
+            ctx.stroke();
+            break;
+    }
+    ctx.restore();
+}
+
 function lerpPos(prev, curr, t, wrapGrid) {
     var dx = curr.x - prev.x;
     var dy = curr.y - prev.y;
@@ -404,19 +529,75 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
     // Game over overlay
     if (state.gameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        var goDeathCause = state._deathCause || 'boundary';
+        var goKilledByHunter = state._killedByHunter;
+        var goHighScore = interp ? interp.highScore : 0;
+        var goCenterX = CANVAS_SIZE / 2;
+
+        // Level-themed dark background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.globalAlpha = 0.06;
+        ctx.fillStyle = config.color;
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.globalAlpha = 1;
 
-        var killedByHunter = state._killedByHunter;
-        ctx.fillStyle = killedByHunter ? '#f97316' : '#ef4444';
-        ctx.font = 'bold 28px Courier New';
         ctx.textAlign = 'center';
-        ctx.fillText(killedByHunter ? 'ALPHA CAUGHT YOU' : 'GAME OVER', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
 
-        ctx.fillStyle = '#888';
-        ctx.font = '14px Courier New';
-        ctx.fillText('Score: ' + state.score, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
-        ctx.fillText('Press any arrow key to restart', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 35);
+        // Death icon
+        renderDeathIcon(ctx, goCenterX, 65, goDeathCause, config);
+
+        // Title
+        var goTitleColor = goKilledByHunter ? '#f97316' : '#ef4444';
+        var goTitleText = goKilledByHunter ? 'ALPHA CAUGHT YOU' : 'GAME OVER';
+        ctx.fillStyle = goTitleColor;
+        ctx.font = 'bold 24px Courier New';
+        ctx.shadowColor = goTitleColor;
+        ctx.shadowBlur = 8;
+        ctx.fillText(goTitleText, goCenterX, 115);
+        ctx.shadowBlur = 0;
+
+        // Narrative death message
+        var goMessage = getDeathMessage(goDeathCause, state.level, config);
+        ctx.fillStyle = 'rgba(180, 180, 190, 0.85)';
+        ctx.font = 'italic 10px Courier New';
+        renderWrappedText(ctx, goMessage, goCenterX, 145, CANVAS_SIZE - 80, 14);
+
+        // Score breakdown
+        var goTotalFood = Math.floor(state.score / 10);
+        var goBreakdownY = 200;
+        ctx.font = '11px Courier New';
+        ctx.fillStyle = config.foodColor;
+        ctx.fillText('\u25CF Food: ' + goTotalFood, goCenterX, goBreakdownY);
+        ctx.fillStyle = config.color;
+        ctx.fillText('\u25B2 Level: ' + state.level, goCenterX, goBreakdownY + 18);
+        ctx.fillStyle = '#ccc';
+        ctx.fillText('\u2605 Score: ' + state.score, goCenterX, goBreakdownY + 36);
+
+        // High score
+        var goIsNewHigh = state.score > goHighScore && state.score > 0;
+        if (goIsNewHigh) {
+            var goHighPulse = Math.sin(Date.now() / 300) * 0.2 + 0.8;
+            ctx.globalAlpha = goHighPulse;
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 13px Courier New';
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 8;
+            ctx.fillText('\u2605 NEW HIGH SCORE \u2605', goCenterX, goBreakdownY + 62);
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+        } else if (goHighScore > 0) {
+            ctx.fillStyle = '#666';
+            ctx.font = '11px Courier New';
+            ctx.fillText('High Score: ' + goHighScore, goCenterX, goBreakdownY + 62);
+        }
+
+        // Controls
+        ctx.fillStyle = '#777';
+        ctx.font = '11px Courier New';
+        ctx.fillText('R \u2014 Restart', goCenterX, CANVAS_SIZE - 50);
+        ctx.fillText('ESC \u2014 Title', goCenterX, CANVAS_SIZE - 34);
+
         ctx.textAlign = 'left';
     }
 

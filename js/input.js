@@ -164,6 +164,13 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // R to restart level on game over
+        if (state.gameOver && (e.key === 'r' || e.key === 'R')) {
+            e.preventDefault();
+            callbacks.onRestartLevel();
+            return;
+        }
+
         // Konami code detection (only before game starts)
         if (!state.started && !state.gameOver) {
             if (e.key === KONAMI_SEQUENCE[konamiProgress]) {

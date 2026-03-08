@@ -758,6 +758,99 @@ test.describe('Snake Game — Archive', () => {
   })
 })
 
+test.describe('Snake Game — Game Over Screen', () => {
+  test('_deathCause flag exists in tick event flags', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const hasFlag = await page.evaluate(async () => {
+      const { tick } = await import('/js/tick.js')
+      const { createInitialState } = await import('/js/state.js')
+      const state = createInitialState()
+      const result = tick(state)
+      return '_deathCause' in result
+    })
+    expect(hasFlag).toBe(true)
+  })
+
+  test('death causes are set correctly for different collision types', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const causes = await page.evaluate(async () => {
+      const { tick } = await import('/js/tick.js')
+      const { createInitialState } = await import('/js/state.js')
+
+      // Test boundary death: move snake into a wall at grid edge
+      var state = createInitialState()
+      state = Object.assign({}, state, {
+        started: true,
+        nextDirection: { x: -1, y: 0 },
+        snake: [{ x: 0, y: 10 }, { x: 1, y: 10 }, { x: 2, y: 10 }],
+      })
+      var result = tick(state)
+      var boundaryCause = result._deathCause
+
+      // Test self collision: set snake so head moves into body
+      state = createInitialState()
+      state = Object.assign({}, state, {
+        started: true,
+        nextDirection: { x: 1, y: 0 },
+        snake: [{ x: 5, y: 5 }, { x: 5, y: 4 }, { x: 6, y: 4 }, { x: 6, y: 5 }],
+      })
+      result = tick(state)
+      var selfCause = result._deathCause
+
+      return { boundaryCause: boundaryCause, selfCause: selfCause }
+    })
+    expect(causes.boundaryCause).toBe('boundary')
+    expect(causes.selfCause).toBe('self')
+  })
+
+  test('game over screen renders without errors', async ({ page }) => {
+    await skipPrologue(page)
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+    await page.goto('/')
+    await page.waitForTimeout(200)
+
+    // Start game and move left — snake at center, hits boundary after ~10 ticks (1500ms at 150ms/tick)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(100)
+    await page.keyboard.press('ArrowUp')
+    await page.waitForTimeout(2500)
+
+    // Should see game over screen — check for no JS errors
+    expect(errors).toEqual([])
+
+    // Take screenshot of game over screen
+    await page.screenshot({ path: 'tests/screenshots/04-game-over.png', fullPage: true })
+  })
+
+  test('R key restarts the game on game over', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(200)
+
+    // Start game and die by hitting boundary
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(100)
+    await page.keyboard.press('ArrowUp')
+    await page.waitForTimeout(2500)
+
+    // Press R to restart — should show "Press any arrow key to start"
+    await page.keyboard.press('r')
+    await page.waitForTimeout(300)
+
+    const messageText = await page.evaluate(() => {
+      return document.getElementById('message').textContent
+    })
+    expect(messageText).toBe('Press any arrow key to start')
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await skipPrologue(page)

@@ -16,6 +16,7 @@ export function tick(prev) {
         _collectedFragment: false,
         _collectedFragmentLevel: null,
         _killedByHunter: false,
+        _deathCause: null,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -36,30 +37,30 @@ export function tick(prev) {
         };
     } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                newHead.y < 0 || newHead.y >= GRID_SIZE) {
-        return Object.assign({}, clean, { gameOver: true, direction: dir });
+        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary' });
     }
 
     // Shrinking arena boundary — cannot be bypassed even with ghost
     if (config.shrinkingArena) {
         if (newHead.x < clean.arenaMinX || newHead.x > clean.arenaMaxX ||
             newHead.y < clean.arenaMinY || newHead.y > clean.arenaMaxY) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena' });
         }
     }
 
     // Wall obstacle collision (ghost passes through)
     if (!isGhost && collides(newHead, clean.walls)) {
-        return Object.assign({}, clean, { gameOver: true, direction: dir });
+        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall' });
     }
 
     // Self collision (ghost passes through)
     if (!isGhost && collides(newHead, clean.snake)) {
-        return Object.assign({}, clean, { gameOver: true, direction: dir });
+        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self' });
     }
 
     // Moving obstacle collision (always fatal, even with ghost)
     if (clean.obstacles.length > 0 && collides(newHead, getObstaclePositions(clean.obstacles))) {
-        return Object.assign({}, clean, { gameOver: true, direction: dir });
+        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle' });
     }
 
     // Hunter collision (ghost passes through hunter body but not head)
@@ -67,12 +68,12 @@ export function tick(prev) {
         var hunterHead = clean.hunter.segments[0];
         var hitHunterHead = newHead.x === hunterHead.x && newHead.y === hunterHead.y;
         if (hitHunterHead) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter' });
         }
         if (!isGhost && clean.hunter.segments.length > 1) {
             var hunterBody = clean.hunter.segments.slice(1);
             if (collides(newHead, hunterBody)) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter' });
             }
         }
     }
@@ -89,10 +90,10 @@ export function tick(prev) {
                 };
             } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary' });
             }
             if (!isGhost && collides(newHead, clean.walls)) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall' });
             }
         }
     }
@@ -105,7 +106,7 @@ export function tick(prev) {
         var obPositions = getObstaclePositions(newObstacles);
         var snakeHit = obPositions.some(function(op) { return collides(op, [newHead].concat(clean.snake)); });
         if (snakeHit) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle' });
         }
     }
 
@@ -126,11 +127,11 @@ export function tick(prev) {
         var newHunterHead = newHunter.segments[0];
         var playerHead = newSnake[0];
         if (newHunterHead.x === playerHead.x && newHunterHead.y === playerHead.y) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter' });
         }
         if (!isGhost && newSnake.length > 1) {
             if (collides(newHunterHead, newSnake.slice(1))) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter' });
             }
         }
     }
@@ -262,7 +263,7 @@ export function tick(prev) {
                     return collides(seg, shrinkCells);
                 });
                 if (snakeCrushed) {
-                    return Object.assign({}, clean, { gameOver: true, direction: dir });
+                    return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush' });
                 }
                 if (newFood && collides(newFood, shrinkCells)) {
                     newFood = null;
@@ -331,5 +332,6 @@ export function tick(prev) {
         _ateFood: ate,
         _ateFoodPos: ate ? clean.food : null,
         _killedByHunter: false,
+        _deathCause: null,
     };
 }

@@ -365,6 +365,15 @@ setupInput({
         }
         switchToTitle();
     },
+
+    onRestartLevel: function() {
+        if (state.score > highScore) {
+            highScore = state.score;
+            localStorage.setItem('snake-highscore', String(highScore));
+            dom.highScoreEl.textContent = highScore;
+        }
+        startGameAtLevel(startingLevel);
+    },
 });
 
 // --- Game loop ---
@@ -619,6 +628,7 @@ function gameLoop(timestamp) {
         prevSnake: prevSnake,
         prevHunter: prevHunterSegments,
         hunterTrail: hunterTrailHistory,
+        highScore: highScore,
     };
 
     // Apply screen shake
