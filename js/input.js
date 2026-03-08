@@ -44,6 +44,26 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // --- Codex Screen ---
+        if (screen === 'codex') {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onCodexBack();
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onCodexScroll(-1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onCodexScroll(1);
+                return;
+            }
+            return;
+        }
+
         // --- Title Screen ---
         if (screen === 'title') {
             if (e.key === 'Enter') {
@@ -54,6 +74,11 @@ export function setupInput(callbacks) {
             if (e.key === 'l' || e.key === 'L') {
                 e.preventDefault();
                 callbacks.onTitleLevelSelect();
+                return;
+            }
+            if (e.key === 'c' || e.key === 'C') {
+                e.preventDefault();
+                callbacks.onTitleCodex();
                 return;
             }
             return;

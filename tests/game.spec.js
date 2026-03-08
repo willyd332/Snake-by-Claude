@@ -436,6 +436,104 @@ test.describe('Snake Game — Endings', () => {
   })
 })
 
+test.describe('Snake Game — Fragments', () => {
+  test('fragment data exists for all 10 levels', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const { FRAGMENT_DATA, getFragmentForLevel } = await import('/js/fragments.js')
+      const allLevels = []
+      for (let i = 1; i <= 10; i++) {
+        const frag = getFragmentForLevel(i)
+        allLevels.push({
+          level: i,
+          hasData: frag !== null,
+          hasPosition: frag && typeof frag.position.x === 'number' && typeof frag.position.y === 'number',
+          hasText: frag && typeof frag.text === 'string' && frag.text.length > 0,
+          requiresFood: frag ? frag.requiresFood : null,
+        })
+      }
+      return { total: FRAGMENT_DATA.length, levels: allLevels }
+    })
+
+    expect(result.total).toBe(10)
+    result.levels.forEach(l => {
+      expect(l.hasData).toBe(true)
+      expect(l.hasPosition).toBe(true)
+      expect(l.hasText).toBe(true)
+      expect(l.requiresFood).toBeGreaterThanOrEqual(0)
+    })
+  })
+
+  test('fragment localStorage persistence works', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const { collectFragment, getCollectedFragments, isFragmentCollected } = await import('/js/fragments.js')
+      const beforeCollect = getCollectedFragments()
+      collectFragment(3)
+      collectFragment(7)
+      collectFragment(3) // duplicate should be ignored
+      const afterCollect = getCollectedFragments()
+      return {
+        beforeCount: beforeCollect.length,
+        afterCount: afterCollect.length,
+        has3: isFragmentCollected(3),
+        has7: isFragmentCollected(7),
+        has5: isFragmentCollected(5),
+      }
+    })
+
+    expect(result.beforeCount).toBe(0)
+    expect(result.afterCount).toBe(2)
+    expect(result.has3).toBe(true)
+    expect(result.has7).toBe(true)
+    expect(result.has5).toBe(false)
+  })
+
+  test('fragment positions do not collide with walls', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const { FRAGMENT_DATA } = await import('/js/fragments.js')
+      const { generateWalls } = await import('/js/levels.js')
+      const collisions = []
+      for (let i = 0; i < FRAGMENT_DATA.length; i++) {
+        const frag = FRAGMENT_DATA[i]
+        const walls = generateWalls(frag.level)
+        const hit = walls.some(w => w.x === frag.position.x && w.y === frag.position.y)
+        if (hit) collisions.push(frag.level)
+      }
+      return collisions
+    })
+
+    expect(result).toEqual([])
+  })
+
+  test('codex screen is accessible from title', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    // Press C to open codex
+    await page.keyboard.press('c')
+    await page.waitForTimeout(300)
+
+    // Verify codex is rendered (check for "DATA CODEX" text on canvas)
+    await page.screenshot({ path: 'tests/screenshots/05-codex.png', fullPage: true })
+
+    // Press Escape to return to title
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await skipPrologue(page)

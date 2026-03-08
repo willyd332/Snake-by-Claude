@@ -222,6 +222,23 @@ export function playMenuNavigateSound() {
     tone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 }
 
+export function playFragmentCollectSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Crystal chime: ascending high-pitch sine tones
+    var freqs = [1200, 1800, 2400];
+    freqs.forEach(function(freq, i) {
+        var startTime = now + i * 0.08;
+        var tone = createTone(ctx, 'sine', startTime, startTime + 0.3);
+        tone.osc.frequency.setValueAtTime(freq, startTime);
+        tone.gain.gain.setValueAtTime(0, startTime);
+        tone.gain.gain.linearRampToValueAtTime(0.1, startTime + 0.02);
+        tone.gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
+    });
+}
+
 export function playStartSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

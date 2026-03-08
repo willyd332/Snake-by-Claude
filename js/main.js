@@ -30,7 +30,12 @@ import {
     initAudio, playEatSound, playLevelUpSound, playDeathSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playMenuSelectSound, playMenuNavigateSound, playStartSound,
+    playFragmentCollectSound,
 } from './audio.js';
+import {
+    FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected, collectFragment,
+    renderFragmentOverlay, renderCodex,
+} from './fragments.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -54,7 +59,7 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending'
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex'
 var showPrologue = !hasPrologueSeen();
 var currentScreen = showPrologue ? 'prologue' : 'title';
 var prologueState = showPrologue ? createPrologueState() : null;
@@ -62,6 +67,8 @@ var storyScreenState = null;
 var endingState = null;
 var titleState = createTitleState();
 var levelSelectState = createLevelSelectState();
+var codexState = { scrollOffset: 0 };
+var fragmentTextState = null;
 
 // --- Game State ---
 var state = createInitialState();
@@ -77,6 +84,15 @@ dom.highScoreEl.textContent = highScore;
 
 // --- UI ---
 var ui = createUI(messageEl);
+
+// --- Fragment Helpers ---
+function spawnFragmentForLevel(level, foodEaten) {
+    var fragData = getFragmentForLevel(level);
+    if (!fragData) return null;
+    if (isFragmentCollected(level)) return null;
+    if (foodEaten < fragData.requiresFood) return null;
+    return { x: fragData.position.x, y: fragData.position.y };
+}
 
 // --- Screen Management ---
 function showGameplayUI() {
@@ -94,6 +110,12 @@ function hideGameplayUI() {
 function switchToTitle() {
     currentScreen = 'title';
     titleState = createTitleState();
+    hideGameplayUI();
+}
+
+function switchToCodex() {
+    currentScreen = 'codex';
+    codexState = { scrollOffset: 0 };
     hideGameplayUI();
 }
 
@@ -123,8 +145,10 @@ function startGameAtLevel(level) {
         obstacles: generateObstacles(level),
         portals: generatePortals(level),
         hunter: generateHunter(level),
+        fragment: spawnFragmentForLevel(level, 0),
     });
 
+    fragmentTextState = null;
     messageEl.textContent = 'Press any arrow key to start';
     messageEl.className = '';
     messageEl.style.color = '';
@@ -178,6 +202,25 @@ setupInput({
         playMenuSelectSound();
         switchToLevelSelect();
     },
+    onTitleCodex: function() {
+        initAudio();
+        playMenuSelectSound();
+        switchToCodex();
+    },
+
+    // Codex actions
+    onCodexBack: function() {
+        playMenuNavigateSound();
+        switchToTitle();
+    },
+    onCodexScroll: function(delta) {
+        var maxScroll = Math.max(0, FRAGMENT_DATA.length - 8);
+        var newOffset = Math.max(0, Math.min(maxScroll, codexState.scrollOffset + delta));
+        if (newOffset !== codexState.scrollOffset) {
+            playMenuNavigateSound();
+            codexState = Object.assign({}, codexState, { scrollOffset: newOffset });
+        }
+    },
 
     // Level select actions
     onLevelSelectNavigate: function(delta) {
@@ -227,6 +270,7 @@ setupInput({
         shakeState = createShakeState();
         prevSnake = null;
         prevHunterSegments = null;
+        fragmentTextState = null;
         state = createInitialState();
         state = Object.assign({}, state, {
             level: startingLevel,
@@ -234,6 +278,7 @@ setupInput({
             obstacles: generateObstacles(startingLevel),
             portals: generatePortals(startingLevel),
             hunter: generateHunter(startingLevel),
+            fragment: spawnFragmentForLevel(startingLevel, 0),
             started: true,
             nextDirection: newDir,
         });
@@ -315,6 +360,12 @@ function gameLoop(timestamp) {
         return;
     }
 
+    if (currentScreen === 'codex') {
+        renderCodex(ctx, codexState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (currentScreen === 'levelSelect') {
         renderLevelSelect(ctx, levelSelectState);
         requestAnimationFrame(gameLoop);
@@ -376,6 +427,12 @@ function gameLoop(timestamp) {
             particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, newConfig.color);
             shakeState = triggerShake(4, 0.3);
 
+            // Spawn fragment for new level
+            var newLevelFrag = spawnFragmentForLevel(state.level, 0);
+            if (newLevelFrag) {
+                state = Object.assign({}, state, { fragment: newLevelFrag });
+            }
+
             // Show inter-level story screen
             var newStoryState = createStoryScreenState(state.level);
             if (newStoryState.lines.length > 0) {
@@ -395,6 +452,27 @@ function gameLoop(timestamp) {
                 playPowerUpCollectSound();
                 ui.showPowerUpCollected(collectedDef);
                 particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
+            }
+        }
+
+        // Fragment collected: sound, particles, text overlay, localStorage
+        if (state._collectedFragment) {
+            var fragLevel = state._collectedFragmentLevel;
+            var fragData = getFragmentForLevel(fragLevel);
+            if (fragData) {
+                playFragmentCollectSound();
+                collectFragment(fragLevel);
+                fragmentTextState = { text: fragData.text, startTime: Date.now() };
+                particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, '#4a9eff', 20, 70, 0.8);
+                shakeState = triggerShake(3, 0.15);
+            }
+        }
+
+        // Fragment conditional spawning: check if food threshold now met
+        if (state._ateFood && !state.fragment && !state._collectedFragment) {
+            var pendingFrag = spawnFragmentForLevel(state.level, state.foodEaten);
+            if (pendingFrag) {
+                state = Object.assign({}, state, { fragment: pendingFrag });
             }
         }
 
@@ -470,6 +548,14 @@ function gameLoop(timestamp) {
     renderParticles(ctx, particleSystem);
 
     ctx.restore();
+
+    // Fragment text overlay (rendered outside shake transform)
+    if (fragmentTextState) {
+        var stillShowing = renderFragmentOverlay(ctx, fragmentTextState);
+        if (!stillShowing) {
+            fragmentTextState = null;
+        }
+    }
     requestAnimationFrame(gameLoop);
 }
 

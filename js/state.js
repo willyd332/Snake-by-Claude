@@ -28,6 +28,7 @@ export function createInitialState() {
         arenaMaxX: GRID_SIZE - 1,
         arenaMaxY: GRID_SIZE - 1,
         shrinkCounter: 0,
+        fragment: null,
     };
 }
 

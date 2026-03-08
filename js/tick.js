@@ -13,6 +13,8 @@ export function tick(prev) {
         _ateFoodPos: null,
         _collectedPowerUp: null,
         _shrinkOccurred: false,
+        _collectedFragment: false,
+        _collectedFragmentLevel: null,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -146,6 +148,16 @@ export function tick(prev) {
         }
     }
 
+    // Fragment collection
+    var collectedFragment = false;
+    var collectedFragmentLevel = null;
+    var newFragment = clean.fragment;
+    if (newFragment && newHead.x === newFragment.x && newHead.y === newFragment.y) {
+        collectedFragment = true;
+        collectedFragmentLevel = clean.level;
+        newFragment = null;
+    }
+
     // Power-up state updates
     var newPowerUp = clean.powerUp;
     var newActivePowerUp = clean.activePowerUp;
@@ -188,6 +200,7 @@ export function tick(prev) {
         newPowerUp = null;
         newActivePowerUp = null;
         newPowerUpSpawnCounter = 0;
+        newFragment = null;
     }
 
     // Shrinking arena
@@ -256,6 +269,9 @@ export function tick(prev) {
                 if (newPowerUp && collides({ x: newPowerUp.x, y: newPowerUp.y }, shrinkCells)) {
                     newPowerUp = null;
                 }
+                if (newFragment && collides({ x: newFragment.x, y: newFragment.y }, shrinkCells)) {
+                    newFragment = null;
+                }
             }
         }
     }
@@ -306,7 +322,10 @@ export function tick(prev) {
         arenaMaxX: newArenaMaxX,
         arenaMaxY: newArenaMaxY,
         shrinkCounter: newShrinkCounter,
+        fragment: newFragment,
         _collectedPowerUp: collectedPowerUpType,
+        _collectedFragment: collectedFragment,
+        _collectedFragmentLevel: collectedFragmentLevel,
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
         _ateFoodPos: ate ? clean.food : null,

@@ -265,8 +265,12 @@ export function renderTitleScreen(ctx, titleState) {
     ctx.font = '13px Courier New';
     ctx.fillText('L — Level Select', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 40);
 
+    ctx.fillStyle = 'rgba(74, 158, 255, 0.4)';
+    ctx.font = '13px Courier New';
+    ctx.fillText('C — Data Codex', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 60);
+
     // Level dots at bottom
-    var dotY = CANVAS_SIZE / 2 + 80;
+    var dotY = CANVAS_SIZE / 2 + 90;
     var dotSpacing = 28;
     var dotsStartX = CANVAS_SIZE / 2 - (dotSpacing * (MAX_LEVEL - 1)) / 2;
     var highest = getHighestLevel();

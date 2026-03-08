@@ -189,6 +189,36 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         }
     }
 
+    // Data fragment
+    if (state.fragment) {
+        var fragPulse = Math.sin(Date.now() / 400) * 0.3 + 0.7;
+        var fragX = state.fragment.x * CELL_SIZE + CELL_SIZE / 2;
+        var fragY = state.fragment.y * CELL_SIZE + CELL_SIZE / 2;
+        ctx.shadowColor = '#4a9eff';
+        ctx.shadowBlur = 10;
+        ctx.globalAlpha = fragPulse;
+        ctx.fillStyle = '#4a9eff';
+        // Diamond shape (rotated square)
+        ctx.beginPath();
+        ctx.moveTo(fragX, fragY - 6);
+        ctx.lineTo(fragX + 6, fragY);
+        ctx.lineTo(fragX, fragY + 6);
+        ctx.lineTo(fragX - 6, fragY);
+        ctx.closePath();
+        ctx.fill();
+        // Inner highlight
+        ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
+        ctx.beginPath();
+        ctx.moveTo(fragX, fragY - 3);
+        ctx.lineTo(fragX + 3, fragY);
+        ctx.lineTo(fragX, fragY + 3);
+        ctx.lineTo(fragX - 3, fragY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+    }
+
     // Power-up
     if (state.powerUp) {
         var puDef = getPowerUpDef(state.powerUp.type);
