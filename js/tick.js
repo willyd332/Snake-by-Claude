@@ -150,6 +150,10 @@ export function tick(prev) {
     var endlessWave = clean.endlessWave;
     var endlessConfig = clean.endlessConfig;
 
+    var newPowerUp = clean.powerUp;
+    var newActivePowerUp = clean.activePowerUp;
+    var newPowerUpSpawnCounter = clean.powerUpSpawnCounter;
+
     if (newFoodEaten >= ENDLESS_FOOD_PER_WAVE) {
         endlessWave = endlessWave + 1;
         endlessConfig = getEndlessConfig(endlessWave);
@@ -250,9 +254,6 @@ export function tick(prev) {
     }
 
     // Power-up spawning
-    var newPowerUp = (newFoodEaten === 0 && endlessWave !== clean.endlessWave) ? null : clean.powerUp;
-    var newActivePowerUp = (newFoodEaten === 0 && endlessWave !== clean.endlessWave) ? null : clean.activePowerUp;
-    var newPowerUpSpawnCounter = (newFoodEaten === 0 && endlessWave !== clean.endlessWave) ? 0 : clean.powerUpSpawnCounter;
     var collectedPowerUpType = null;
 
     // Check power-up collection

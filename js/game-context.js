@@ -137,6 +137,12 @@ export function restartGame(g, deps, newDir) {
     }
     setEndlessHighScore(g.state.score);
     setEndlessHighWave(g.state.endlessWave);
+    if (g.state.score > g.highScore) {
+        g.highScore = g.state.score;
+        if (deps.dom && deps.dom.highScoreEl) {
+            deps.dom.highScoreEl.textContent = g.highScore;
+        }
+    }
 
     g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     deps.ui.clearTimers();
@@ -184,6 +190,12 @@ export function goToTitle(g, deps) {
     }
     setEndlessHighScore(g.state.score);
     setEndlessHighWave(g.state.endlessWave);
+    if (g.state.score > g.highScore) {
+        g.highScore = g.state.score;
+        if (deps.dom && deps.dom.highScoreEl) {
+            deps.dom.highScoreEl.textContent = g.highScore;
+        }
+    }
     switchToTitle(g, deps);
 }
 
@@ -194,5 +206,11 @@ export function onRestartLevel(g, deps) {
     }
     setEndlessHighScore(g.state.score);
     setEndlessHighWave(g.state.endlessWave);
+    if (g.state.score > g.highScore) {
+        g.highScore = g.state.score;
+        if (deps.dom && deps.dom.highScoreEl) {
+            deps.dom.highScoreEl.textContent = g.highScore;
+        }
+    }
     startEndlessMode(g, deps);
 }

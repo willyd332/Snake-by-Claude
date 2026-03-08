@@ -185,6 +185,12 @@ export function processPostTickEvents(ctx) {
         // Save endless high scores on death
         setEndlessHighScore(ctx.state.score);
         setEndlessHighWave(ctx.state.endlessWave);
+        if (ctx.state.score > ctx.highScore) {
+            ctx.highScore = ctx.state.score;
+            if (ctx.dom.highScoreEl) {
+                ctx.dom.highScoreEl.textContent = ctx.highScore;
+            }
+        }
 
         if (ctx.state._killedByHunter) {
             // ALPHA kill: distinctive sound, orange particles, heavier shake
