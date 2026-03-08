@@ -36,6 +36,11 @@ export function setupInput(callbacks) {
                 callbacks.onTitlePlay();
                 return;
             }
+            if (e.key === 'm' || e.key === 'M') {
+                e.preventDefault();
+                callbacks.onTitleModifiers();
+                return;
+            }
             if (e.key === 't' || e.key === 'T') {
                 e.preventDefault();
                 callbacks.onTitleGallery();
@@ -74,6 +79,31 @@ export function setupInput(callbacks) {
             if (e.key === 'Enter' || e.key === 'ArrowRight') {
                 e.preventDefault();
                 callbacks.onSettingsToggle(1);
+                return;
+            }
+            return;
+        }
+
+        // --- Modifiers Screen ---
+        if (screen === 'modifiers') {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onModifiersBack();
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onModifiersNavigate(-1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onModifiersNavigate(1);
+                return;
+            }
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                callbacks.onModifiersToggle();
                 return;
             }
             return;
@@ -195,9 +225,11 @@ export function setupInput(callbacks) {
             return;
         }
 
-        // Prevent 180-degree reversal
+        // Prevent 180-degree reversal (unless Glass Snake modifier is active
+        // — in which case let it through so tick can kill the snake)
         var isOpposite = (newDir.x + state.direction.x === 0 && newDir.y + state.direction.y === 0);
-        if (!isOpposite) {
+        var glassSnakeActive = state.modifiers && state.modifiers.indexOf('glass_snake') !== -1;
+        if (!isOpposite || glassSnakeActive) {
             callbacks.changeDirection(newDir);
         }
     });

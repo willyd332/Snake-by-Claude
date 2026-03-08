@@ -197,12 +197,15 @@ export function tick(prev) {
     var dir = clean.nextDirection;
     if (dir.x === 0 && dir.y === 0) return clean;
 
-    // GLASS SNAKE modifier: die if player tries a direction on the same axis as current
-    // (effectively prevents any reversal-like maneuver — you can only turn perpendicular)
-    if (isModifierActive(clean, 'glass_snake') && clean.direction.x !== 0 || clean.direction.y !== 0) {
+    // GLASS SNAKE modifier: die if player inputs the exact opposite direction
+    // The input layer lets reversals through when this modifier is active.
+    if (isModifierActive(clean, 'glass_snake') && (clean.direction.x !== 0 || clean.direction.y !== 0)) {
         var isReversal = (dir.x + clean.direction.x === 0 && dir.y + clean.direction.y === 0);
         if (isReversal) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self' });
+            return Object.assign({}, clean, {
+                gameOver: true, direction: dir, _deathCause: 'self',
+                modifiers: clean.modifiers, modifierMultiplier: clean.modifierMultiplier,
+            });
         }
     }
 

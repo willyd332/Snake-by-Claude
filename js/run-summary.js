@@ -19,6 +19,7 @@
 
 import { addLeaderboardEntry, formatDate } from './leaderboard.js';
 import { getStreakBonus, STREAK_DISPLAY_MIN } from './streak.js';
+import { getActiveModifiers, computeModifierMultiplier, getActiveModifierIds } from './modifiers.js';
 
 var DEATH_CAUSE_LABELS = {
     boundary:  'Hit a wall',
@@ -297,6 +298,15 @@ export function showRunSummary(data, onRestart, onMenu) {
         if (bonus > 0) {
             statsEl.appendChild(createStatRow('Streak bonus', '+' + bonus + ' pts', '#f97316'));
         }
+    }
+
+    // Active modifiers display
+    var activeMods = getActiveModifiers();
+    if (activeMods.length > 0) {
+        var modNames = activeMods.map(function(m) { return m.icon + ' ' + m.name; }).join(', ');
+        var modMult = computeModifierMultiplier(getActiveModifierIds());
+        statsEl.appendChild(createStatRow('Modifiers', modNames, '#ef4444'));
+        statsEl.appendChild(createStatRow('Modifier bonus', modMult.toFixed(2) + 'x score', '#fbbf24'));
     }
 
     var highScoreColor = isNewBest ? '#fbbf24' : 'rgba(160, 160, 180, 0.8)';

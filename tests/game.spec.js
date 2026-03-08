@@ -559,6 +559,187 @@ test.describe('Snake Game — Achievements', () => {
   })
 })
 
+// === MODIFIERS ===
+test.describe('Snake Game — Modifiers', () => {
+  test('modifiers module exports all required functions', async ({ page }) => {
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/modifiers.js')
+      return {
+        hasModifiers: Array.isArray(mod.MODIFIERS) && mod.MODIFIERS.length >= 6,
+        modifierCount: mod.MODIFIERS.length,
+        hasGetActiveModifierIds: typeof mod.getActiveModifierIds === 'function',
+        hasSaveActiveModifierIds: typeof mod.saveActiveModifierIds === 'function',
+        hasToggleModifier: typeof mod.toggleModifier === 'function',
+        hasIsModifierUnlocked: typeof mod.isModifierUnlocked === 'function',
+        hasComputeMultiplier: typeof mod.computeModifierMultiplier === 'function',
+        hasGetModifierStatePatch: typeof mod.getModifierStatePatch === 'function',
+        hasIsModifierActive: typeof mod.isModifierActive === 'function',
+        hasRenderModifierScreen: typeof mod.renderModifierScreen === 'function',
+        hasCreateModifierScreenState: typeof mod.createModifierScreenState === 'function',
+      }
+    })
+    expect(exports.hasModifiers).toBe(true)
+    expect(exports.modifierCount).toBe(8)
+    expect(exports.hasGetActiveModifierIds).toBe(true)
+    expect(exports.hasSaveActiveModifierIds).toBe(true)
+    expect(exports.hasToggleModifier).toBe(true)
+    expect(exports.hasIsModifierUnlocked).toBe(true)
+    expect(exports.hasComputeMultiplier).toBe(true)
+    expect(exports.hasGetModifierStatePatch).toBe(true)
+    expect(exports.hasIsModifierActive).toBe(true)
+    expect(exports.hasRenderModifierScreen).toBe(true)
+    expect(exports.hasCreateModifierScreenState).toBe(true)
+  })
+
+  test('modifier toggle and persistence works', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/modifiers.js')
+      // Start with empty
+      mod.saveActiveModifierIds([])
+      const initial = mod.getActiveModifierIds()
+      // Toggle speed_demon on (always unlocked)
+      const afterOn = mod.toggleModifier('speed_demon')
+      mod.saveActiveModifierIds(afterOn)
+      const stored1 = mod.getActiveModifierIds()
+      // Toggle speed_demon off
+      const afterOff = mod.toggleModifier('speed_demon')
+      mod.saveActiveModifierIds(afterOff)
+      const stored2 = mod.getActiveModifierIds()
+      return {
+        initialEmpty: initial.length === 0,
+        afterOnContains: afterOn.indexOf('speed_demon') !== -1,
+        stored1Contains: stored1.indexOf('speed_demon') !== -1,
+        afterOffEmpty: afterOff.indexOf('speed_demon') === -1,
+        stored2Empty: stored2.indexOf('speed_demon') === -1,
+      }
+    })
+    expect(result.initialEmpty).toBe(true)
+    expect(result.afterOnContains).toBe(true)
+    expect(result.stored1Contains).toBe(true)
+    expect(result.afterOffEmpty).toBe(true)
+    expect(result.stored2Empty).toBe(true)
+  })
+
+  test('score multiplier calculation works correctly', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/modifiers.js')
+      const noMods = mod.computeModifierMultiplier([])
+      const speedDemon = mod.computeModifierMultiplier(['speed_demon'])
+      const twoMods = mod.computeModifierMultiplier(['speed_demon', 'hardcore'])
+      return { noMods, speedDemon, twoMods }
+    })
+    expect(result.noMods).toBe(1)
+    expect(result.speedDemon).toBe(1.2)
+    expect(result.twoMods).toBe(1.7)
+  })
+
+  test('modifier state patch applies correctly', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/modifiers.js')
+      const patch = mod.getModifierStatePatch(['one_life', 'foggy', 'speed_demon'])
+      return {
+        hasModifiers: Array.isArray(patch.modifiers) && patch.modifiers.length === 3,
+        hasMultiplier: patch.modifierMultiplier > 1,
+        hasLives: patch.lives === 1,
+        hasFog: patch.fogActive === true,
+      }
+    })
+    expect(result.hasModifiers).toBe(true)
+    expect(result.hasMultiplier).toBe(true)
+    expect(result.hasLives).toBe(true)
+    expect(result.hasFog).toBe(true)
+  })
+
+  test('isModifierActive works with game state', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/modifiers.js')
+      const stateWith = { modifiers: ['hardcore', 'foggy'] }
+      const stateWithout = { modifiers: [] }
+      const stateNull = {}
+      return {
+        hardcoreActive: mod.isModifierActive(stateWith, 'hardcore'),
+        foggyActive: mod.isModifierActive(stateWith, 'foggy'),
+        speedNotActive: !mod.isModifierActive(stateWith, 'speed_demon'),
+        emptyNotActive: !mod.isModifierActive(stateWithout, 'hardcore'),
+        nullNotActive: !mod.isModifierActive(stateNull, 'hardcore'),
+      }
+    })
+    expect(result.hardcoreActive).toBe(true)
+    expect(result.foggyActive).toBe(true)
+    expect(result.speedNotActive).toBe(true)
+    expect(result.emptyNotActive).toBe(true)
+    expect(result.nullNotActive).toBe(true)
+  })
+
+  test('speed_demon modifier is always unlocked', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/modifiers.js')
+      return mod.isModifierUnlocked('speed_demon')
+    })
+    expect(result).toBe(true)
+  })
+
+  test('modifier screen accessible from title via M key', async ({ page }) => {
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(300)
+    // Press M to open modifiers
+    await page.keyboard.press('m')
+    await page.waitForTimeout(500)
+    // Press ESC to go back
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    expect(errors.length).toBe(0)
+  })
+
+  test('modifier screen renders without errors', async ({ page }) => {
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(300)
+    await page.keyboard.press('m')
+    await page.waitForTimeout(300)
+    // Navigate down
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(200)
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(200)
+    // Toggle (Enter)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(200)
+    // Go back
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    expect(errors.length).toBe(0)
+  })
+
+  test('gameplay with modifiers active runs without errors', async ({ page }) => {
+    // Enable speed_demon modifier via localStorage before loading
+    await page.addInitScript(() => {
+      localStorage.setItem('snake-active-modifiers', JSON.stringify(['speed_demon']))
+    })
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(300)
+    // Start game
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(200)
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(2000)
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(1000)
+    expect(errors.length).toBe(0)
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await page.goto('/')

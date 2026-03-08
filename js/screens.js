@@ -3,6 +3,7 @@
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
 import { getSettings, getSettingsItems, getDifficultyLabel } from './settings.js';
 import { getThemeLabel } from './background.js';
+import { getActiveModifierIds, computeModifierMultiplier } from './modifiers.js';
 
 // --- Demo Snake for Title Screen ---
 function createDemoSnake() {
@@ -234,14 +235,25 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Menu options (simplified — no level select, no archive, no codex)
+    // Active modifier badge
+    var activeModIds = getActiveModifierIds();
+    var modCount = activeModIds.length;
+    if (modCount > 0) {
+        var modMultiplier = computeModifierMultiplier(activeModIds);
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+        ctx.font = '9px Courier New';
+        ctx.fillText(modCount + ' modifier' + (modCount > 1 ? 's' : '') + ' \u2014 ' + modMultiplier.toFixed(2) + 'x score', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 6);
+    }
+
+    // Menu options
     var menuItems = [
         { text: 'Play', color: 'rgba(224, 224, 224, ', alpha: 0.85, font: '14px Courier New', glowColor: '#e0e0e0' },
+        { text: 'Modifiers', color: 'rgba(239, 68, 68, ', alpha: 0.6, font: '13px Courier New', glowColor: '#ef4444' },
         { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.6, font: '13px Courier New', glowColor: '#fbbf24' },
         { text: 'Settings', color: 'rgba(160, 160, 180, ', alpha: 0.5, font: '12px Courier New', glowColor: '#a0a0b4' },
     ];
-    var menuKeys = ['ENTER', 'T', 'S'];
-    var menuYOffsets = [8, 30, 50];
+    var menuKeys = ['ENTER', 'M', 'T', 'S'];
+    var menuYOffsets = [8, 28, 46, 64];
     var hasMenuIndex = menuIndex !== undefined && menuIndex !== null && menuIndex >= 0;
 
     for (var mi = 0; mi < menuItems.length; mi++) {

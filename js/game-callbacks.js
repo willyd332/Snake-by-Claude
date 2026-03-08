@@ -28,10 +28,14 @@ import {
 import {
     hideGameplayUI,
     switchToTitle, switchToGallery,
-    switchToSettings,
+    switchToSettings, switchToModifiers,
     startEndlessMode,
     restartGame, goToTitle, onRestartLevel,
 } from './game-context.js';
+import {
+    MODIFIERS, toggleModifier, saveActiveModifierIds,
+    isModifierUnlocked, getActiveModifierIds,
+} from './modifiers.js';
 
 export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canvas, konamiRef, tryUnlock) {
     return {
@@ -47,6 +51,11 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             initAudio();
             playMenuSelectSound();
             startEndlessMode(g, navDeps);
+        },
+        onTitleModifiers: function() {
+            initAudio();
+            playMenuSelectSound();
+            switchToModifiers(g, navDeps);
         },
         onTitleGallery: function() {
             initAudio();
@@ -88,6 +97,29 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
                     setMusicVolume(cycled.musicVolume);
                 }
             }
+        },
+
+        // Modifier screen actions
+        onModifiersBack: function() {
+            playMenuNavigateSound();
+            switchToTitle(g, navDeps);
+        },
+        onModifiersNavigate: function(delta) {
+            var count = MODIFIERS.length;
+            var newIdx = (g.modifierScreenState ? g.modifierScreenState.selectedIndex : 0) + delta;
+            if (newIdx >= 0 && newIdx < count) {
+                playMenuNavigateSound();
+                g.modifierScreenState = Object.assign({}, g.modifierScreenState, { selectedIndex: newIdx });
+            }
+        },
+        onModifiersToggle: function() {
+            var idx = g.modifierScreenState ? g.modifierScreenState.selectedIndex : 0;
+            var mod = MODIFIERS[idx];
+            if (!mod) return;
+            if (!isModifierUnlocked(mod.id)) return;
+            playMenuSelectSound();
+            var newIds = toggleModifier(mod.id);
+            saveActiveModifierIds(newIds);
         },
 
         // Gallery actions

@@ -13,6 +13,7 @@ var DIRECTION_MAP = {
 
 var TITLE_MENU_ACTIONS = [
     'onTitlePlay',
+    'onTitleModifiers',
     'onTitleGallery',
     'onTitleSettings',
 ];

@@ -7,6 +7,7 @@ import { manhattanDistance } from './hunter.js';
 import { getActiveSkin, getActiveTrail } from './achievements.js';
 import { getSettingsRef } from './settings.js';
 import { getActiveEventDisplay } from './wave-events.js';
+import { isModifierActive } from './modifiers.js';
 
 function renderWaveEventBanner(ctx, waveEvent) {
     var display = getActiveEventDisplay(waveEvent);
@@ -780,6 +781,16 @@ export function render(ctx, state, konamiActivated, dom, interp) {
             interpHeadX = drawX;
             interpHeadY = drawY;
         }
+        // BLINDSPOT modifier: last 3 segments are invisible
+        if (isModifierActive(state, 'blindspot') && i >= state.snake.length - 3 && state.snake.length > 3) {
+            // Skip rendering — segment is invisible
+            if (i === 0) {
+                interpHeadX = drawX;
+                interpHeadY = drawY;
+            }
+            return;
+        }
+
         var alpha = 1 - (i / state.snake.length) * 0.5;
         if (isGhost) alpha *= 0.45;
         if (state.invincibleTicks > 0) {
@@ -1063,6 +1074,39 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.strokeStyle = 'rgba(239, 68, 68, ' + frenzyEdgePulse + ')';
         ctx.lineWidth = 4;
         ctx.strokeRect(2, 2, CANVAS_SIZE - 4, CANVAS_SIZE - 4);
+        ctx.restore();
+    }
+
+    // FOGGY modifier: permanent fog of war (radial gradient around snake head)
+    if (isModifierActive(state, 'foggy') && state.started && !state.gameOver && state.snake.length > 0) {
+        var fogHead = state.snake[0];
+        var fogCX = fogHead.x * CELL_SIZE + CELL_SIZE / 2;
+        var fogCY = fogHead.y * CELL_SIZE + CELL_SIZE / 2;
+        var fogRadius = CELL_SIZE * 5;
+        var fogGrad = ctx.createRadialGradient(fogCX, fogCY, fogRadius * 0.5, fogCX, fogCY, fogRadius);
+        fogGrad.addColorStop(0, 'rgba(10, 10, 26, 0)');
+        fogGrad.addColorStop(0.7, 'rgba(10, 10, 26, 0.75)');
+        fogGrad.addColorStop(1, 'rgba(10, 10, 26, 0.95)');
+        ctx.save();
+        ctx.fillStyle = fogGrad;
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.restore();
+    }
+
+    // Active modifier indicator (small icons in top-left during gameplay)
+    if (state.modifiers && state.modifiers.length > 0 && state.started && !state.gameOver) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.font = '9px Courier New';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#ef4444';
+        var modLabel = state.modifiers.length + ' MOD' + (state.modifiers.length > 1 ? 'S' : '');
+        if (state.modifierMultiplier > 1) {
+            modLabel = modLabel + ' ' + state.modifierMultiplier.toFixed(1) + 'x';
+        }
+        ctx.fillText(modLabel, 4, CANVAS_SIZE - 6);
+        ctx.globalAlpha = 1;
+        ctx.textAlign = 'left';
         ctx.restore();
     }
 }
