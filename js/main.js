@@ -102,6 +102,7 @@ var g = {
     runFoodEaten: 0,
     runPrevHighScore: 0,
     summaryVisible: false,
+    waveTransitionActive: false,
 
     // Game state
     state: createInitialState(),
@@ -337,6 +338,13 @@ function gameLoop(timestamp) {
     }
 
     var elapsed = timestamp - g.state.lastTick;
+
+    // Pause game tick processing while wave transition overlay is showing
+    if (g.waveTransitionActive) {
+        // Keep lastTick current so the snake doesn't lurch forward on resume
+        g.state = Object.assign({}, g.state, { lastTick: timestamp });
+        elapsed = 0;
+    }
 
     if (elapsed >= speed) {
         // Save previous positions for interpolation

@@ -35,6 +35,7 @@ export function hideGameplayUI(hudEl, titleEl, messageEl) {
 
 export function switchToTitle(g, deps) {
     stopMusic();
+    g.waveTransitionActive = false;
     g.currentScreen = 'title';
     g.titleMenuIndex = null;
     setGridSize(20);
@@ -59,6 +60,7 @@ export function switchToSettings(g, deps) {
 
 export function startEndlessMode(g, deps) {
     g.currentScreen = 'gameplay';
+    g.waveTransitionActive = false;
     setGridSize(ENDLESS_GRID_SIZE);
     deps.canvas.width = CANVAS_SIZE;
     deps.canvas.height = CANVAS_SIZE;
@@ -128,6 +130,11 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         messageEl: deps.messageEl, dom: deps.dom, ui: deps.ui,
         tryUnlock: deps.tryUnlock,
         hideGameplayUI: deps.hideGameplayUI,
+        // Wave transition: callbacks that directly update the mutable game context
+        setWaveTransitionActive: function(active) { g.waveTransitionActive = active; },
+        grantWaveStartInvulnerability: function(ticks) {
+            g.state = Object.assign({}, g.state, { invincibleTicks: ticks });
+        },
     };
 }
 
@@ -150,6 +157,7 @@ export function applyEventCtx(g, eventCtx) {
 
 export function restartGame(g, deps, newDir) {
     stopMusic();
+    g.waveTransitionActive = false;
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;

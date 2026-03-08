@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, GRID_SIZE, CELL_SIZE, INVINCIBLE_TICKS } from './constants.js';
+import { CANVAS_SIZE, GRID_SIZE, CELL_SIZE, INVINCIBLE_TICKS, WAVE_START_INVINCIBLE_TICKS } from './constants.js';
 import { getLevelConfig, randomPosition, randomPositionInBounds } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import { createComboState } from './combo.js';
@@ -151,8 +151,19 @@ export function processPostTickEvents(ctx) {
         ctx.shakeState = triggerShake(SHAKE_WAVE_UP.intensity, SHAKE_WAVE_UP.duration);
         ctx.hunterTrailHistory = [];
 
-        // Show wave preview overlay (non-blocking -- gameplay continues underneath)
-        showWavePreview(ctx.state.endlessWave, waveConfig.color);
+        // Show wave preview overlay — pause game loop while it displays,
+        // then grant 3-second invulnerability when the new wave begins.
+        if (ctx.setWaveTransitionActive) {
+            ctx.setWaveTransitionActive(true);
+        }
+        showWavePreview(ctx.state.endlessWave, waveConfig.color).then(function() {
+            if (ctx.setWaveTransitionActive) {
+                ctx.setWaveTransitionActive(false);
+            }
+            if (ctx.grantWaveStartInvulnerability) {
+                ctx.grantWaveStartInvulnerability(WAVE_START_INVINCIBLE_TICKS);
+            }
+        });
 
         // ALPHA intro on first hunter wave
         if (ctx.state.hunter && !(ctx.prevState.hunter)) {

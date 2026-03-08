@@ -13,6 +13,7 @@ export function setGridSize(size) {
 
 export var INITIAL_LIVES = 3;
 export var INVINCIBLE_TICKS = 15;
+export var WAVE_START_INVINCIBLE_TICKS = 45; // ~3 seconds at ~15 ticks/sec
 export var POWER_UP_SPAWN_INTERVAL = 15;
 export var POWER_UP_DESPAWN_TICKS = 40;
 
