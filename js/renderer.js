@@ -1125,6 +1125,144 @@ function renderSnakeSegment(ctx, drawX, drawY, index, total, color, skin) {
             ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
             break;
 
+        case 'plasma':
+            var plasmaGrad = ctx.createRadialGradient(
+                px + CELL_SIZE / 2, py + CELL_SIZE / 2, 1,
+                px + CELL_SIZE / 2, py + CELL_SIZE / 2, CELL_SIZE / 2 - pad
+            );
+            plasmaGrad.addColorStop(0, '#ffffff');
+            plasmaGrad.addColorStop(0.4, '#e879f9');
+            plasmaGrad.addColorStop(1, '#7c3aed');
+            ctx.fillStyle = plasmaGrad;
+            ctx.shadowColor = '#d946ef';
+            ctx.shadowBlur = isHead ? 14 : 8;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'lava':
+            var lavaPulse = Math.sin(Date.now() / 180 + index * 0.7) * 0.5 + 0.5;
+            var lavaGrad = ctx.createLinearGradient(px, py, px, py + CELL_SIZE);
+            lavaGrad.addColorStop(0, '#fef08a');
+            lavaGrad.addColorStop(0.4, '#f97316');
+            lavaGrad.addColorStop(1, '#991b1b');
+            ctx.fillStyle = lavaGrad;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = isHead ? 12 + lavaPulse * 6 : 5 + lavaPulse * 4;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'galaxy':
+            ctx.fillStyle = '#0f0728';
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            var galaxyGrad = ctx.createLinearGradient(px, py, px + CELL_SIZE, py + CELL_SIZE);
+            galaxyGrad.addColorStop(0, 'rgba(139, 92, 246, 0.9)');
+            galaxyGrad.addColorStop(0.5, 'rgba(59, 130, 246, 0.6)');
+            galaxyGrad.addColorStop(1, 'rgba(236, 72, 153, 0.8)');
+            ctx.fillStyle = galaxyGrad;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.shadowColor = '#818cf8';
+            ctx.shadowBlur = isHead ? 16 : 8;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'toxic':
+            var toxicGrad = ctx.createRadialGradient(
+                px + CELL_SIZE / 2, py + CELL_SIZE / 2, 0,
+                px + CELL_SIZE / 2, py + CELL_SIZE / 2, CELL_SIZE / 2
+            );
+            toxicGrad.addColorStop(0, '#d9f99d');
+            toxicGrad.addColorStop(0.5, '#4ade80');
+            toxicGrad.addColorStop(1, '#14532d');
+            ctx.fillStyle = toxicGrad;
+            ctx.shadowColor = '#22c55e';
+            ctx.shadowBlur = isHead ? 14 : 7;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            if (index % 3 === 0) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.fillRect(px + pad + 1, py + pad + 1, 3, 3);
+            }
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'sunset':
+            var sunsetGrad = ctx.createLinearGradient(px, py, px + CELL_SIZE, py + CELL_SIZE);
+            sunsetGrad.addColorStop(0, '#fbbf24');
+            sunsetGrad.addColorStop(0.4, '#f97316');
+            sunsetGrad.addColorStop(0.75, '#ec4899');
+            sunsetGrad.addColorStop(1, '#7c3aed');
+            ctx.fillStyle = sunsetGrad;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            if (isHead) {
+                ctx.shadowColor = '#f97316';
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(px + pad + 0.5, py + pad + 0.5, CELL_SIZE - pad * 2 - 1, CELL_SIZE - pad * 2 - 1);
+                ctx.shadowBlur = 0;
+            }
+            break;
+
+        case 'ice':
+            var iceGrad = ctx.createLinearGradient(px, py, px + CELL_SIZE, py + CELL_SIZE);
+            iceGrad.addColorStop(0, '#e0f2fe');
+            iceGrad.addColorStop(0.4, '#7dd3fc');
+            iceGrad.addColorStop(1, '#0369a1');
+            ctx.fillStyle = iceGrad;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.strokeStyle = 'rgba(224, 242, 254, 0.7)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(px + pad + 0.5, py + pad + 0.5, CELL_SIZE - pad * 2 - 1, CELL_SIZE - pad * 2 - 1);
+            if (isHead) {
+                ctx.shadowColor = '#bae6fd';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = 'rgba(224, 242, 254, 0.3)';
+                ctx.fillRect(px + pad, py + pad, (CELL_SIZE - pad * 2) / 2, 2);
+                ctx.shadowBlur = 0;
+            }
+            break;
+
+        case 'ember':
+            var emberPhase = Date.now() / 250 + index * 1.3;
+            var emberGrad = ctx.createRadialGradient(
+                px + CELL_SIZE / 2, py + CELL_SIZE / 2, 0,
+                px + CELL_SIZE / 2, py + CELL_SIZE / 2, CELL_SIZE / 2
+            );
+            emberGrad.addColorStop(0, '#fef3c7');
+            emberGrad.addColorStop(0.5, '#f59e0b');
+            emberGrad.addColorStop(1, '#1c1917');
+            ctx.fillStyle = emberGrad;
+            ctx.shadowColor = '#f59e0b';
+            ctx.shadowBlur = isHead ? 10 + Math.sin(emberPhase) * 5 : 4 + Math.sin(emberPhase) * 3;
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'void':
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            ctx.strokeStyle = '#581c87';
+            ctx.shadowColor = '#a855f7';
+            ctx.shadowBlur = isHead ? 18 : 10;
+            ctx.lineWidth = isHead ? 1.5 : 1;
+            ctx.strokeRect(px + pad + 0.5, py + pad + 0.5, CELL_SIZE - pad * 2 - 1, CELL_SIZE - pad * 2 - 1);
+            if (isHead) {
+                var voidInnerGrad = ctx.createRadialGradient(
+                    px + CELL_SIZE / 2, py + CELL_SIZE / 2, 0,
+                    px + CELL_SIZE / 2, py + CELL_SIZE / 2, CELL_SIZE / 3
+                );
+                voidInnerGrad.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+                voidInnerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = voidInnerGrad;
+                ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
+            }
+            ctx.shadowBlur = 0;
+            break;
+
         default:
             ctx.fillStyle = color;
             ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
@@ -1260,6 +1398,75 @@ function renderTrailEffect(ctx, trailHistory, config, trailType) {
                 var digit = (i + Math.floor(Date.now() / 200)) % 2 === 0 ? '0' : '1';
                 ctx.fillText(digit, pos.x * CELL_SIZE + CELL_SIZE / 2, pos.y * CELL_SIZE + CELL_SIZE / 2 + 4);
                 ctx.textAlign = 'left';
+                break;
+
+            case 'smoke':
+                var smokeAge = i / trailHistory.length;
+                var smokeRadius = 3 + smokeAge * 5;
+                var smokeAlpha = trailAlpha * (1 - smokeAge * 0.6);
+                ctx.globalAlpha = smokeAlpha;
+                var smokeGray = Math.floor(120 + smokeAge * 80);
+                ctx.fillStyle = 'rgb(' + smokeGray + ',' + smokeGray + ',' + smokeGray + ')';
+                var smkX = pos.x * CELL_SIZE + CELL_SIZE / 2 + Math.sin(Date.now() / 400 + i * 1.7) * smokeAge * 4;
+                var smkY = pos.y * CELL_SIZE + CELL_SIZE / 2 + Math.cos(Date.now() / 500 + i * 1.3) * smokeAge * 2;
+                ctx.beginPath();
+                ctx.arc(smkX, smkY, smokeRadius, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+
+            case 'lightning':
+                if (i % 2 === 0) {
+                    ctx.globalAlpha = trailAlpha * 1.5;
+                    var ltX = pos.x * CELL_SIZE + CELL_SIZE / 2;
+                    var ltY = pos.y * CELL_SIZE + CELL_SIZE / 2;
+                    var jitterX = (Math.sin(Date.now() / 80 + i * 3.1) - 0.5) * 6;
+                    var jitterY = (Math.cos(Date.now() / 70 + i * 2.7) - 0.5) * 6;
+                    ctx.strokeStyle = '#fef08a';
+                    ctx.shadowColor = '#facc15';
+                    ctx.shadowBlur = 8;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(ltX, ltY);
+                    ctx.lineTo(ltX + jitterX, ltY + jitterY);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+                break;
+
+            case 'ripple':
+                var rippleAge = i / trailHistory.length;
+                var rippleRadius = 2 + rippleAge * (CELL_SIZE / 2 + 2);
+                ctx.globalAlpha = trailAlpha * (1 - rippleAge) * 1.5;
+                ctx.strokeStyle = config.color;
+                ctx.shadowColor = config.color;
+                ctx.shadowBlur = 4;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(
+                    pos.x * CELL_SIZE + CELL_SIZE / 2,
+                    pos.y * CELL_SIZE + CELL_SIZE / 2,
+                    rippleRadius, 0, Math.PI * 2
+                );
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                break;
+
+            case 'crystal':
+                ctx.globalAlpha = trailAlpha * 1.1;
+                var cSize = 3 + Math.sin(Date.now() / 150 + i * 1.5) * 1.5;
+                var cX = pos.x * CELL_SIZE + CELL_SIZE / 2;
+                var cY = pos.y * CELL_SIZE + CELL_SIZE / 2;
+                var cAngle = Date.now() / 300 + i * 0.9;
+                ctx.fillStyle = i % 3 === 0 ? '#bae6fd' : i % 3 === 1 ? '#c4b5fd' : '#f0abfc';
+                ctx.shadowColor = '#e0f2fe';
+                ctx.shadowBlur = 6;
+                ctx.beginPath();
+                ctx.moveTo(cX + Math.cos(cAngle) * cSize, cY + Math.sin(cAngle) * cSize);
+                ctx.lineTo(cX + Math.cos(cAngle + 2.094) * cSize, cY + Math.sin(cAngle + 2.094) * cSize);
+                ctx.lineTo(cX + Math.cos(cAngle + 4.189) * cSize, cY + Math.sin(cAngle + 4.189) * cSize);
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowBlur = 0;
                 break;
         }
     }

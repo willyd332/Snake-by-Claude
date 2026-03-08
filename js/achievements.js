@@ -108,6 +108,15 @@ export var SKINS = [
     { id: 'spectral', name: 'Spectral', desc: 'Ghostly aura', unlockedBy: 'ghost_rider' },
     { id: 'digital', name: 'Digital', desc: 'Binary pattern', unlockedBy: 'deep_runner' },
     { id: 'chrome', name: 'Chrome', desc: 'Metallic sheen', unlockedBy: 'megabyte' },
+    // --- New Skins ---
+    { id: 'plasma', name: 'Plasma', desc: 'Superheated energy core', unlockedBy: 'centurion' },
+    { id: 'lava', name: 'Lava', desc: 'Molten data fragment', unlockedBy: 'endurance' },
+    { id: 'galaxy', name: 'Galaxy', desc: 'Stardust and void', unlockedBy: 'deep_runner' },
+    { id: 'toxic', name: 'Toxic', desc: 'Corrupted sector glow', unlockedBy: 'serpent_king' },
+    { id: 'sunset', name: 'Sunset', desc: 'Gradient memory burn', unlockedBy: 'wave_rider' },
+    { id: 'ice', name: 'Ice', desc: 'Frozen instruction set', unlockedBy: 'iron_will' },
+    { id: 'ember', name: 'Ember', desc: 'Dying process heat', unlockedBy: 'speed_demon' },
+    { id: 'void', name: 'Void', desc: 'Null pointer incarnate', unlockedBy: 'legend' },
 ];
 
 // --- Trail Definitions ---
@@ -116,6 +125,11 @@ export var TRAILS = [
     { id: 'fade', name: 'Fade', desc: 'Fading echo', unlockedBy: 'data_hoarder' },
     { id: 'sparkle', name: 'Sparkle', desc: 'Glitter path', unlockedBy: 'wave_rider' },
     { id: 'digital', name: 'Digital', desc: 'Data residue', unlockedBy: 'long_snake' },
+    // --- New Trails ---
+    { id: 'smoke', name: 'Smoke', desc: 'Dissipating process exhaust', unlockedBy: 'endurance' },
+    { id: 'lightning', name: 'Lightning', desc: 'Electric discharge burst', unlockedBy: 'speed_demon' },
+    { id: 'ripple', name: 'Ripple', desc: 'Expanding waveform rings', unlockedBy: 'portal_master' },
+    { id: 'crystal', name: 'Crystal', desc: 'Fractured data shards', unlockedBy: 'deep_runner' },
 ];
 
 // --- Persistence ---
