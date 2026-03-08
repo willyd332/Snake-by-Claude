@@ -112,6 +112,7 @@
         <div><span>Level:</span> <span class="value" id="level">1</span></div>
         <div><span>High:</span> <span class="value" id="highScore">0</span></div>
         <div id="powerUpHud"><span class="value" id="powerUpName"></span></div>
+        <div id="arenaHud" style="display:none"><span>Arena:</span> <span class="value" id="arenaSize"></span></div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="message">Press any arrow key to start</div>
@@ -137,6 +138,7 @@
             6: { speed: 50,  color: '#e11d48', foodColor: '#fbbf24', wallColor: '#4a1a2e', bgAccent: '#0a0508', gridAlpha: 0.02, obstacleColor: '#be123c', portalColor: '#a855f7', fogRadius: 5, wrapAround: false, powerUpsEnabled: false },
             7: { speed: 55,  color: '#eab308', foodColor: '#f43f5e', wallColor: '#5c4200', bgAccent: '#0a0800', gridAlpha: 0.04, obstacleColor: '#b45309', portalColor: null, fogRadius: null, wrapAround: true, powerUpsEnabled: true },
             8: { speed: 65,  color: '#dc2626', foodColor: '#34d399', wallColor: '#7f1d1d', bgAccent: '#0a0505', gridAlpha: 0.03, obstacleColor: '#b91c1c', portalColor: null, fogRadius: null, wrapAround: true, powerUpsEnabled: true, hunterEnabled: true, hunterColor: '#f97316', hunterTickInterval: 3 },
+            9: { speed: 75,  color: '#14b8a6', foodColor: '#fbbf24', wallColor: '#115e59', bgAccent: '#042f2e', gridAlpha: 0.03, obstacleColor: '#0d9488', portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: true, hunterEnabled: false, hunterColor: null, hunterTickInterval: null, shrinkingArena: true, shrinkInterval: 3 },
         };
 
         var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
@@ -156,6 +158,7 @@
             6: 'Darkness falls. Only your glow lights the way.',
             7: 'The walls dissolve. The world folds in on itself.',
             8: 'It awakens. Something ancient hunts you now.',
+            9: 'The walls remember. And they are closing in.',
         };
 
         // --- Konami code ---
@@ -256,6 +259,17 @@
                 return walls;
             }
 
+            if (level === 9) {
+                // Scattered pillars — your only cover as the walls close in
+                walls.push({ x: 5, y: 5 }, { x: 6, y: 5 });
+                walls.push({ x: 13, y: 5 }, { x: 14, y: 5 });
+                walls.push({ x: 5, y: 14 }, { x: 6, y: 14 });
+                walls.push({ x: 13, y: 14 }, { x: 14, y: 14 });
+                walls.push({ x: 9, y: 9 }, { x: 10, y: 9 });
+                walls.push({ x: 9, y: 10 }, { x: 10, y: 10 });
+                return walls;
+            }
+
             // Level 8: Sparse cover barriers — use them to hide from the hunter
             // Central cross (short arms with gaps)
             walls.push({ x: 9, y: 9 }, { x: 10, y: 9 });
@@ -325,6 +339,13 @@
                     { x: 3, y: 5, path: [3, 4, 5, 6, 7, 8], axis: 'x', pathIndex: 0, dir: 1 },
                     { x: 15, y: 10, path: [10, 11, 12, 13, 14, 15], axis: 'y', pathIndex: 0, dir: 1 },
                     { x: 11, y: 14, path: [11, 12, 13, 14, 15, 16], axis: 'x', pathIndex: 0, dir: 1 },
+                ];
+            }
+
+            if (level === 9) {
+                // Single patrol weaving through the center
+                return [
+                    { x: 7, y: 7, path: [7, 8, 9, 10, 11, 12], axis: 'x', pathIndex: 0, dir: 1 },
                 ];
             }
 
@@ -527,6 +548,8 @@
         var messageEl = document.getElementById('message');
         var powerUpHudEl = document.getElementById('powerUpHud');
         var powerUpNameEl = document.getElementById('powerUpName');
+        var arenaHudEl = document.getElementById('arenaHud');
+        var arenaSizeEl = document.getElementById('arenaSize');
 
         // --- Level-up message with narrative ---
         var levelUpTimer = null;
@@ -555,6 +578,22 @@
 
         // --- Power-up collection message ---
         var powerUpMsgTimer = null;
+
+        // --- Shrink warning message ---
+        var shrinkMsgTimer = null;
+
+        function showShrinkMessage() {
+            messageEl.textContent = 'THE WALLS CLOSE IN';
+            messageEl.className = 'powerup-msg';
+            messageEl.style.color = '#ef4444';
+            if (shrinkMsgTimer) clearTimeout(shrinkMsgTimer);
+            shrinkMsgTimer = setTimeout(function() {
+                messageEl.textContent = '';
+                messageEl.className = '';
+                messageEl.style.color = '';
+                shrinkMsgTimer = null;
+            }, 1500);
+        }
 
         function showPowerUpCollected(typeDef) {
             messageEl.textContent = typeDef.name + ' ACTIVATED';
@@ -589,6 +628,11 @@
                 gameOver: false,
                 started: false,
                 lastTick: 0,
+                arenaMinX: 0,
+                arenaMinY: 0,
+                arenaMaxX: GRID_SIZE - 1,
+                arenaMaxY: GRID_SIZE - 1,
+                shrinkCounter: 0,
             };
         }
 
@@ -646,6 +690,14 @@
             } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
+            }
+
+            // Shrinking arena boundary — cannot be bypassed even with ghost
+            if (config.shrinkingArena) {
+                if (newHead.x < prev.arenaMinX || newHead.x > prev.arenaMaxX ||
+                    newHead.y < prev.arenaMinY || newHead.y > prev.arenaMaxY) {
+                    return Object.assign({}, prev, { gameOver: true, direction: dir });
+                }
             }
 
             // Wall obstacle collision (ghost passes through)
@@ -798,6 +850,87 @@
                 newPowerUpSpawnCounter = 0;
             }
 
+            // Shrinking arena
+            var newArenaMinX = prev.arenaMinX;
+            var newArenaMinY = prev.arenaMinY;
+            var newArenaMaxX = prev.arenaMaxX;
+            var newArenaMaxY = prev.arenaMaxY;
+            var newShrinkCounter = prev.shrinkCounter;
+            var shrinkOccurred = false;
+
+            // Reset arena on level transition
+            if (newLevel !== prev.level) {
+                newArenaMinX = 0;
+                newArenaMinY = 0;
+                newArenaMaxX = GRID_SIZE - 1;
+                newArenaMaxY = GRID_SIZE - 1;
+                newShrinkCounter = 0;
+            }
+
+            if (ate && config.shrinkingArena && newLevel === prev.level) {
+                newShrinkCounter = newShrinkCounter + 1;
+                if (newShrinkCounter >= config.shrinkInterval) {
+                    newShrinkCounter = 0;
+                    var canShrinkH = newArenaMaxX - newArenaMinX >= 6;
+                    var canShrinkV = newArenaMaxY - newArenaMinY >= 6;
+                    var shrinkEdges = [];
+                    if (canShrinkH) { shrinkEdges.push('left'); shrinkEdges.push('right'); }
+                    if (canShrinkV) { shrinkEdges.push('top'); shrinkEdges.push('bottom'); }
+
+                    if (shrinkEdges.length > 0) {
+                        shrinkOccurred = true;
+                        var edge = shrinkEdges[Math.floor(Math.random() * shrinkEdges.length)];
+                        var shrinkCells = [];
+                        if (edge === 'top') {
+                            for (var sx = newArenaMinX; sx <= newArenaMaxX; sx++) {
+                                shrinkCells.push({ x: sx, y: newArenaMinY });
+                            }
+                            newArenaMinY = newArenaMinY + 1;
+                        } else if (edge === 'bottom') {
+                            for (var sx = newArenaMinX; sx <= newArenaMaxX; sx++) {
+                                shrinkCells.push({ x: sx, y: newArenaMaxY });
+                            }
+                            newArenaMaxY = newArenaMaxY - 1;
+                        } else if (edge === 'left') {
+                            for (var sy = newArenaMinY; sy <= newArenaMaxY; sy++) {
+                                shrinkCells.push({ x: newArenaMinX, y: sy });
+                            }
+                            newArenaMinX = newArenaMinX + 1;
+                        } else {
+                            for (var sy = newArenaMinY; sy <= newArenaMaxY; sy++) {
+                                shrinkCells.push({ x: newArenaMaxX, y: sy });
+                            }
+                            newArenaMaxX = newArenaMaxX - 1;
+                        }
+                        newWalls = newWalls.concat(shrinkCells);
+
+                        // Check if any snake segment is crushed by closing wall
+                        var snakeCrushed = newSnake.some(function(seg) {
+                            return collides(seg, shrinkCells);
+                        });
+                        if (snakeCrushed) {
+                            return Object.assign({}, prev, { gameOver: true, direction: dir });
+                        }
+                        // Respawn food if now inside wall
+                        if (newFood && collides(newFood, shrinkCells)) {
+                            newFood = null;
+                        }
+                        // Respawn power-up if now inside wall
+                        if (newPowerUp && collides({ x: newPowerUp.x, y: newPowerUp.y }, shrinkCells)) {
+                            newPowerUp = null;
+                        }
+                    }
+                }
+            }
+
+            // Remove obstacles engulfed by shrinking arena
+            if (config.shrinkingArena && newObstacles.length > 0) {
+                newObstacles = newObstacles.filter(function(ob) {
+                    return ob.x >= newArenaMinX && ob.x <= newArenaMaxX &&
+                           ob.y >= newArenaMinY && ob.y <= newArenaMaxY;
+                });
+            }
+
             // Spawn food if needed (avoid snake, walls, obstacles, portals, power-up, and hunter)
             if (!newFood) {
                 newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, newPowerUp, newHunter);
@@ -831,7 +964,13 @@
                 gameOver: false,
                 started: true,
                 lastTick: prev.lastTick,
+                arenaMinX: newArenaMinX,
+                arenaMinY: newArenaMinY,
+                arenaMaxX: newArenaMaxX,
+                arenaMaxY: newArenaMaxY,
+                shrinkCounter: newShrinkCounter,
                 _collectedPowerUp: collectedPowerUpType,
+                _shrinkOccurred: shrinkOccurred,
             };
         }
 
@@ -864,6 +1003,19 @@
                 ctx.strokeStyle = 'rgba(234, 179, 8, ' + (edgePulse * 0.3) + ')';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(1, 1, CANVAS_SIZE - 2, CANVAS_SIZE - 2);
+                ctx.lineWidth = 0.5;
+            }
+
+            // Shrinking arena border indicator (pulsing red)
+            if (config.shrinkingArena && s.started && !s.gameOver) {
+                var arenaMinPx = s.arenaMinX * CELL_SIZE;
+                var arenaMinPy = s.arenaMinY * CELL_SIZE;
+                var arenaW = (s.arenaMaxX - s.arenaMinX + 1) * CELL_SIZE;
+                var arenaH = (s.arenaMaxY - s.arenaMinY + 1) * CELL_SIZE;
+                var shrinkPulse = Math.sin(Date.now() / 400) * 0.3 + 0.4;
+                ctx.strokeStyle = 'rgba(239, 68, 68, ' + shrinkPulse + ')';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(arenaMinPx + 1, arenaMinPy + 1, arenaW - 2, arenaH - 2);
                 ctx.lineWidth = 0.5;
             }
 
@@ -1136,6 +1288,16 @@
             } else {
                 powerUpHudEl.style.display = 'none';
             }
+
+            // Arena size HUD for shrinking levels
+            if (config.shrinkingArena && s.started && !s.gameOver) {
+                var aw = s.arenaMaxX - s.arenaMinX + 1;
+                var ah = s.arenaMaxY - s.arenaMinY + 1;
+                arenaHudEl.style.display = 'block';
+                arenaSizeEl.textContent = aw + '\u00d7' + ah;
+            } else {
+                arenaHudEl.style.display = 'none';
+            }
         }
 
         // --- Input ---
@@ -1183,6 +1345,7 @@
                 }
                 if (levelUpTimer) { clearTimeout(levelUpTimer); levelUpTimer = null; }
                 if (powerUpMsgTimer) { clearTimeout(powerUpMsgTimer); powerUpMsgTimer = null; }
+                if (shrinkMsgTimer) { clearTimeout(shrinkMsgTimer); shrinkMsgTimer = null; }
                 state = createInitialState();
                 state = Object.assign({}, state, {
                     started: true,
@@ -1239,6 +1402,11 @@
                 if (state._collectedPowerUp) {
                     var collectedDef = getPowerUpDef(state._collectedPowerUp);
                     if (collectedDef) showPowerUpCollected(collectedDef);
+                }
+
+                // Show shrink warning message
+                if (state._shrinkOccurred) {
+                    showShrinkMessage();
                 }
             }
 
