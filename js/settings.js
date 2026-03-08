@@ -121,7 +121,7 @@ export function getDifficultyPreset(difficultyKey) {
 }
 
 export function getSettingsItems() {
-    return SETTINGS_ITEMS;
+    return SETTINGS_ITEMS.slice();
 }
 
 export function getDifficultyLabel(key) {

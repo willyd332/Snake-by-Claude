@@ -129,6 +129,7 @@ function renderRain(ctx, bgState, width, height) {
         }
     }
     ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
 }
 
 // --- Dark Space / Stars ---
@@ -416,7 +417,7 @@ export function updateBackground(bgState, dt, theme, width, height) {
             state = updateGeometry(state, dt, width, height);
             break;
         case 'neonGrid':
-            state = Object.assign({}, state, { gridOffset: state.gridOffset + NEON_SCROLL_SPEED * dt });
+            state = Object.assign({}, state, { gridOffset: (state.gridOffset + NEON_SCROLL_SPEED * dt) % NEON_GRID_SPACING });
             break;
         case 'solid':
         default:
