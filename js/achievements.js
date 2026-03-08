@@ -10,60 +10,58 @@ var TRAIL_KEY = 'snake-active-trail';
 
 // --- Achievement Definitions (25 total) ---
 export var ACHIEVEMENTS = [
+    // Score milestones (5)
     { id: 'first_byte', name: 'First Byte', desc: 'Score 100 points', category: 'score' },
     { id: 'data_hoarder', name: 'Data Hoarder', desc: 'Score 500 points', category: 'score' },
     { id: 'megabyte', name: 'Megabyte', desc: 'Score 1000 points', category: 'score' },
-    { id: 'boot_sequence', name: 'Boot Sequence', desc: 'Complete Level 1', category: 'progress' },
-    { id: 'deep_dive', name: 'Deep Dive', desc: 'Reach Level 5', category: 'progress' },
-    { id: 'the_core', name: 'The Core', desc: 'Reach Level 10', category: 'progress' },
-    { id: 'transcendence', name: 'Transcendence', desc: 'Trigger the Awakening', category: 'progress' },
+    { id: 'centurion', name: 'Centurion', desc: 'Score 2000 points', category: 'score' },
+    { id: 'transcendent', name: 'Transcendent', desc: 'Score 5000 points', category: 'score' },
+    // Wave milestones (6)
+    { id: 'first_wave', name: 'First Wave', desc: 'Complete wave 1', category: 'endless' },
+    { id: 'wave_rider', name: 'Wave Rider', desc: 'Reach wave 5', category: 'endless' },
+    { id: 'endurance', name: 'Endurance', desc: 'Reach wave 10', category: 'endless' },
+    { id: 'deep_runner', name: 'Deep Runner', desc: 'Reach wave 15', category: 'endless' },
+    { id: 'marathoner', name: 'Marathoner', desc: 'Reach wave 25', category: 'endless' },
+    { id: 'legend', name: 'Legend', desc: 'Reach wave 50', category: 'endless' },
+    // Skill-based (10)
+    { id: 'ghost_rider', name: 'Ghost Rider', desc: 'Collect a Ghost power-up', category: 'skill' },
+    { id: 'power_collector', name: 'Power Collector', desc: 'Collect a Slow power-up', category: 'skill' },
+    { id: 'long_snake', name: 'Long Snake', desc: 'Reach length 20', category: 'skill' },
+    { id: 'serpent_king', name: 'Serpent King', desc: 'Reach length 40', category: 'skill' },
+    { id: 'speed_demon', name: 'Speed Demon', desc: 'Survive at max speed (wave 21+)', category: 'skill' },
+    { id: 'portal_master', name: 'Portal Master', desc: 'Use a portal', category: 'skill' },
+    { id: 'survivor', name: 'Survivor', desc: 'Arena shrinks to 8x8', category: 'skill' },
+    { id: 'close_call', name: 'Close Call', desc: 'Arena shrinks to 6x6', category: 'skill' },
+    { id: 'hunter_survivor', name: 'Hunter Survivor', desc: 'Survive ALPHA for a full wave', category: 'skill' },
+    { id: 'iron_will', name: 'Iron Will', desc: 'Reach wave 5 without losing a life', category: 'skill' },
+    // Secrets (4)
     { id: 'rainbow_road', name: 'Rainbow Road', desc: 'Activate Konami code', category: 'secret' },
     { id: 'red_pill', name: 'Red Pill', desc: 'Enter the data stream', category: 'secret' },
     { id: 'upside_down', name: 'Upside Down', desc: 'Invert reality', category: 'secret' },
     { id: 'root_access', name: 'Root Access', desc: 'Open the dev console', category: 'secret' },
-    { id: 'archaeologist', name: 'Archaeologist', desc: 'Collect 5 data fragments', category: 'collect' },
-    { id: 'full_archive', name: 'Full Archive', desc: 'All 10 fragments collected', category: 'collect' },
-    { id: 'all_endings', name: 'All Endings', desc: 'See every ending', category: 'collect' },
-    { id: 'endurance', name: 'Endurance', desc: 'Reach Endless wave 10', category: 'endless' },
-    { id: 'marathoner', name: 'Marathoner', desc: 'Reach Endless wave 25', category: 'endless' },
-    { id: 'ghost_rider', name: 'Ghost Rider', desc: 'Collect a Ghost power-up', category: 'skill' },
-    { id: 'speed_demon', name: 'Speed Demon', desc: 'Clear a level in under 20s', category: 'skill' },
-    { id: 'untouchable', name: 'Untouchable', desc: 'Survive Level 8', category: 'skill' },
-    { id: 'survivor', name: 'Survivor', desc: 'Arena shrinks to 8x8', category: 'skill' },
-    { id: 'first_blood', name: 'First Blood', desc: 'Eat first food in the ALPHA boss fight', category: 'boss' },
-    { id: 'calm_in_storm', name: 'Calm in the Storm', desc: 'Eat food during an active shockwave', category: 'boss' },
-    { id: 'no_clone_casualty', name: 'No Clone Casualty', desc: 'Complete Level 10 without a shadow clone hit', category: 'boss' },
-    { id: 'boss_phase3_survivor', name: 'Berserk Survivor', desc: 'Survive Phase 3 for 30 seconds', category: 'boss' },
-    { id: 'ghost_of_machine', name: 'Ghost of the Machine', desc: 'Defeat the ALPHA boss', category: 'boss' },
 ];
 
 var CATEGORY_COLORS = {
     score: '#fbbf24',
-    progress: '#22c55e',
-    secret: '#a855f7',
-    collect: '#4a9eff',
     endless: '#ef4444',
     skill: '#06b6d4',
-    boss: '#ff4400',
+    secret: '#a855f7',
 };
 
 var CATEGORY_NAMES = {
     score: 'SCORE',
-    progress: 'PROGRESS',
-    secret: 'SECRETS',
-    collect: 'COLLECTION',
     endless: 'ENDLESS',
     skill: 'SKILL',
-    boss: 'BOSS',
+    secret: 'SECRETS',
 };
 
 // --- Skin Definitions ---
 export var SKINS = [
     { id: 'default', name: 'Default', desc: 'Classic blocks', unlockedBy: null },
     { id: 'neon', name: 'Neon', desc: 'Glowing outline', unlockedBy: 'first_byte' },
-    { id: 'pixel', name: 'Pixel', desc: 'Retro dots', unlockedBy: 'boot_sequence' },
+    { id: 'pixel', name: 'Pixel', desc: 'Retro dots', unlockedBy: 'first_wave' },
     { id: 'spectral', name: 'Spectral', desc: 'Ghostly aura', unlockedBy: 'ghost_rider' },
-    { id: 'digital', name: 'Digital', desc: 'Binary pattern', unlockedBy: 'the_core' },
+    { id: 'digital', name: 'Digital', desc: 'Binary pattern', unlockedBy: 'deep_runner' },
     { id: 'chrome', name: 'Chrome', desc: 'Metallic sheen', unlockedBy: 'megabyte' },
 ];
 
@@ -71,8 +69,8 @@ export var SKINS = [
 export var TRAILS = [
     { id: 'none', name: 'None', desc: 'No trail', unlockedBy: null },
     { id: 'fade', name: 'Fade', desc: 'Fading echo', unlockedBy: 'data_hoarder' },
-    { id: 'sparkle', name: 'Sparkle', desc: 'Glitter path', unlockedBy: 'deep_dive' },
-    { id: 'digital', name: 'Digital', desc: 'Data residue', unlockedBy: 'full_archive' },
+    { id: 'sparkle', name: 'Sparkle', desc: 'Glitter path', unlockedBy: 'wave_rider' },
+    { id: 'digital', name: 'Digital', desc: 'Data residue', unlockedBy: 'long_snake' },
 ];
 
 // --- Persistence ---

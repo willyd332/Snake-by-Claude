@@ -20,6 +20,7 @@ import {
 import {
     startSpeedrunTimer, stopSpeedrunTimer,
 } from './speedrun.js';
+import { getSettingsRef, getDifficultyPreset } from './settings.js';
 
 // --- Post-Tick Event Processing ---
 // Handles all game events that occur after a tick: food eaten,
@@ -46,13 +47,38 @@ export function processPostTickEvents(ctx) {
         if (ctx.state.score >= 100) ctx.tryUnlock('first_byte');
         if (ctx.state.score >= 500) ctx.tryUnlock('data_hoarder');
         if (ctx.state.score >= 1000) ctx.tryUnlock('megabyte');
+        if (ctx.state.score >= 2000) ctx.tryUnlock('centurion');
+        if (ctx.state.score >= 5000) ctx.tryUnlock('transcendent');
+
+        // Length achievements
+        if (ctx.state.snake.length >= 20) ctx.tryUnlock('long_snake');
+        if (ctx.state.snake.length >= 40) ctx.tryUnlock('serpent_king');
     }
 
     // Endless wave-up detection
     if (ctx.state.endlessWave > (ctx.prevState.endlessWave || 0)) {
         recordEndlessWave(ctx.state.endlessWave);
+
+        // Wave milestone achievements
+        if (ctx.state.endlessWave >= 2) ctx.tryUnlock('first_wave');
+        if (ctx.state.endlessWave >= 5) ctx.tryUnlock('wave_rider');
         if (ctx.state.endlessWave >= 10) ctx.tryUnlock('endurance');
+        if (ctx.state.endlessWave >= 15) ctx.tryUnlock('deep_runner');
         if (ctx.state.endlessWave >= 25) ctx.tryUnlock('marathoner');
+        if (ctx.state.endlessWave >= 50) ctx.tryUnlock('legend');
+
+        // Speed demon: wave 21+ means speed is at minimum (40ms)
+        if (ctx.state.endlessWave >= 21) ctx.tryUnlock('speed_demon');
+
+        // Hunter survivor: survived a wave that had ALPHA active
+        if (ctx.prevState.hunter) ctx.tryUnlock('hunter_survivor');
+
+        // Iron will: reach wave 5 without losing a life
+        if (ctx.state.endlessWave >= 5) {
+            var maxLives = getDifficultyPreset(getSettingsRef().difficulty).livesCount;
+            if (ctx.state.lives >= maxLives) ctx.tryUnlock('iron_will');
+        }
+
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         playLevelUpSound();
@@ -94,6 +120,7 @@ export function processPostTickEvents(ctx) {
     if (ctx.state._collectedPowerUp) {
         recordPowerUpCollected();
         if (ctx.state._collectedPowerUp === 'ghost') ctx.tryUnlock('ghost_rider');
+        if (ctx.state._collectedPowerUp === 'timeSlow') ctx.tryUnlock('power_collector');
         var collectedDef = getPowerUpDef(ctx.state._collectedPowerUp);
         if (collectedDef) {
             playPowerUpCollectSound();
@@ -110,6 +137,7 @@ export function processPostTickEvents(ctx) {
         var arenaW = ctx.state.arenaMaxX - ctx.state.arenaMinX + 1;
         var arenaH = ctx.state.arenaMaxY - ctx.state.arenaMinY + 1;
         if (arenaW <= 8 && arenaH <= 8) ctx.tryUnlock('survivor');
+        if (arenaW <= 6 && arenaH <= 6) ctx.tryUnlock('close_call');
     }
 
     // Teleport: detect by checking if head moved more than 2 cells (skip on wrap-around levels)
@@ -119,6 +147,7 @@ export function processPostTickEvents(ctx) {
         if (headDx > 2 || headDy > 2) {
             recordPortalUse();
             playPortalSound();
+            ctx.tryUnlock('portal_master');
             var portalColor = ctx.config.portalColor || '#8b5cf6';
             ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, ctx.prevState.snake[0].x, ctx.prevState.snake[0].y, portalColor);
             ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, portalColor);
