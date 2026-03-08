@@ -59,7 +59,21 @@ export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter
             y: Math.floor(Math.random() * GRID_SIZE),
         };
         attempts++;
-        if (attempts > 1000) return pos;
+        if (attempts > 1000) {
+            // Last resort: prefer unoccupied; if all cells full just return last tried pos
+            if (!occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; })) {
+                return pos;
+            }
+            for (var fx = 0; fx < GRID_SIZE; fx++) {
+                for (var fy = 0; fy < GRID_SIZE; fy++) {
+                    var fp = { x: fx, y: fy };
+                    if (!occupied.some(function(seg) { return seg.x === fp.x && seg.y === fp.y; })) {
+                        return fp;
+                    }
+                }
+            }
+            return pos;
+        }
     } while (
         occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }) ||
         (attempts <= 500 && isNearObstacle(pos, obPositions))
@@ -83,7 +97,21 @@ export function randomPositionInBounds(snake, walls, obstacles, portals, powerUp
             y: minY + Math.floor(Math.random() * rangeY),
         };
         attempts++;
-        if (attempts > 1000) return pos;
+        if (attempts > 1000) {
+            // Last resort: prefer unoccupied; if all cells full just return last tried pos
+            if (!occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; })) {
+                return pos;
+            }
+            for (var fx = minX; fx <= maxX; fx++) {
+                for (var fy = minY; fy <= maxY; fy++) {
+                    var fp = { x: fx, y: fy };
+                    if (!occupied.some(function(seg) { return seg.x === fp.x && seg.y === fp.y; })) {
+                        return fp;
+                    }
+                }
+            }
+            return pos;
+        }
     } while (
         occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }) ||
         (attempts <= 500 && isNearObstacle(pos, obPositions))
