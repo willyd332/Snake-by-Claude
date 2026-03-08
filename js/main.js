@@ -14,6 +14,12 @@ import {
     createLevelSelectState, renderLevelSelect,
     getHighestLevel, setHighestLevel,
 } from './screens.js';
+import {
+    createParticleSystem, updateParticles, renderParticles,
+    emitBurst, emitExplosion, emitSparkle, emitLevelUpShower,
+    emitPortalSwirl,
+    createShakeState, triggerShake, updateShake, getShakeOffset,
+} from './particles.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -45,6 +51,9 @@ var levelSelectState = createLevelSelectState();
 // --- Game State ---
 var state = createInitialState();
 var startingLevel = 1;
+var particleSystem = createParticleSystem();
+var shakeState = createShakeState();
+var lastFrameTime = 0;
 var highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
 var konamiActivated = localStorage.getItem('snake-konami') === 'true';
 dom.highScoreEl.textContent = highScore;
@@ -84,6 +93,8 @@ function startGameAtLevel(level) {
     startingLevel = level;
     showGameplayUI();
     ui.clearTimers();
+    particleSystem = createParticleSystem();
+    shakeState = createShakeState();
 
     state = createInitialState();
     // Set up for the chosen level
@@ -155,6 +166,8 @@ setupInput({
             dom.highScoreEl.textContent = highScore;
         }
         ui.clearTimers();
+        particleSystem = createParticleSystem();
+        shakeState = createShakeState();
         state = createInitialState();
         state = Object.assign({}, state, {
             level: startingLevel,
@@ -199,6 +212,14 @@ setupInput({
 
 // --- Game loop ---
 function gameLoop(timestamp) {
+    var dt = lastFrameTime > 0 ? (timestamp - lastFrameTime) / 1000 : 0.016;
+    dt = Math.min(dt, 0.05); // cap delta to avoid huge jumps
+    lastFrameTime = timestamp;
+
+    // Update particles and shake every frame (all screens)
+    particleSystem = updateParticles(particleSystem, dt);
+    shakeState = updateShake(shakeState, dt);
+
     if (currentScreen === 'title') {
         titleState = updateTitleState(titleState);
         renderTitleScreen(ctx, titleState);
@@ -223,27 +244,78 @@ function gameLoop(timestamp) {
     var elapsed = timestamp - state.lastTick;
 
     if (elapsed >= speed) {
+        var prevState = state;
         var prevLevel = state.level;
         state = tick(Object.assign({}, state, { lastTick: timestamp }));
         state = Object.assign({}, state, { lastTick: timestamp });
 
+        // --- Particle Events ---
+
+        // Food eaten: burst at food position
+        if (state._ateFood && state._ateFoodPos) {
+            particleSystem = emitBurst(particleSystem, state._ateFoodPos.x, state._ateFoodPos.y, config.foodColor, 12, 60, 0.5);
+            shakeState = triggerShake(2, 0.1);
+        }
+
+        // Level up: shower + bigger shake
         if (state.level > prevLevel) {
             ui.showLevelUp(state.level);
-            // Track highest level reached
             setHighestLevel(state.level);
+            var newConfig = getLevelConfig(state.level);
+            particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, newConfig.color);
+            shakeState = triggerShake(4, 0.3);
         }
 
+        // Power-up collected: sparkle burst
         if (state._collectedPowerUp) {
             var collectedDef = getPowerUpDef(state._collectedPowerUp);
-            if (collectedDef) ui.showPowerUpCollected(collectedDef);
+            if (collectedDef) {
+                ui.showPowerUpCollected(collectedDef);
+                particleSystem = emitBurst(particleSystem, state.snake[0].x, state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
+            }
         }
 
+        // Arena shrink: shake
         if (state._shrinkOccurred) {
             ui.showShrinkMessage();
+            shakeState = triggerShake(5, 0.25);
+        }
+
+        // Teleport: detect by checking if head moved more than 2 cells (skip on wrap-around levels)
+        if (!state.gameOver && prevState.started && !config.wrapAround) {
+            var headDx = Math.abs(state.snake[0].x - prevState.snake[0].x);
+            var headDy = Math.abs(state.snake[0].y - prevState.snake[0].y);
+            if (headDx > 2 || headDy > 2) {
+                var portalColor = config.portalColor || '#8b5cf6';
+                particleSystem = emitPortalSwirl(particleSystem, prevState.snake[0].x, prevState.snake[0].y, portalColor);
+                particleSystem = emitPortalSwirl(particleSystem, state.snake[0].x, state.snake[0].y, portalColor);
+            }
+        }
+
+        // Game over: explosion
+        if (state.gameOver && !prevState.gameOver) {
+            particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
+            shakeState = triggerShake(8, 0.4);
         }
     }
 
+    // Active power-up sparkle trail (every frame, throttled by particle count)
+    if (state.activePowerUp && state.started && !state.gameOver && particleSystem.particles.length < 200) {
+        var puDef = getPowerUpDef(state.activePowerUp.type);
+        if (puDef) {
+            particleSystem = emitSparkle(particleSystem, state.snake[0].x, state.snake[0].y, puDef.glowColor);
+        }
+    }
+
+    // Apply screen shake
+    var offset = getShakeOffset(shakeState);
+    ctx.save();
+    ctx.translate(offset.x, offset.y);
+
     render(ctx, state, konamiActivated, dom);
+    renderParticles(ctx, particleSystem);
+
+    ctx.restore();
     requestAnimationFrame(gameLoop);
 }
 

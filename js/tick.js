@@ -7,14 +7,22 @@ import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 
 export function tick(prev) {
-    if (prev.gameOver || !prev.started) return prev;
+    // Clear one-frame event flags from previous tick
+    var clean = Object.assign({}, prev, {
+        _ateFood: false,
+        _ateFoodPos: null,
+        _collectedPowerUp: null,
+        _shrinkOccurred: false,
+    });
 
-    var dir = prev.nextDirection;
-    if (dir.x === 0 && dir.y === 0) return prev;
+    if (clean.gameOver || !clean.started) return clean;
 
-    var config = getLevelConfig(prev.level);
-    var isGhost = prev.activePowerUp && prev.activePowerUp.type === 'ghost';
-    var head = prev.snake[0];
+    var dir = clean.nextDirection;
+    if (dir.x === 0 && dir.y === 0) return clean;
+
+    var config = getLevelConfig(clean.level);
+    var isGhost = clean.activePowerUp && clean.activePowerUp.type === 'ghost';
+    var head = clean.snake[0];
     var newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
     // Boundary: wrap-around or collision
@@ -25,50 +33,50 @@ export function tick(prev) {
         };
     } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                newHead.y < 0 || newHead.y >= GRID_SIZE) {
-        return Object.assign({}, prev, { gameOver: true, direction: dir });
+        return Object.assign({}, clean, { gameOver: true, direction: dir });
     }
 
     // Shrinking arena boundary — cannot be bypassed even with ghost
     if (config.shrinkingArena) {
-        if (newHead.x < prev.arenaMinX || newHead.x > prev.arenaMaxX ||
-            newHead.y < prev.arenaMinY || newHead.y > prev.arenaMaxY) {
-            return Object.assign({}, prev, { gameOver: true, direction: dir });
+        if (newHead.x < clean.arenaMinX || newHead.x > clean.arenaMaxX ||
+            newHead.y < clean.arenaMinY || newHead.y > clean.arenaMaxY) {
+            return Object.assign({}, clean, { gameOver: true, direction: dir });
         }
     }
 
     // Wall obstacle collision (ghost passes through)
-    if (!isGhost && collides(newHead, prev.walls)) {
-        return Object.assign({}, prev, { gameOver: true, direction: dir });
+    if (!isGhost && collides(newHead, clean.walls)) {
+        return Object.assign({}, clean, { gameOver: true, direction: dir });
     }
 
     // Self collision (ghost passes through)
-    if (!isGhost && collides(newHead, prev.snake)) {
-        return Object.assign({}, prev, { gameOver: true, direction: dir });
+    if (!isGhost && collides(newHead, clean.snake)) {
+        return Object.assign({}, clean, { gameOver: true, direction: dir });
     }
 
     // Moving obstacle collision (always fatal, even with ghost)
-    if (prev.obstacles.length > 0 && collides(newHead, getObstaclePositions(prev.obstacles))) {
-        return Object.assign({}, prev, { gameOver: true, direction: dir });
+    if (clean.obstacles.length > 0 && collides(newHead, getObstaclePositions(clean.obstacles))) {
+        return Object.assign({}, clean, { gameOver: true, direction: dir });
     }
 
     // Hunter collision (ghost passes through hunter body but not head)
-    if (prev.hunter) {
-        var hunterHead = prev.hunter.segments[0];
+    if (clean.hunter) {
+        var hunterHead = clean.hunter.segments[0];
         var hitHunterHead = newHead.x === hunterHead.x && newHead.y === hunterHead.y;
         if (hitHunterHead) {
-            return Object.assign({}, prev, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir });
         }
-        if (!isGhost && prev.hunter.segments.length > 1) {
-            var hunterBody = prev.hunter.segments.slice(1);
+        if (!isGhost && clean.hunter.segments.length > 1) {
+            var hunterBody = clean.hunter.segments.slice(1);
             if (collides(newHead, hunterBody)) {
-                return Object.assign({}, prev, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir });
             }
         }
     }
 
     // Portal teleportation
-    if (prev.portals.length > 0) {
-        var teleportDest = checkPortalTeleport(newHead, prev.portals);
+    if (clean.portals.length > 0) {
+        var teleportDest = checkPortalTeleport(newHead, clean.portals);
         if (teleportDest) {
             newHead = { x: teleportDest.x + dir.x, y: teleportDest.y + dir.y };
             if (config.wrapAround || isGhost) {
@@ -78,48 +86,48 @@ export function tick(prev) {
                 };
             } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
-                return Object.assign({}, prev, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir });
             }
-            if (!isGhost && collides(newHead, prev.walls)) {
-                return Object.assign({}, prev, { gameOver: true, direction: dir });
+            if (!isGhost && collides(newHead, clean.walls)) {
+                return Object.assign({}, clean, { gameOver: true, direction: dir });
             }
         }
     }
 
     // Move obstacles
-    var newObstacles = prev.obstacles.length > 0 ? moveObstacles(prev.obstacles) : prev.obstacles;
+    var newObstacles = clean.obstacles.length > 0 ? moveObstacles(clean.obstacles) : clean.obstacles;
 
     // Check if obstacle moved onto snake body
     if (newObstacles.length > 0) {
         var obPositions = getObstaclePositions(newObstacles);
-        var snakeHit = obPositions.some(function(op) { return collides(op, [newHead].concat(prev.snake)); });
+        var snakeHit = obPositions.some(function(op) { return collides(op, [newHead].concat(clean.snake)); });
         if (snakeHit) {
-            return Object.assign({}, prev, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir });
         }
     }
 
     // Move hunter AI
-    var newHunter = prev.hunter ? moveHunter(prev.hunter, newHead, prev.walls, newObstacles, config) : null;
+    var newHunter = clean.hunter ? moveHunter(clean.hunter, newHead, clean.walls, newObstacles, config) : null;
 
-    var ate = prev.food && newHead.x === prev.food.x && newHead.y === prev.food.y;
-    var newSnake = [newHead].concat(ate ? prev.snake : prev.snake.slice(0, -1));
-    var newScore = ate ? prev.score + 10 : prev.score;
-    var newFoodEaten = ate ? prev.foodEaten + 1 : prev.foodEaten;
-    var newLevel = prev.level;
-    var newWalls = prev.walls;
-    var newPortals = prev.portals;
-    var newFood = ate ? null : prev.food;
+    var ate = clean.food && newHead.x === clean.food.x && newHead.y === clean.food.y;
+    var newSnake = [newHead].concat(ate ? clean.snake : clean.snake.slice(0, -1));
+    var newScore = ate ? clean.score + 10 : clean.score;
+    var newFoodEaten = ate ? clean.foodEaten + 1 : clean.foodEaten;
+    var newLevel = clean.level;
+    var newWalls = clean.walls;
+    var newPortals = clean.portals;
+    var newFood = ate ? null : clean.food;
 
     // Check if hunter moved onto player snake
     if (newHunter) {
         var newHunterHead = newHunter.segments[0];
         var playerHead = newSnake[0];
         if (newHunterHead.x === playerHead.x && newHunterHead.y === playerHead.y) {
-            return Object.assign({}, prev, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir });
         }
         if (!isGhost && newSnake.length > 1) {
             if (collides(newHunterHead, newSnake.slice(1))) {
-                return Object.assign({}, prev, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir });
             }
         }
     }
@@ -139,9 +147,9 @@ export function tick(prev) {
     }
 
     // Power-up state updates
-    var newPowerUp = prev.powerUp;
-    var newActivePowerUp = prev.activePowerUp;
-    var newPowerUpSpawnCounter = prev.powerUpSpawnCounter;
+    var newPowerUp = clean.powerUp;
+    var newActivePowerUp = clean.activePowerUp;
+    var newPowerUpSpawnCounter = clean.powerUpSpawnCounter;
     var collectedPowerUpType = null;
 
     // Check power-up collection
@@ -171,7 +179,7 @@ export function tick(prev) {
 
     // Level up check
     if (newFoodEaten >= FOOD_TO_LEVEL_UP && newLevel < MAX_LEVEL) {
-        newLevel = prev.level + 1;
+        newLevel = clean.level + 1;
         newFoodEaten = 0;
         newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
         newObstacles = generateObstacles(newLevel);
@@ -183,15 +191,15 @@ export function tick(prev) {
     }
 
     // Shrinking arena
-    var newArenaMinX = prev.arenaMinX;
-    var newArenaMinY = prev.arenaMinY;
-    var newArenaMaxX = prev.arenaMaxX;
-    var newArenaMaxY = prev.arenaMaxY;
-    var newShrinkCounter = prev.shrinkCounter;
+    var newArenaMinX = clean.arenaMinX;
+    var newArenaMinY = clean.arenaMinY;
+    var newArenaMaxX = clean.arenaMaxX;
+    var newArenaMaxY = clean.arenaMaxY;
+    var newShrinkCounter = clean.shrinkCounter;
     var shrinkOccurred = false;
 
     // Reset arena on level transition
-    if (newLevel !== prev.level) {
+    if (newLevel !== clean.level) {
         newArenaMinX = 0;
         newArenaMinY = 0;
         newArenaMaxX = GRID_SIZE - 1;
@@ -199,7 +207,7 @@ export function tick(prev) {
         newShrinkCounter = 0;
     }
 
-    if (ate && config.shrinkingArena && newLevel === prev.level) {
+    if (ate && config.shrinkingArena && newLevel === clean.level) {
         newShrinkCounter = newShrinkCounter + 1;
         if (newShrinkCounter >= config.shrinkInterval) {
             newShrinkCounter = 0;
@@ -240,7 +248,7 @@ export function tick(prev) {
                     return collides(seg, shrinkCells);
                 });
                 if (snakeCrushed) {
-                    return Object.assign({}, prev, { gameOver: true, direction: dir });
+                    return Object.assign({}, clean, { gameOver: true, direction: dir });
                 }
                 if (newFood && collides(newFood, shrinkCells)) {
                     newFood = null;
@@ -292,7 +300,7 @@ export function tick(prev) {
         foodEaten: newFoodEaten,
         gameOver: false,
         started: true,
-        lastTick: prev.lastTick,
+        lastTick: clean.lastTick,
         arenaMinX: newArenaMinX,
         arenaMinY: newArenaMinY,
         arenaMaxX: newArenaMaxX,
@@ -300,5 +308,7 @@ export function tick(prev) {
         shrinkCounter: newShrinkCounter,
         _collectedPowerUp: collectedPowerUpType,
         _shrinkOccurred: shrinkOccurred,
+        _ateFood: ate,
+        _ateFoodPos: ate ? clean.food : null,
     };
 }
