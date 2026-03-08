@@ -6,6 +6,29 @@ import { getPowerUpDef } from './powerups.js';
 import { manhattanDistance } from './hunter.js';
 import { getActiveSkin, getActiveTrail } from './achievements.js';
 import { getSettingsRef } from './settings.js';
+import { getActiveEventDisplay } from './wave-events.js';
+
+function renderWaveEventBanner(ctx, waveEvent) {
+    var display = getActiveEventDisplay(waveEvent);
+    if (!display) return;
+    var bannerAlpha = Math.min(1, waveEvent.bannerTicksLeft / 5);
+    ctx.save();
+    ctx.globalAlpha = bannerAlpha * 0.85;
+    ctx.fillStyle = 'rgba(10, 10, 26, 0.75)';
+    var bannerY = 40;
+    var bannerH = 32;
+    ctx.fillRect(0, bannerY, CANVAS_SIZE, bannerH);
+    ctx.globalAlpha = bannerAlpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 14px Courier New';
+    ctx.fillStyle = display.color;
+    ctx.shadowColor = display.color;
+    ctx.shadowBlur = 10;
+    ctx.fillText(display.icon + ' ' + display.label, CANVAS_SIZE / 2, bannerY + 21);
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'left';
+    ctx.restore();
+}
 
 function getDeathMessage(deathCause, level, config) {
     if (deathCause === 'hunter') {
@@ -581,6 +604,66 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         }
     }
 
+    // Wave Event: Bonus food items (FOOD_SURGE)
+    if (state.waveEvent && state.waveEvent.bonusFood && state.waveEvent.bonusFood.length > 0) {
+        var bfPulse = Math.sin(Date.now() / 180) * 0.25 + 0.75;
+        state.waveEvent.bonusFood.forEach(function(bf) {
+            var bfcx = bf.x * CELL_SIZE + CELL_SIZE / 2;
+            var bfcy = bf.y * CELL_SIZE + CELL_SIZE / 2;
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#f59e0b';
+            ctx.globalAlpha = bfPulse;
+            ctx.beginPath();
+            ctx.arc(bfcx, bfcy, CELL_SIZE / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath();
+            ctx.arc(bfcx - 1, bfcy - 1, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = bfPulse * 0.4;
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(bfcx, bfcy, CELL_SIZE / 2 + 1, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0.5;
+        });
+    }
+
+    // Wave Event: Storm portals (PORTAL_STORM)
+    if (state.waveEvent && state.waveEvent.stormPortals && state.waveEvent.stormPortals.length > 0) {
+        var spPulse = Math.sin(Date.now() / 250) * 0.3 + 0.7;
+        state.waveEvent.stormPortals.forEach(function(pair) {
+            [pair.a, pair.b].forEach(function(pos) {
+                var spcx = pos.x * CELL_SIZE + CELL_SIZE / 2;
+                var spcy = pos.y * CELL_SIZE + CELL_SIZE / 2;
+                ctx.shadowColor = '#c084fc';
+                ctx.shadowBlur = 14;
+                ctx.globalAlpha = spPulse;
+                ctx.strokeStyle = '#c084fc';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(spcx, spcy, CELL_SIZE / 2 - 1, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = '#c084fc';
+                ctx.globalAlpha = spPulse * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(spcx, spcy - 4);
+                ctx.lineTo(spcx + 4, spcy);
+                ctx.lineTo(spcx, spcy + 4);
+                ctx.lineTo(spcx - 4, spcy);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.shadowBlur = 0;
+            });
+        });
+        ctx.lineWidth = 0.5;
+    }
+
     // Trail effect (rendered before snake)
     var trailHistory = interp ? interp.trailHistory : null;
     var activeTrail = getActiveTrail();
@@ -813,6 +896,30 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         } else {
             dom.comboHudEl.style.display = 'none';
         }
+    }
+
+    // Wave Event Banner (rendered on top of gameplay)
+    if (state.waveEvent && state.waveEvent.bannerEvent && state.waveEvent.bannerTicksLeft > 0 && state.started && !state.gameOver) {
+        renderWaveEventBanner(ctx, state.waveEvent);
+    }
+
+    // Speed Burst visual warning flash (pulsing border when warning phase)
+    if (state.waveEvent && state.waveEvent.activeEvent === 'SPEED_BURST' && state.waveEvent.speedBurstWarning && state.started && !state.gameOver) {
+        var warnPulse = Math.sin(Date.now() / 80) * 0.4 + 0.5;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(249, 115, 22, ' + warnPulse + ')';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(2, 2, CANVAS_SIZE - 4, CANVAS_SIZE - 4);
+        ctx.restore();
+    }
+
+    // Gold Rush: golden tint overlay while active
+    if (state.waveEvent && state.waveEvent.goldRushActive && state.started && !state.gameOver) {
+        ctx.save();
+        ctx.globalAlpha = 0.04 + Math.sin(Date.now() / 400) * 0.02;
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        ctx.restore();
     }
 }
 

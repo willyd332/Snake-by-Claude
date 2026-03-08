@@ -46,6 +46,7 @@ import {
 } from './speedrun.js';
 import { createGameCallbacks } from './game-callbacks.js';
 import { showRunSummary } from './run-summary.js';
+import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -224,6 +225,10 @@ function gameLoop(timestamp) {
     }
     if (g.state.activePowerUp && g.state.activePowerUp.type === 'speedBoost') {
         speed = Math.round(speed / 1.5);
+    }
+    // Wave event: SPEED_BURST increases speed by multiplier
+    if (g.state.waveEvent && isSpeedBurstActive(g.state.waveEvent)) {
+        speed = Math.round(speed / SPEED_BURST_MULTIPLIER);
     }
 
     // --- Death Replay Mode ---

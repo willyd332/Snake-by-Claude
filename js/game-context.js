@@ -15,6 +15,7 @@ import { playHunterIntroSound } from './audio.js';
 import { stopMusic } from './music.js';
 import { recordGameStart, recordGameTime } from './stats.js';
 import { createSpeedrunState, resetSpeedrun } from './speedrun.js';
+import { createWaveEventState } from './wave-events.js';
 
 // --- Screen UI helpers ---
 
@@ -86,6 +87,7 @@ export function startEndlessMode(g, deps) {
         endlessWave: 1,
         endlessConfig: wave1Config,
         lives: endlessDiffPreset.livesCount,
+        waveEvent: createWaveEventState(),
     });
 
     g.hunterIntroState = null;
@@ -197,6 +199,7 @@ export function restartGame(g, deps, newDir) {
         started: true,
         nextDirection: newDir,
         lives: restartDiff.livesCount,
+        waveEvent: createWaveEventState(),
     });
     g.state = Object.assign({}, g.state, {
         food: randomPosition(g.state.snake, g.state.walls, g.state.obstacles, g.state.portals, g.state.powerUp, g.state.hunter),

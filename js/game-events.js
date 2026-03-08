@@ -15,6 +15,9 @@ import {
     playPowerUpCollectSound, playMagnetCollectSound, playPortalSound, playShrinkSound,
     playHunterKillSound, playHunterIntroSound, playComboSound,
     playShieldBreakSound, playBonusFoodSound,
+    playWaveEventFoodSurgeSound, playWaveEventSpeedWarningSound,
+    playWaveEventSpeedBurstSound, playWaveEventGravityFlipSound,
+    playWaveEventPortalStormSound, playWaveEventGoldRushSound,
     getAudioContext, getMasterGain,
 } from './audio.js';
 import { setMusicIntensity, playWaveFanfare, stopMusic } from './music.js';
@@ -242,6 +245,69 @@ export function processPostTickEvents(ctx) {
             ctx.messageEl.className = '';
             ctx.messageEl.style.color = '';
         }, 1500);
+    }
+
+    // Wave event triggered: play sound stinger and show particles
+    if (ctx.state._waveEventEffects) {
+        var effectType = ctx.state._waveEventEffects.type;
+        if (effectType === 'foodSurgeStart') {
+            playWaveEventFoodSurgeSound();
+            ctx.shakeState = triggerShake(3, 0.15);
+        } else if (effectType === 'speedBurstWarning') {
+            playWaveEventSpeedWarningSound();
+        } else if (effectType === 'speedBurstStart') {
+            playWaveEventSpeedBurstSound();
+            ctx.shakeState = triggerShake(4, 0.2);
+        } else if (effectType === 'gravityFlip') {
+            playWaveEventGravityFlipSound();
+            ctx.shakeState = triggerShake(5, 0.25);
+            // Flash particles at the food position if it moved
+            if (ctx.state.food) {
+                ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.food.x, ctx.state.food.y, '#a855f7', 16, 50, 0.5);
+            }
+        } else if (effectType === 'portalStormStart') {
+            playWaveEventPortalStormSound();
+            ctx.shakeState = triggerShake(3, 0.15);
+            // Particle swirls at storm portal positions
+            var stormP = ctx.state._waveEventEffects.stormPortals || [];
+            for (var sp = 0; sp < stormP.length; sp++) {
+                ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, stormP[sp].a.x, stormP[sp].a.y, '#8b5cf6');
+                ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, stormP[sp].b.x, stormP[sp].b.y, '#8b5cf6');
+            }
+        } else if (effectType === 'goldRushStart') {
+            playWaveEventGoldRushSound();
+            ctx.shakeState = triggerShake(3, 0.15);
+            // Golden burst at current food
+            if (ctx.state.food) {
+                ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.food.x, ctx.state.food.y, '#fbbf24', 14, 50, 0.5);
+            }
+        } else if (effectType === 'speedBurstEnd') {
+            // Speed returned to normal - brief notification
+            ctx.messageEl.textContent = 'SPEED NORMALIZED';
+            ctx.messageEl.className = 'powerup-msg';
+            ctx.messageEl.style.color = '#94a3b8';
+            setTimeout(function() {
+                ctx.messageEl.textContent = '';
+                ctx.messageEl.className = '';
+                ctx.messageEl.style.color = '';
+            }, 1000);
+        }
+    }
+
+    // Bonus food collected (FOOD_SURGE): particles + popup
+    if (ctx.state._ateBonusFood && ctx.state._ateBonusFoodPos) {
+        ctx.prevSnake = null;
+        playBonusFoodSound('golden');
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateBonusFoodPos.x, ctx.state._ateBonusFoodPos.y, '#fbbf24', 14, 60, 0.5);
+        ctx.shakeState = triggerShake(SHAKE_FOOD.intensity, SHAKE_FOOD.duration);
+        ctx.scorePopups = (ctx.scorePopups || []).concat([{
+            x: ctx.state._ateBonusFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
+            y: ctx.state._ateBonusFoodPos.y * CELL_SIZE + CELL_SIZE / 2,
+            text: 'BONUS!',
+            alpha: 1,
+            vy: -0.8,
+            color: '#fbbf24',
+        }]);
     }
 
     // Teleport: detect by checking if head moved more than 2 cells (skip on wrap-around levels)

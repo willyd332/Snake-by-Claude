@@ -36,6 +36,7 @@ export function createInitialState() {
         wallInset: 0,
         shieldActive: false,
         combo: createComboState(),
+        waveEvent: null,
     };
 }
 

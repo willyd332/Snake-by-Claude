@@ -656,3 +656,100 @@ export function playBossDeathSound() {
     shimmer.gain.gain.linearRampToValueAtTime(0.08, now + 0.95);
     shimmer.gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
 }
+
+// --- Wave Event Stingers ---
+
+// Food Surge: bright ascending sparkle burst
+export function playWaveEventFoodSurgeSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+    var notes = [523, 659, 784, 1047];
+    for (var i = 0; i < notes.length; i++) {
+        var t = now + i * 0.06;
+        var tone = createTone(ctx, 'sine', t, t + 0.25);
+        tone.osc.frequency.setValueAtTime(notes[i], t);
+        tone.gain.gain.setValueAtTime(0.15, t);
+        tone.gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    }
+}
+
+// Speed Burst warning: quick alarm beeps
+export function playWaveEventSpeedWarningSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+    for (var i = 0; i < 3; i++) {
+        var t = now + i * 0.12;
+        var tone = createTone(ctx, 'square', t, t + 0.08);
+        tone.osc.frequency.setValueAtTime(880, t);
+        tone.gain.gain.setValueAtTime(0.12, t);
+        tone.gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    }
+}
+
+// Speed Burst start: aggressive rising saw
+export function playWaveEventSpeedBurstSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+    var tone = createTone(ctx, 'sawtooth', now, now + 0.35);
+    tone.osc.frequency.setValueAtTime(200, now);
+    tone.osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+    tone.osc.frequency.exponentialRampToValueAtTime(600, now + 0.35);
+    tone.gain.gain.setValueAtTime(0.18, now);
+    tone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+}
+
+// Gravity Flip: dramatic whoosh with pitch inversion
+export function playWaveEventGravityFlipSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+    var whoosh = createTone(ctx, 'triangle', now, now + 0.4);
+    whoosh.osc.frequency.setValueAtTime(800, now);
+    whoosh.osc.frequency.exponentialRampToValueAtTime(100, now + 0.4);
+    whoosh.gain.gain.setValueAtTime(0.2, now);
+    whoosh.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.2);
+    buf.gain.gain.setValueAtTime(0.1, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+}
+
+// Portal Storm: eerie warbling tones
+export function playWaveEventPortalStormSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+    var tone1 = createTone(ctx, 'sine', now, now + 0.5);
+    tone1.osc.frequency.setValueAtTime(300, now);
+    tone1.osc.frequency.linearRampToValueAtTime(500, now + 0.25);
+    tone1.osc.frequency.linearRampToValueAtTime(300, now + 0.5);
+    tone1.gain.gain.setValueAtTime(0.15, now);
+    tone1.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    var tone2 = createTone(ctx, 'sine', now + 0.05, now + 0.45);
+    tone2.osc.frequency.setValueAtTime(450, now + 0.05);
+    tone2.osc.frequency.linearRampToValueAtTime(650, now + 0.25);
+    tone2.osc.frequency.linearRampToValueAtTime(450, now + 0.45);
+    tone2.gain.gain.setValueAtTime(0.1, now + 0.05);
+    tone2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+}
+
+// Gold Rush: triumphant coin-like chime
+export function playWaveEventGoldRushSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+    var chime1 = createTone(ctx, 'sine', now, now + 0.3);
+    chime1.osc.frequency.setValueAtTime(1318, now);
+    chime1.gain.gain.setValueAtTime(0.18, now);
+    chime1.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    var chime2 = createTone(ctx, 'sine', now + 0.08, now + 0.35);
+    chime2.osc.frequency.setValueAtTime(1568, now + 0.08);
+    chime2.gain.gain.setValueAtTime(0.15, now + 0.08);
+    chime2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    var chime3 = createTone(ctx, 'triangle', now + 0.16, now + 0.45);
+    chime3.osc.frequency.setValueAtTime(2093, now + 0.16);
+    chime3.gain.gain.setValueAtTime(0.1, now + 0.16);
+    chime3.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+}

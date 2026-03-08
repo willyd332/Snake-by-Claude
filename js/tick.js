@@ -8,6 +8,10 @@ import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
 import { onFoodEaten, checkComboExpiry, createComboState, COMBO_BASE_SCORE } from './combo.js';
+import {
+    tickWaveEvent, checkBonusFoodCollection, resetWaveEventForNewWave,
+    createWaveEventState, isGoldRushActive, GOLD_RUSH_SCORE_MULTIPLIER,
+} from './wave-events.js';
 
 // Food type spawn rates (must sum to 1.0)
 var FOOD_TYPE_CHANCES = [
@@ -75,6 +79,10 @@ export function tick(prev) {
         _comboMultiplier: 1,
         _comboIncreased: false,
         _scoreGained: 0,
+        _waveEventTriggered: null,
+        _waveEventEffects: null,
+        _ateBonusFood: false,
+        _ateBonusFoodPos: null,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -188,9 +196,13 @@ export function tick(prev) {
         }
     }
 
-    // Portal teleportation
-    if (clean.portals.length > 0) {
-        var teleportDest = checkPortalTeleport(newHead, clean.portals);
+    // Portal teleportation (includes storm portals from wave events)
+    var allPortals = clean.portals;
+    if (clean.waveEvent && clean.waveEvent.stormPortals && clean.waveEvent.stormPortals.length > 0) {
+        allPortals = clean.portals.concat(clean.waveEvent.stormPortals);
+    }
+    if (allPortals.length > 0) {
+        var teleportDest = checkPortalTeleport(newHead, allPortals);
         if (teleportDest) {
             newHead = { x: teleportDest.x + dir.x, y: teleportDest.y + dir.y };
             if (config.wrapAround || isGhost || isInvincible) {
@@ -251,6 +263,10 @@ export function tick(prev) {
         newCombo = eatResult.comboState;
         // Golden apple: 3x base score before combo multiplier
         var foodScoreMultiplier = ateFoodType === 'golden' ? 3 : 1;
+        // Gold Rush event: all food worth 3x
+        if (clean.waveEvent && isGoldRushActive(clean.waveEvent)) {
+            foodScoreMultiplier = Math.max(foodScoreMultiplier, GOLD_RUSH_SCORE_MULTIPLIER);
+        }
         _scoreGained = eatResult.scoreGained * foodScoreMultiplier;
         newScore = clean.score + _scoreGained;
         _comboMultiplier = eatResult.comboState.multiplier;
@@ -309,6 +325,9 @@ export function tick(prev) {
         newActivePowerUp = { type: 'speedBoost', ticksLeft: FOOD_SPEED_TICKS, fromFood: true };
     }
 
+    // Track wave event state — will be updated at end of tick
+    var newWaveEvent = clean.waveEvent || createWaveEventState();
+
     if (newFoodEaten >= ENDLESS_FOOD_PER_WAVE) {
         endlessWave = endlessWave + 1;
         endlessConfig = getEndlessConfig(endlessWave);
@@ -326,6 +345,8 @@ export function tick(prev) {
         newPowerUp = null;
         newActivePowerUp = null;
         newPowerUpSpawnCounter = 0;
+        // Reset wave events on new wave
+        newWaveEvent = resetWaveEventForNewWave();
     }
 
     // Shrinking arena
@@ -476,6 +497,54 @@ export function tick(prev) {
         }
     }
 
+    // --- Wave Events System ---
+    var waveEventTriggered = null;
+    var waveEventEffects = null;
+    var ateBonusFood = false;
+    var ateBonusFoodPos = null;
+
+    // Tick the wave event timer/state
+    var waveTickResult = tickWaveEvent(newWaveEvent, {
+        endlessWave: endlessWave,
+        activePowerUp: newActivePowerUp,
+        snake: newSnake,
+        walls: newWalls,
+        obstacles: newObstacles,
+        portals: newPortals,
+        powerUp: newPowerUp,
+        hunter: newHunter,
+        food: newFood,
+    });
+    newWaveEvent = waveTickResult.waveEvent;
+
+    if (waveTickResult.effects) {
+        waveEventEffects = waveTickResult.effects;
+        waveEventTriggered = newWaveEvent.activeEvent;
+
+        // Apply immediate effects
+        if (waveTickResult.effects.type === 'gravityFlip' && waveTickResult.effects.newFoodPos) {
+            newFood = Object.assign({}, newFood, waveTickResult.effects.newFoodPos);
+        }
+    }
+
+    // Check if snake head collected a bonus food item (FOOD_SURGE)
+    if (newWaveEvent.bonusFood.length > 0) {
+        var bonusResult = checkBonusFoodCollection(newWaveEvent, newSnake[0]);
+        if (bonusResult.collected) {
+            ateBonusFood = true;
+            ateBonusFoodPos = bonusResult.collected;
+            // Bonus food grants score (3x like golden)
+            var bonusEatResult = onFoodEaten(newCombo, clean.lastTick);
+            newCombo = bonusEatResult.comboState;
+            var bonusScoreGained = bonusEatResult.scoreGained * 3;
+            newScore = newScore + bonusScoreGained;
+            _scoreGained = _scoreGained + bonusScoreGained;
+            // Snake grows from bonus food
+            newSnake = newSnake.concat([newSnake[newSnake.length - 1]]);
+        }
+        newWaveEvent = Object.assign({}, newWaveEvent, { bonusFood: bonusResult.bonusFood });
+    }
+
     return {
         snake: newSnake,
         direction: dir,
@@ -506,6 +575,7 @@ export function tick(prev) {
         invincibleTicks: isInvincible ? clean.invincibleTicks - 1 : 0,
         combo: newCombo,
         shieldActive: newShieldActive,
+        waveEvent: newWaveEvent,
         _collectedPowerUp: collectedPowerUpType,
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
@@ -518,5 +588,9 @@ export function tick(prev) {
         _comboMultiplier: _comboMultiplier,
         _comboIncreased: _comboIncreased,
         _scoreGained: _scoreGained,
+        _waveEventTriggered: waveEventTriggered,
+        _waveEventEffects: waveEventEffects,
+        _ateBonusFood: ateBonusFood,
+        _ateBonusFoodPos: ateBonusFoodPos,
     };
 }
