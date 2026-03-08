@@ -534,6 +534,51 @@ test.describe('Snake Game — Fragments', () => {
   })
 })
 
+test.describe('Snake Game — Environment', () => {
+  test('environment module exports renderEnvironment function', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const hasExport = await page.evaluate(async () => {
+      const mod = await import('/js/environment.js')
+      return typeof mod.renderEnvironment === 'function'
+    })
+    expect(hasExport).toBe(true)
+  })
+
+  test('higher levels render without JavaScript errors', async ({ page }) => {
+    // Unlock all levels + skip prologue
+    await page.addInitScript(() => {
+      localStorage.setItem('snake-prologue-seen', 'true')
+      localStorage.setItem('snake-highest-level', '10')
+    })
+
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
+    await page.goto('/')
+    await page.waitForTimeout(200)
+
+    // Navigate to level select and start at level 6 (fog of war + environment effects)
+    await page.keyboard.press('l')
+    await page.waitForTimeout(200)
+    // Navigate to level 6 (default selected is highest unlocked, so press down to go lower)
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.press('ArrowDown')
+      await page.waitForTimeout(50)
+    }
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(200)
+
+    // Start playing
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(3000)
+
+    expect(errors).toEqual([])
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await skipPrologue(page)

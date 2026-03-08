@@ -3,6 +3,7 @@
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE } from './constants.js';
 import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
+import { renderEnvironment } from './environment.js';
 
 function lerpPos(prev, curr, t, wrapGrid) {
     var dx = curr.x - prev.x;
@@ -42,6 +43,9 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
         ctx.stroke();
     }
+
+    // Environmental details (rendered behind game elements)
+    renderEnvironment(ctx, state);
 
     // Wrap-around edge indicators
     if (config.wrapAround && state.started && !state.gameOver) {
