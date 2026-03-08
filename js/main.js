@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, MAX_LEVEL, INITIAL_LIVES } from './constants.js';
+import { CANVAS_SIZE, MAX_LEVEL } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
 import { render } from './renderer.js';
@@ -13,7 +13,12 @@ import { generateHunter } from './hunter.js';
 import {
     createTitleState, updateTitleState, renderTitleScreen,
     createLevelSelectState, renderLevelSelect, getHighestLevel,
+    renderSettings,
 } from './screens.js';
+import {
+    getSettings, getSettingsRef, createSettingsState, getSettingsItems,
+    toggleSetting, cycleSetting, getDifficultyPreset,
+} from './settings.js';
 import {
     hasPrologueSeen, markPrologueSeen,
     createPrologueState, renderPrologue, renderStoryScreen,
@@ -25,7 +30,7 @@ import {
 } from './particles.js';
 import {
     initAudio, playMenuSelectSound, playMenuNavigateSound, playStartSound,
-    playHunterIntroSound, playSecretSound,
+    playHunterIntroSound, playSecretSound, setSoundEnabled,
 } from './audio.js';
 import {
     FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected,
@@ -77,7 +82,7 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex', 'archive', 'gallery'
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex', 'archive', 'gallery', 'settings'
 var showPrologue = !hasPrologueSeen();
 var currentScreen = showPrologue ? 'prologue' : 'title';
 var prologueState = showPrologue ? createPrologueState() : null;
@@ -93,6 +98,7 @@ var hunterTrailHistory = [];
 var achievementPopup = null;
 var achievementPopupQueue = [];
 var galleryState = createGalleryState();
+var settingsState = createSettingsState();
 var snakeTrailHistory = [];
 var levelStartTime = 0;
 var titleMenuIndex = null;
@@ -110,6 +116,10 @@ var prevHunterSegments = null;
 var highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
 var konamiActivated = localStorage.getItem('snake-konami') === 'true';
 dom.highScoreEl.textContent = highScore;
+
+// Apply persisted settings on load
+var initSettings = getSettings();
+setSoundEnabled(initSettings.sound);
 
 // --- UI ---
 var ui = createUI(messageEl);
@@ -144,7 +154,8 @@ function updateLivesHUD(lives) {
         dom.livesEl.textContent = lives;
     }
     if (dom.livesHudEl) {
-        dom.livesHudEl.style.display = lives < INITIAL_LIVES ? 'inline' : 'none';
+        var maxLives = getDifficultyPreset(getSettings().difficulty).livesCount;
+        dom.livesHudEl.style.display = lives < maxLives ? 'inline' : 'none';
     }
 }
 
@@ -188,6 +199,12 @@ function switchToGallery() {
     hideGameplayUI();
 }
 
+function switchToSettings() {
+    currentScreen = 'settings';
+    settingsState = createSettingsState();
+    hideGameplayUI();
+}
+
 function switchToLevelSelect() {
     currentScreen = 'levelSelect';
     levelSelectState = Object.assign({}, createLevelSelectState(), {
@@ -209,6 +226,7 @@ function startGameAtLevel(level) {
     hunterTrailHistory = [];
     snakeTrailHistory = [];
 
+    var diffPreset = getDifficultyPreset(getSettings().difficulty);
     state = createInitialState();
     // Set up for the chosen level
     state = Object.assign({}, state, {
@@ -218,6 +236,7 @@ function startGameAtLevel(level) {
         portals: generatePortals(level),
         hunter: generateHunter(level),
         fragment: spawnFragmentForLevel(level, 0),
+        lives: diffPreset.livesCount,
     });
 
     fragmentTextState = null;
@@ -233,7 +252,7 @@ function startGameAtLevel(level) {
     }
 
     levelStartTime = Date.now();
-    updateLivesHUD(INITIAL_LIVES);
+    updateLivesHUD(diffPreset.livesCount);
     messageEl.textContent = 'Arrow keys or swipe to start';
     messageEl.className = '';
     messageEl.style.color = '';
@@ -253,19 +272,21 @@ function startEndlessMode() {
     snakeTrailHistory = [];
 
     var wave1Config = getEndlessConfig(1);
+    var endlessDiffPreset = getDifficultyPreset(getSettings().difficulty);
 
     state = createInitialState();
     state = Object.assign({}, state, {
         level: 1,
         endlessWave: 1,
         endlessConfig: wave1Config,
+        lives: endlessDiffPreset.livesCount,
     });
 
     fragmentTextState = null;
     hunterIntroState = null;
 
     dom.levelLabelEl.textContent = 'Wave:';
-    updateLivesHUD(INITIAL_LIVES);
+    updateLivesHUD(endlessDiffPreset.livesCount);
 
     messageEl.textContent = 'ENDLESS MODE \u2014 Swipe or press arrow to begin';
     messageEl.className = '';
@@ -339,6 +360,39 @@ var gameCallbacks = {
         initAudio();
         playMenuSelectSound();
         switchToGallery();
+    },
+    onTitleSettings: function() {
+        initAudio();
+        playMenuSelectSound();
+        switchToSettings();
+    },
+
+    // Settings actions
+    onSettingsBack: function() {
+        playMenuNavigateSound();
+        switchToTitle();
+    },
+    onSettingsNavigate: function(delta) {
+        var count = getSettingsItems().length;
+        var newIdx = settingsState.selectedIndex + delta;
+        if (newIdx >= 0 && newIdx < count) {
+            playMenuNavigateSound();
+            settingsState = Object.assign({}, settingsState, { selectedIndex: newIdx });
+        }
+    },
+    onSettingsToggle: function(direction) {
+        var items = getSettingsItems();
+        var item = items[settingsState.selectedIndex];
+        if (!item) return;
+        playMenuSelectSound();
+        if (item.type === 'toggle') {
+            var updated = toggleSetting(item.key);
+            if (item.key === 'sound') {
+                setSoundEnabled(updated.sound);
+            }
+        } else if (item.type === 'cycle') {
+            cycleSetting(item.key, item.options, direction);
+        }
     },
 
     // Archive actions
@@ -524,6 +578,7 @@ var gameCallbacks = {
         hunterIntroState = null;
         hunterTrailHistory = [];
         snakeTrailHistory = [];
+        var restartDiff = getDifficultyPreset(getSettings().difficulty);
         state = createInitialState();
         if (endlessMode) {
             var w1Config = getEndlessConfig(1);
@@ -533,6 +588,7 @@ var gameCallbacks = {
                 endlessConfig: w1Config,
                 started: true,
                 nextDirection: newDir,
+                lives: restartDiff.livesCount,
             });
         } else {
             state = Object.assign({}, state, {
@@ -544,12 +600,13 @@ var gameCallbacks = {
                 fragment: spawnFragmentForLevel(startingLevel, 0),
                 started: true,
                 nextDirection: newDir,
+                lives: restartDiff.livesCount,
             });
         }
         state = Object.assign({}, state, {
             food: randomPosition(state.snake, state.walls, state.obstacles, state.portals, state.powerUp, state.hunter),
         });
-        updateLivesHUD(INITIAL_LIVES);
+        updateLivesHUD(restartDiff.livesCount);
         messageEl.textContent = '';
         messageEl.className = '';
         messageEl.style.color = '';
@@ -682,6 +739,12 @@ function gameLoop(timestamp) {
         return;
     }
 
+    if (currentScreen === 'settings') {
+        renderSettings(ctx, settingsState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (currentScreen === 'levelSelect') {
         renderLevelSelect(ctx, levelSelectState);
         requestAnimationFrame(gameLoop);
@@ -690,7 +753,9 @@ function gameLoop(timestamp) {
 
     // Gameplay
     var config = getLevelConfig(state.level, state.endlessConfig);
-    var speed = config.speed;
+    var frameSettings = getSettingsRef();
+    var gameplayDiff = getDifficultyPreset(frameSettings.difficulty);
+    var speed = Math.round(config.speed * gameplayDiff.speedMult);
 
     if (state.activePowerUp && state.activePowerUp.type === 'timeSlow') {
         speed = speed * 2;
@@ -773,14 +838,16 @@ function gameLoop(timestamp) {
         endlessHighWave: endlessMode ? getEndlessHighWave() : 0,
     };
 
-    // Apply screen shake
-    var offset = getShakeOffset(shakeState);
+    // Apply screen shake (respects settings)
+    var offset = frameSettings.screenShake ? getShakeOffset(shakeState) : { x: 0, y: 0 };
     ctx.save();
     ctx.translate(offset.x, offset.y);
 
     render(ctx, state, konamiActivated, dom, interp);
     renderMatrixRain(ctx, matrixState);
-    renderParticles(ctx, particleSystem);
+    if (frameSettings.particles) {
+        renderParticles(ctx, particleSystem);
+    }
 
     ctx.restore();
 

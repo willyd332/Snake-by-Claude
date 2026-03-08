@@ -1,6 +1,7 @@
 'use strict';
 
 import { GRID_SIZE, FOOD_TO_LEVEL_UP, MAX_LEVEL, POWER_UP_SPAWN_INTERVAL } from './constants.js';
+import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { generateWalls, filterWallsFromSnake, generateObstacles, moveObstacles, getObstaclePositions, generatePortals, checkPortalTeleport } from './levels.js';
 import { generateHunter, moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
@@ -320,7 +321,8 @@ export function tick(prev) {
     var newConfig = getLevelConfig(newLevel, endlessConfig);
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
-        if (newPowerUpSpawnCounter >= POWER_UP_SPAWN_INTERVAL) {
+        var puInterval = getDifficultyPreset(getSettingsRef().difficulty).powerUpFreq;
+        if (newPowerUpSpawnCounter >= puInterval) {
             newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter);
             newPowerUpSpawnCounter = 0;
         }

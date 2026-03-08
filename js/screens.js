@@ -4,6 +4,7 @@ import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './co
 import { getCollectedFragments } from './fragments.js';
 import { getUnlockedEndings } from './story.js';
 import { LEVEL_NAMES } from './utils.js';
+import { getSettings, getSettingsItems, getDifficultyLabel } from './settings.js';
 
 var LEVEL_TAGS = {
     1: 'No obstacles',
@@ -292,9 +293,10 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
         { text: 'Archive', color: 'rgba(150, 130, 170, ', alpha: 0.4, font: '13px Courier New' },
         { text: 'Endless Mode', color: 'rgba(239, 68, 68, ', alpha: 0.5, font: '13px Courier New' },
         { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.4, font: '13px Courier New' },
+        { text: 'Settings', color: 'rgba(120, 120, 140, ', alpha: 0.35, font: '12px Courier New' },
     ];
-    var menuKeys = ['ENTER', 'L', 'C', 'A', 'E', 'T'];
-    var menuYOffsets = [10, 32, 52, 72, 92, 112];
+    var menuKeys = ['ENTER', 'L', 'C', 'A', 'E', 'T', 'S'];
+    var menuYOffsets = [8, 28, 46, 64, 82, 100, 118];
     var hasMenuIndex = menuIndex !== undefined && menuIndex !== null && menuIndex >= 0;
 
     for (var mi = 0; mi < menuItems.length; mi++) {
@@ -325,7 +327,7 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
     }
 
     // Level dots
-    var dotY = CANVAS_SIZE / 2 + 136;
+    var dotY = CANVAS_SIZE / 2 + 140;
     var dotSpacing = 28;
     var dotsStartX = CANVAS_SIZE / 2 - (dotSpacing * (MAX_LEVEL - 1)) / 2;
     for (var lv = 1; lv <= MAX_LEVEL; lv++) {
@@ -505,6 +507,109 @@ export function renderLevelSelect(ctx, selectState) {
     ctx.fillStyle = 'rgba(150, 150, 170, 0.5)';
     ctx.font = '11px Courier New';
     ctx.fillText('Swipe / \u2190\u2191\u2192\u2193  \u00b7  Tap / ENTER  \u00b7  Hold / ESC', CANVAS_SIZE / 2, CANVAS_SIZE - 16);
+
+    ctx.textAlign = 'left';
+}
+
+// --- Settings Screen Rendering ---
+export function renderSettings(ctx, settingsState) {
+    var settings = getSettings();
+    var items = getSettingsItems();
+    var selected = settingsState.selectedIndex;
+
+    // Background
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Header
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4a9eff';
+    ctx.font = 'bold 22px Courier New';
+    ctx.fillText('SETTINGS', CANVAS_SIZE / 2, 40);
+
+    ctx.strokeStyle = 'rgba(74, 158, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(80, 53);
+    ctx.lineTo(CANVAS_SIZE - 80, 53);
+    ctx.stroke();
+
+    // Settings rows
+    var rowH = 42;
+    var startY = 80;
+    var rowW = 280;
+    var rowX = (CANVAS_SIZE - rowW) / 2;
+
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var ry = startY + i * rowH;
+        var isSelected = i === selected;
+
+        // Row background
+        if (isSelected) {
+            roundRect(ctx, rowX, ry, rowW, 32, 4);
+            ctx.fillStyle = 'rgba(74, 158, 255, 0.1)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(74, 158, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Label
+        ctx.textAlign = 'left';
+        var labelAlpha = isSelected ? 0.9 : 0.5;
+        ctx.fillStyle = 'rgba(224, 224, 224, ' + labelAlpha + ')';
+        ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
+        var labelX = rowX + 16;
+        ctx.fillText(item.label, labelX, ry + 21);
+
+        // Value
+        ctx.textAlign = 'right';
+        var valueX = rowX + rowW - 16;
+        var value = settings[item.key];
+
+        if (item.type === 'toggle') {
+            var isOn = value;
+            ctx.fillStyle = isOn
+                ? 'rgba(34, 197, 94, ' + (isSelected ? 0.9 : 0.6) + ')'
+                : 'rgba(239, 68, 68, ' + (isSelected ? 0.7 : 0.4) + ')';
+            ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
+            ctx.fillText(isOn ? 'ON' : 'OFF', valueX, ry + 21);
+        } else if (item.type === 'cycle') {
+            var label = getDifficultyLabel(value);
+            var diffColors = { Easy: '#22c55e', Normal: '#eab308', Hard: '#ef4444' };
+            var diffColor = diffColors[label] || '#e0e0e0';
+            ctx.fillStyle = diffColor;
+            ctx.globalAlpha = isSelected ? 0.9 : 0.6;
+            ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
+            ctx.fillText('\u25C0 ' + label + ' \u25B6', valueX, ry + 21);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    // Difficulty description
+    var preset = settings.difficulty;
+    var descriptions = {
+        easy:   'Slower speed, 5 lives, more power-ups',
+        normal: 'Standard speed, 3 lives, normal power-ups',
+        hard:   'Faster speed, 1 life, rare power-ups',
+    };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(150, 150, 170, 0.4)';
+    ctx.font = '10px Courier New';
+    ctx.fillText(descriptions[preset] || '', CANVAS_SIZE / 2, startY + items.length * rowH + 16);
+
+    // High contrast preview indicator
+    if (settings.highContrast) {
+        ctx.fillStyle = 'rgba(255, 255, 100, 0.3)';
+        ctx.font = '10px Courier New';
+        ctx.fillText('High contrast active', CANVAS_SIZE / 2, startY + items.length * rowH + 36);
+    }
+
+    // Footer
+    ctx.fillStyle = 'rgba(150, 150, 170, 0.5)';
+    ctx.font = '11px Courier New';
+    ctx.fillText('Swipe / \u2191\u2193 Navigate  \u00b7  Tap / ENTER Toggle  \u00b7  Hold / ESC Back', CANVAS_SIZE / 2, CANVAS_SIZE - 16);
 
     ctx.textAlign = 'left';
 }

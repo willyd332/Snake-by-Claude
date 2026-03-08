@@ -18,6 +18,7 @@ var TITLE_MENU_ACTIONS = [
     'onTitleArchive',
     'onTitleEndless',
     'onTitleGallery',
+    'onTitleSettings',
 ];
 
 export var TITLE_MENU_COUNT = TITLE_MENU_ACTIONS.length;
@@ -127,6 +128,10 @@ export function setupTouch(canvas, callbacks) {
             callbacks.onGallerySelect();
             return;
         }
+        if (screen === 'settings') {
+            callbacks.onSettingsToggle(1);
+            return;
+        }
 
         var state = callbacks.getState();
         if (state.gameOver) {
@@ -178,6 +183,13 @@ export function setupTouch(canvas, callbacks) {
             else if (direction === 'down') callbacks.onGalleryNavigate(1);
             return;
         }
+        if (screen === 'settings') {
+            if (direction === 'up') callbacks.onSettingsNavigate(-1);
+            else if (direction === 'down') callbacks.onSettingsNavigate(1);
+            else if (direction === 'left') callbacks.onSettingsToggle(-1);
+            else if (direction === 'right') callbacks.onSettingsToggle(1);
+            return;
+        }
         if (screen === 'levelSelect') {
             if (direction === 'up') callbacks.onLevelSelectNavigate(-2);
             else if (direction === 'down') callbacks.onLevelSelectNavigate(2);
@@ -210,6 +222,7 @@ export function setupTouch(canvas, callbacks) {
         if (screen === 'codex') { callbacks.onCodexBack(); return; }
         if (screen === 'archive') { callbacks.onArchiveBack(); return; }
         if (screen === 'gallery') { callbacks.onGalleryBack(); return; }
+        if (screen === 'settings') { callbacks.onSettingsBack(); return; }
         if (screen === 'levelSelect') { callbacks.onLevelSelectBack(); return; }
 
         var state = callbacks.getState();

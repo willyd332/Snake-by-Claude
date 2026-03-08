@@ -6,6 +6,7 @@ import { getPowerUpDef } from './powerups.js';
 import { renderEnvironment } from './environment.js';
 import { manhattanDistance } from './hunter.js';
 import { getActiveSkin, getActiveTrail } from './achievements.js';
+import { getSettingsRef } from './settings.js';
 
 function getDeathMessage(deathCause, level, config) {
     if (deathCause === 'hunter') {
@@ -147,28 +148,32 @@ function lerpPos(prev, curr, t, wrapGrid) {
 
 export function render(ctx, state, konamiActivated, dom, interp) {
     var config = getLevelConfig(state.level, state.endlessConfig);
+    var userSettings = getSettingsRef();
     var isGhost = state.activePowerUp && state.activePowerUp.type === 'ghost';
     var interpProgress = interp ? interp.progress : 0;
     var iPrevSnake = interp ? interp.prevSnake : null;
     var iPrevHunter = interp ? interp.prevHunter : null;
     var wrapGrid = (config.wrapAround || isGhost) ? GRID_SIZE : null;
+    var hc = userSettings.highContrast;
 
     // Clear
     ctx.fillStyle = config.bgAccent;
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, ' + config.gridAlpha + ')';
-    ctx.lineWidth = 0.5;
-    for (var i = 0; i <= GRID_SIZE; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * CELL_SIZE, 0);
-        ctx.lineTo(i * CELL_SIZE, CANVAS_SIZE);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, i * CELL_SIZE);
-        ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
-        ctx.stroke();
+    if (userSettings.gridLines) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (hc ? Math.min(config.gridAlpha * 2.5, 0.15) : config.gridAlpha) + ')';
+        ctx.lineWidth = 0.5;
+        for (var i = 0; i <= GRID_SIZE; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * CELL_SIZE, 0);
+            ctx.lineTo(i * CELL_SIZE, CANVAS_SIZE);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, i * CELL_SIZE);
+            ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
+            ctx.stroke();
+        }
     }
 
     // Environmental details (rendered behind game elements)
@@ -199,7 +204,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     // Walls
     if (state.walls.length > 0 && config.wallColor) {
         ctx.shadowColor = config.wallColor;
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = hc ? 8 : 4;
         state.walls.forEach(function(w) {
             ctx.fillStyle = config.wallColor;
             ctx.fillRect(
@@ -208,13 +213,23 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 CELL_SIZE - 2,
                 CELL_SIZE - 2
             );
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.fillStyle = hc ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
             ctx.fillRect(
                 w.x * CELL_SIZE + 3,
                 w.y * CELL_SIZE + 3,
                 CELL_SIZE - 6,
                 CELL_SIZE - 6
             );
+            if (hc) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(
+                    w.x * CELL_SIZE + 1,
+                    w.y * CELL_SIZE + 1,
+                    CELL_SIZE - 2,
+                    CELL_SIZE - 2
+                );
+            }
         });
         ctx.shadowBlur = 0;
     }
@@ -450,7 +465,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     if (state.food) {
         ctx.fillStyle = config.foodColor;
         ctx.shadowColor = config.foodColor;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = hc ? 14 : 8;
         ctx.beginPath();
         ctx.arc(
             state.food.x * CELL_SIZE + CELL_SIZE / 2,
@@ -459,6 +474,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
             0, Math.PI * 2
         );
         ctx.fill();
+        if (hc) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
         ctx.shadowBlur = 0;
     }
 

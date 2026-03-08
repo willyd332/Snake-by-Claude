@@ -140,6 +140,41 @@ export function setupInput(callbacks) {
                 callbacks.onTitleGallery();
                 return;
             }
+            if (e.key === 's' || e.key === 'S') {
+                e.preventDefault();
+                callbacks.onTitleSettings();
+                return;
+            }
+            return;
+        }
+
+        // --- Settings Screen ---
+        if (screen === 'settings') {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onSettingsBack();
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onSettingsNavigate(-1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onSettingsNavigate(1);
+                return;
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                callbacks.onSettingsToggle(-1);
+                return;
+            }
+            if (e.key === 'Enter' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                callbacks.onSettingsToggle(1);
+                return;
+            }
             return;
         }
 
