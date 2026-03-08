@@ -880,3 +880,88 @@ test.describe('Snake Game — Screenshots', () => {
     await page.screenshot({ path: 'tests/screenshots/03-gameplay.png', fullPage: true })
   })
 })
+
+test.describe('Snake Game — Endless Mode', () => {
+  test('endless module exports all required functions', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/endless.js')
+      return {
+        hasGetEndlessConfig: typeof mod.getEndlessConfig === 'function',
+        hasGenerateEndlessWalls: typeof mod.generateEndlessWalls === 'function',
+        hasGenerateEndlessObstacles: typeof mod.generateEndlessObstacles === 'function',
+        hasGenerateEndlessPortals: typeof mod.generateEndlessPortals === 'function',
+        hasGenerateEndlessHunter: typeof mod.generateEndlessHunter === 'function',
+        hasGetWaveTitle: typeof mod.getWaveTitle === 'function',
+        hasFoodPerWave: typeof mod.ENDLESS_FOOD_PER_WAVE === 'number',
+        foodPerWave: mod.ENDLESS_FOOD_PER_WAVE,
+      }
+    })
+    expect(exports.hasGetEndlessConfig).toBe(true)
+    expect(exports.hasGenerateEndlessWalls).toBe(true)
+    expect(exports.hasGenerateEndlessObstacles).toBe(true)
+    expect(exports.hasGenerateEndlessPortals).toBe(true)
+    expect(exports.hasGenerateEndlessHunter).toBe(true)
+    expect(exports.hasGetWaveTitle).toBe(true)
+    expect(exports.hasFoodPerWave).toBe(true)
+    expect(exports.foodPerWave).toBe(3)
+  })
+
+  test('endless config progressively introduces mechanics', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const configs = await page.evaluate(async () => {
+      const { getEndlessConfig } = await import('/js/endless.js')
+      return {
+        wave1: getEndlessConfig(1),
+        wave3: getEndlessConfig(3),
+        wave7: getEndlessConfig(7),
+        wave13: getEndlessConfig(13),
+        wave16: getEndlessConfig(16),
+      }
+    })
+    // Wave 1: no mechanics
+    expect(configs.wave1.wallColor).toBeNull()
+    expect(configs.wave1.hunterEnabled).toBe(false)
+    expect(configs.wave1.shrinkingArena).toBe(false)
+    // Wave 3: walls
+    expect(configs.wave3.wallColor).not.toBeNull()
+    // Wave 7: portals
+    expect(configs.wave7.portalColor).not.toBeNull()
+    // Wave 13: hunter
+    expect(configs.wave13.hunterEnabled).toBe(true)
+    // Wave 16: shrinking arena
+    expect(configs.wave16.shrinkingArena).toBe(true)
+    // Speed decreases over time
+    expect(configs.wave16.speed).toBeLessThan(configs.wave1.speed)
+  })
+
+  test('endless mode is accessible from title via E key', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+    await page.keyboard.press('e')
+    await page.waitForTimeout(300)
+    const messageText = await page.textContent('#message')
+    expect(messageText).toContain('ENDLESS')
+    const levelLabel = await page.textContent('#levelLabel')
+    expect(levelLabel).toContain('Wave')
+  })
+
+  test('endless mode renders without errors and gameplay works', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(200)
+    await page.keyboard.press('e')
+    await page.waitForTimeout(200)
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(2000)
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(1000)
+    await page.screenshot({ path: 'tests/screenshots/04-endless-mode.png', fullPage: true })
+    expect(errors.length).toBe(0)
+  })
+})

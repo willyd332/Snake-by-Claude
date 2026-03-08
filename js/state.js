@@ -29,6 +29,8 @@ export function createInitialState() {
         arenaMaxY: GRID_SIZE - 1,
         shrinkCounter: 0,
         fragment: null,
+        endlessWave: 0,
+        endlessConfig: null,
     };
 }
 
@@ -51,7 +53,8 @@ export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter
     return pos;
 }
 
-export function getLevelConfig(level) {
+export function getLevelConfig(level, endlessConfig) {
+    if (endlessConfig) return endlessConfig;
     var clamped = Math.min(level, MAX_LEVEL);
     return LEVEL_CONFIG[clamped];
 }

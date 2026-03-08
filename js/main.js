@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, MAX_LEVEL, AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD } from './constants.js';
+import { GRID_SIZE, CANVAS_SIZE, MAX_LEVEL, AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
 import { render } from './renderer.js';
@@ -37,6 +37,11 @@ import {
     renderFragmentOverlay, renderCodex,
 } from './fragments.js';
 import { createArchiveState, renderArchive, getArchiveMaxScroll } from './archive.js';
+import {
+    getEndlessConfig, getWaveTitle,
+    getEndlessHighScore, setEndlessHighScore,
+    getEndlessHighWave, setEndlessHighWave,
+} from './endless.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -53,6 +58,7 @@ var dom = {
     powerUpNameEl: document.getElementById('powerUpName'),
     arenaHudEl: document.getElementById('arenaHud'),
     arenaSizeEl: document.getElementById('arenaSize'),
+    levelLabelEl: document.getElementById('levelLabel'),
 };
 
 var messageEl = document.getElementById('message');
@@ -77,6 +83,7 @@ var hunterTrailHistory = [];
 // --- Game State ---
 var state = createInitialState();
 var startingLevel = 1;
+var endlessMode = false;
 var particleSystem = createParticleSystem();
 var shakeState = createShakeState();
 var lastFrameTime = 0;
@@ -113,6 +120,8 @@ function hideGameplayUI() {
 
 function switchToTitle() {
     currentScreen = 'title';
+    endlessMode = false;
+    dom.levelLabelEl.textContent = 'Level:';
     titleState = createTitleState();
     hideGameplayUI();
 }
@@ -139,6 +148,7 @@ function switchToLevelSelect() {
 
 function startGameAtLevel(level) {
     currentScreen = 'gameplay';
+    endlessMode = false;
     startingLevel = level;
     showGameplayUI();
     ui.clearTimers();
@@ -174,6 +184,37 @@ function startGameAtLevel(level) {
     messageEl.textContent = 'Press any arrow key to start';
     messageEl.className = '';
     messageEl.style.color = '';
+}
+
+function startEndlessMode() {
+    currentScreen = 'gameplay';
+    endlessMode = true;
+    startingLevel = 0;
+    showGameplayUI();
+    ui.clearTimers();
+    particleSystem = createParticleSystem();
+    shakeState = createShakeState();
+    prevSnake = null;
+    prevHunterSegments = null;
+    hunterTrailHistory = [];
+
+    var wave1Config = getEndlessConfig(1);
+
+    state = createInitialState();
+    state = Object.assign({}, state, {
+        level: 1,
+        endlessWave: 1,
+        endlessConfig: wave1Config,
+    });
+
+    fragmentTextState = null;
+    hunterIntroState = null;
+
+    dom.levelLabelEl.textContent = 'Wave:';
+
+    messageEl.textContent = 'ENDLESS MODE \u2014 Press any arrow to begin';
+    messageEl.className = '';
+    messageEl.style.color = '#ef4444';
 }
 
 // --- Input callbacks ---
@@ -233,6 +274,11 @@ setupInput({
         initAudio();
         playMenuSelectSound();
         switchToArchive(0);
+    },
+    onTitleEndless: function() {
+        initAudio();
+        playMenuSelectSound();
+        startEndlessMode();
     },
 
     // Archive actions
@@ -308,7 +354,10 @@ setupInput({
     },
 
     restartGame: function(newDir) {
-        if (state.score > highScore) {
+        if (endlessMode) {
+            setEndlessHighScore(state.score);
+            setEndlessHighWave(state.endlessWave);
+        } else if (state.score > highScore) {
             highScore = state.score;
             localStorage.setItem('snake-highscore', String(highScore));
             dom.highScoreEl.textContent = highScore;
@@ -322,16 +371,27 @@ setupInput({
         hunterIntroState = null;
         hunterTrailHistory = [];
         state = createInitialState();
-        state = Object.assign({}, state, {
-            level: startingLevel,
-            walls: filterWallsFromSnake(generateWalls(startingLevel), state.snake),
-            obstacles: generateObstacles(startingLevel),
-            portals: generatePortals(startingLevel),
-            hunter: generateHunter(startingLevel),
-            fragment: spawnFragmentForLevel(startingLevel, 0),
-            started: true,
-            nextDirection: newDir,
-        });
+        if (endlessMode) {
+            var w1Config = getEndlessConfig(1);
+            state = Object.assign({}, state, {
+                level: 1,
+                endlessWave: 1,
+                endlessConfig: w1Config,
+                started: true,
+                nextDirection: newDir,
+            });
+        } else {
+            state = Object.assign({}, state, {
+                level: startingLevel,
+                walls: filterWallsFromSnake(generateWalls(startingLevel), state.snake),
+                obstacles: generateObstacles(startingLevel),
+                portals: generatePortals(startingLevel),
+                hunter: generateHunter(startingLevel),
+                fragment: spawnFragmentForLevel(startingLevel, 0),
+                started: true,
+                nextDirection: newDir,
+            });
+        }
         state = Object.assign({}, state, {
             food: randomPosition(state.snake, state.walls, state.obstacles, state.portals, state.powerUp, state.hunter),
         });
@@ -358,7 +418,10 @@ setupInput({
     },
 
     goToTitle: function() {
-        if (state.score > highScore) {
+        if (endlessMode) {
+            setEndlessHighScore(state.score);
+            setEndlessHighWave(state.endlessWave);
+        } else if (state.score > highScore) {
             highScore = state.score;
             localStorage.setItem('snake-highscore', String(highScore));
             dom.highScoreEl.textContent = highScore;
@@ -367,12 +430,18 @@ setupInput({
     },
 
     onRestartLevel: function() {
-        if (state.score > highScore) {
-            highScore = state.score;
-            localStorage.setItem('snake-highscore', String(highScore));
-            dom.highScoreEl.textContent = highScore;
+        if (endlessMode) {
+            setEndlessHighScore(state.score);
+            setEndlessHighWave(state.endlessWave);
+            startEndlessMode();
+        } else {
+            if (state.score > highScore) {
+                highScore = state.score;
+                localStorage.setItem('snake-highscore', String(highScore));
+                dom.highScoreEl.textContent = highScore;
+            }
+            startGameAtLevel(startingLevel);
         }
-        startGameAtLevel(startingLevel);
     },
 });
 
@@ -438,7 +507,7 @@ function gameLoop(timestamp) {
     }
 
     // Gameplay
-    var config = getLevelConfig(state.level);
+    var config = getLevelConfig(state.level, state.endlessConfig);
     var speed = config.speed;
 
     if (state.activePowerUp && state.activePowerUp.type === 'timeSlow') {
@@ -472,8 +541,8 @@ function gameLoop(timestamp) {
             shakeState = triggerShake(2, 0.1);
         }
 
-        // Awakening ending: eat enough food on Level 10 while alive
-        if (state._ateFood && state.level === MAX_LEVEL && state.foodEaten >= AWAKENING_FOOD_THRESHOLD) {
+        // Awakening ending: eat enough food on Level 10 while alive (normal mode only)
+        if (!endlessMode && state._ateFood && state.level === MAX_LEVEL && state.foodEaten >= AWAKENING_FOOD_THRESHOLD) {
             if (state.score > highScore) {
                 highScore = state.score;
                 localStorage.setItem('snake-highscore', String(highScore));
@@ -487,8 +556,48 @@ function gameLoop(timestamp) {
             ui.clearTimers();
         }
 
-        // Level up: shower + shake + story screen
-        if (state.level > prevLevel) {
+        // Endless wave-up detection
+        if (endlessMode && state.endlessWave > (prevState.endlessWave || 0)) {
+            prevSnake = null;
+            prevHunterSegments = null;
+            playLevelUpSound();
+            var waveConfig = state.endlessConfig;
+            particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, waveConfig.color);
+            shakeState = triggerShake(4, 0.3);
+            hunterTrailHistory = [];
+
+            // ALPHA intro on first hunter wave
+            if (state.hunter && !(prevState.hunter)) {
+                hunterIntroState = { text: 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON', startTime: Date.now() };
+                playHunterIntroSound();
+            }
+
+            // Wave title message
+            var waveTitle = getWaveTitle(state.endlessWave);
+            if (waveTitle) {
+                messageEl.textContent = 'WAVE ' + state.endlessWave + ' \u2014 ' + waveTitle;
+                messageEl.className = 'levelup';
+                messageEl.style.color = waveConfig.color;
+                setTimeout(function() {
+                    messageEl.textContent = '';
+                    messageEl.className = '';
+                    messageEl.style.color = '';
+                }, 2000);
+            } else {
+                messageEl.textContent = 'WAVE ' + state.endlessWave;
+                messageEl.className = 'levelup';
+                messageEl.style.color = waveConfig.color;
+                setTimeout(function() {
+                    messageEl.textContent = '';
+                    messageEl.className = '';
+                    messageEl.style.color = '';
+                }, 1500);
+            }
+
+        }
+
+        // Level up: shower + shake + story screen (normal mode)
+        if (!endlessMode && state.level > prevLevel) {
             prevSnake = null;
             prevHunterSegments = null;
             playLevelUpSound();
@@ -582,6 +691,12 @@ function gameLoop(timestamp) {
             prevHunterSegments = null;
             hunterIntroState = null;
 
+            // Save endless high scores on death
+            if (endlessMode) {
+                setEndlessHighScore(state.score);
+                setEndlessHighWave(state.endlessWave);
+            }
+
             if (state._killedByHunter) {
                 // ALPHA kill: distinctive sound, orange particles, heavier shake
                 playHunterKillSound();
@@ -593,8 +708,8 @@ function gameLoop(timestamp) {
                 shakeState = triggerShake(8, 0.4);
             }
 
-            // Ending sequence for Level 10 deaths (skip if awakening already triggered)
-            if (state.level === MAX_LEVEL && currentScreen !== 'ending') {
+            // Ending sequence for Level 10 deaths (normal mode only)
+            if (!endlessMode && state.level === MAX_LEVEL && currentScreen !== 'ending') {
                 if (state.score > highScore) {
                     highScore = state.score;
                     localStorage.setItem('snake-highscore', String(highScore));
@@ -628,7 +743,8 @@ function gameLoop(timestamp) {
         prevSnake: prevSnake,
         prevHunter: prevHunterSegments,
         hunterTrail: hunterTrailHistory,
-        highScore: highScore,
+        highScore: endlessMode ? getEndlessHighScore() : highScore,
+        endlessHighWave: endlessMode ? getEndlessHighWave() : 0,
     };
 
     // Apply screen shake

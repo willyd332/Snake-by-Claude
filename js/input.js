@@ -116,6 +116,11 @@ export function setupInput(callbacks) {
                 callbacks.onTitleArchive();
                 return;
             }
+            if (e.key === 'e' || e.key === 'E') {
+                e.preventDefault();
+                callbacks.onTitleEndless();
+                return;
+            }
             return;
         }
 

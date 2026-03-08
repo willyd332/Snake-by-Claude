@@ -184,11 +184,13 @@ export function updateTitleState(titleState) {
         return {
             demo: stepDemoSnake(titleState.demo),
             tickAccum: 0,
+            subtitle: titleState.subtitle,
         };
     }
     return {
         demo: titleState.demo,
         tickAccum: newAccum,
+        subtitle: titleState.subtitle,
     };
 }
 
@@ -312,8 +314,12 @@ export function renderTitleScreen(ctx, titleState) {
     ctx.font = '13px Courier New';
     ctx.fillText('A \u2014 Archive', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 72);
 
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+    ctx.font = '13px Courier New';
+    ctx.fillText('E \u2014 Endless Mode', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 92);
+
     // Level dots
-    var dotY = CANVAS_SIZE / 2 + 98;
+    var dotY = CANVAS_SIZE / 2 + 116;
     var dotSpacing = 28;
     var dotsStartX = CANVAS_SIZE / 2 - (dotSpacing * (MAX_LEVEL - 1)) / 2;
     for (var lv = 1; lv <= MAX_LEVEL; lv++) {

@@ -145,7 +145,7 @@ function lerpPos(prev, curr, t, wrapGrid) {
 }
 
 export function render(ctx, state, konamiActivated, dom, interp) {
-    var config = getLevelConfig(state.level);
+    var config = getLevelConfig(state.level, state.endlessConfig);
     var isGhost = state.activePowerUp && state.activePowerUp.type === 'ghost';
     var interpProgress = interp ? interp.progress : 0;
     var iPrevSnake = interp ? interp.prevSnake : null;
@@ -341,7 +341,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
     // Teleport portals
     if (state.portals.length > 0) {
-        var portalConfig = getLevelConfig(state.level);
+        var portalConfig = getLevelConfig(state.level, state.endlessConfig);
         if (portalConfig.portalColor) {
             var portalPulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
             state.portals.forEach(function(pair) {
@@ -570,7 +570,10 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.fillStyle = config.foodColor;
         ctx.fillText('\u25CF Food: ' + goTotalFood, goCenterX, goBreakdownY);
         ctx.fillStyle = config.color;
-        ctx.fillText('\u25B2 Level: ' + state.level, goCenterX, goBreakdownY + 18);
+        var goLevelLabel = state.endlessWave > 0
+            ? '\u25B2 Wave: ' + state.endlessWave
+            : '\u25B2 Level: ' + state.level;
+        ctx.fillText(goLevelLabel, goCenterX, goBreakdownY + 18);
         ctx.fillStyle = '#ccc';
         ctx.fillText('\u2605 Score: ' + state.score, goCenterX, goBreakdownY + 36);
 
@@ -592,6 +595,13 @@ export function render(ctx, state, konamiActivated, dom, interp) {
             ctx.fillText('High Score: ' + goHighScore, goCenterX, goBreakdownY + 62);
         }
 
+        // Endless mode best wave
+        if (state.endlessWave > 0 && interp && interp.endlessHighWave > 0) {
+            ctx.fillStyle = '#666';
+            ctx.font = '10px Courier New';
+            ctx.fillText('Best Wave: ' + interp.endlessHighWave, goCenterX, goBreakdownY + 80);
+        }
+
         // Controls
         ctx.fillStyle = '#777';
         ctx.font = '11px Courier New';
@@ -603,7 +613,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
     // HUD
     dom.scoreEl.textContent = state.score;
-    dom.levelEl.textContent = state.level;
+    if (state.endlessWave > 0) {
+        dom.levelEl.textContent = 'W' + state.endlessWave;
+    } else {
+        dom.levelEl.textContent = state.level;
+    }
 
     // Power-up HUD indicator
     if (state.activePowerUp) {

@@ -5,6 +5,7 @@ import { generateWalls, filterWallsFromSnake, generateObstacles, moveObstacles, 
 import { generateHunter, moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
+import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
 
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
@@ -24,7 +25,7 @@ export function tick(prev) {
     var dir = clean.nextDirection;
     if (dir.x === 0 && dir.y === 0) return clean;
 
-    var config = getLevelConfig(clean.level);
+    var config = getLevelConfig(clean.level, clean.endlessConfig);
     var isGhost = clean.activePowerUp && clean.activePowerUp.type === 'ghost';
     var head = clean.snake[0];
     var newHead = { x: head.x + dir.x, y: head.y + dir.y };
@@ -191,18 +192,41 @@ export function tick(prev) {
         }
     }
 
-    // Level up check
-    if (newFoodEaten >= FOOD_TO_LEVEL_UP && newLevel < MAX_LEVEL) {
-        newLevel = clean.level + 1;
-        newFoodEaten = 0;
-        newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
-        newObstacles = generateObstacles(newLevel);
-        newPortals = generatePortals(newLevel);
-        newHunter = generateHunter(newLevel);
-        newPowerUp = null;
-        newActivePowerUp = null;
-        newPowerUpSpawnCounter = 0;
-        newFragment = null;
+    // Level up / Wave up check
+    var endlessWave = clean.endlessWave;
+    var endlessConfig = clean.endlessConfig;
+    var foodThreshold = endlessWave > 0 ? ENDLESS_FOOD_PER_WAVE : FOOD_TO_LEVEL_UP;
+
+    if (newFoodEaten >= foodThreshold) {
+        if (endlessWave > 0) {
+            // Endless mode: wave up
+            endlessWave = endlessWave + 1;
+            endlessConfig = getEndlessConfig(endlessWave);
+            newLevel = ((endlessWave - 1) % 10) + 1;
+            newFoodEaten = 0;
+            newWalls = filterWallsFromSnake(generateEndlessWalls(endlessWave), newSnake);
+            newObstacles = generateEndlessObstacles(endlessWave);
+            newPortals = generateEndlessPortals(endlessWave).filter(function(p) {
+                return !collides(p.a, newWalls) && !collides(p.b, newWalls);
+            });
+            newHunter = endlessConfig.hunterEnabled ? generateEndlessHunter(endlessWave) : null;
+            newPowerUp = null;
+            newActivePowerUp = null;
+            newPowerUpSpawnCounter = 0;
+            newFragment = null;
+        } else if (newLevel < MAX_LEVEL) {
+            // Normal mode: level up
+            newLevel = clean.level + 1;
+            newFoodEaten = 0;
+            newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
+            newObstacles = generateObstacles(newLevel);
+            newPortals = generatePortals(newLevel);
+            newHunter = generateHunter(newLevel);
+            newPowerUp = null;
+            newActivePowerUp = null;
+            newPowerUpSpawnCounter = 0;
+            newFragment = null;
+        }
     }
 
     // Shrinking arena
@@ -292,7 +316,7 @@ export function tick(prev) {
     }
 
     // Power-up spawning
-    var newConfig = getLevelConfig(newLevel);
+    var newConfig = getLevelConfig(newLevel, endlessConfig);
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
         if (newPowerUpSpawnCounter >= POWER_UP_SPAWN_INTERVAL) {
@@ -325,6 +349,8 @@ export function tick(prev) {
         arenaMaxY: newArenaMaxY,
         shrinkCounter: newShrinkCounter,
         fragment: newFragment,
+        endlessWave: endlessWave,
+        endlessConfig: endlessConfig,
         _collectedPowerUp: collectedPowerUpType,
         _collectedFragment: collectedFragment,
         _collectedFragmentLevel: collectedFragmentLevel,
