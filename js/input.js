@@ -13,7 +13,67 @@ export function setupInput(callbacks) {
     var konamiProgress = 0;
 
     document.addEventListener('keydown', function(e) {
+        var screen = callbacks.getScreen();
+
+        // --- Title Screen ---
+        if (screen === 'title') {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                callbacks.onTitlePlay();
+                return;
+            }
+            if (e.key === 'l' || e.key === 'L') {
+                e.preventDefault();
+                callbacks.onTitleLevelSelect();
+                return;
+            }
+            return;
+        }
+
+        // --- Level Select ---
+        if (screen === 'levelSelect') {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onLevelSelectNavigate(-2);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onLevelSelectNavigate(2);
+                return;
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                callbacks.onLevelSelectNavigate(-1);
+                return;
+            }
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                callbacks.onLevelSelectNavigate(1);
+                return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                callbacks.onLevelSelectConfirm();
+                return;
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onLevelSelectBack();
+                return;
+            }
+            return;
+        }
+
+        // --- Gameplay ---
         var state = callbacks.getState();
+
+        // ESC to return to title (when not mid-game)
+        if (e.key === 'Escape' && (!state.started || state.gameOver)) {
+            e.preventDefault();
+            callbacks.goToTitle();
+            return;
+        }
 
         // Konami code detection (only before game starts)
         if (!state.started && !state.gameOver) {
