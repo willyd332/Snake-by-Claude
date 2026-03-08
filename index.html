@@ -69,6 +69,21 @@
             animation: pulse 0.5s ease-in-out 3;
         }
 
+        #message.narrative {
+            color: #8888aa;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+
+        #message.rainbow {
+            background: linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            animation: pulse 0.3s ease-in-out 6;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
@@ -96,14 +111,29 @@
         var FOOD_TO_LEVEL_UP = 5;
 
         var LEVEL_CONFIG = {
-            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null, portalColor: null },
-            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null, portalColor: null },
-            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed', portalColor: null },
-            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c', portalColor: null },
-            5: { speed: 60,  color: '#06b6d4', foodColor: '#f43f5e', wallColor: '#164e63', bgAccent: '#0a1419', gridAlpha: 0.07, obstacleColor: '#0891b2', portalColor: '#8b5cf6' },
+            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null, portalColor: null, fogRadius: null },
+            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null, portalColor: null, fogRadius: null },
+            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed', portalColor: null, fogRadius: null },
+            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c', portalColor: null, fogRadius: null },
+            5: { speed: 60,  color: '#06b6d4', foodColor: '#f43f5e', wallColor: '#164e63', bgAccent: '#0a1419', gridAlpha: 0.07, obstacleColor: '#0891b2', portalColor: '#8b5cf6', fogRadius: null },
+            6: { speed: 50,  color: '#e11d48', foodColor: '#fbbf24', wallColor: '#4a1a2e', bgAccent: '#0a0508', gridAlpha: 0.02, obstacleColor: '#be123c', portalColor: '#a855f7', fogRadius: 5 },
         };
 
         var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
+
+        // --- Level narratives ---
+        var LEVEL_NARRATIVES = {
+            2: 'Ancient stones rise from the ground...',
+            3: 'Shadows move in the corridors. You are not alone.',
+            4: 'The cage tightens. Fire guards every exit.',
+            5: 'Reality bends. Portals tear through space itself.',
+            6: 'Darkness falls. Only your glow lights the way.',
+        };
+
+        // --- Konami code ---
+        var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
+        var konamiProgress = 0;
+        var konamiActivated = localStorage.getItem('snake-konami') === 'true';
 
         // --- Wall patterns ---
         function generateWalls(level) {
@@ -146,18 +176,36 @@
                 return walls;
             }
 
-            // Level 5: labyrinth chambers with portal access
-            // Top-left chamber
-            [3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 3 }); });
-            [3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 8 }); });
-            [4, 5, 6, 7].forEach(function(y) { walls.push({ x: 3, y: y }); });
-            // Bottom-right chamber
-            [12, 13, 14, 15, 16].forEach(function(x) { walls.push({ x: x, y: 11 }); });
-            [12, 13, 14, 15, 16].forEach(function(x) { walls.push({ x: x, y: 16 }); });
-            [12, 13, 14, 15].forEach(function(y) { walls.push({ x: 16, y: y }); });
-            // Central divider with gaps
-            [0, 1, 2, 3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 10 }); });
-            [12, 13, 14, 15, 16, 17, 18, 19].forEach(function(x) { walls.push({ x: x, y: 9 }); });
+            if (level === 5) {
+                // Labyrinth chambers with portal access
+                // Top-left chamber
+                [3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 3 }); });
+                [3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 8 }); });
+                [4, 5, 6, 7].forEach(function(y) { walls.push({ x: 3, y: y }); });
+                // Bottom-right chamber
+                [12, 13, 14, 15, 16].forEach(function(x) { walls.push({ x: x, y: 11 }); });
+                [12, 13, 14, 15, 16].forEach(function(x) { walls.push({ x: x, y: 16 }); });
+                [12, 13, 14, 15].forEach(function(y) { walls.push({ x: 16, y: y }); });
+                // Central divider with gaps
+                [0, 1, 2, 3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 10 }); });
+                [12, 13, 14, 15, 16, 17, 18, 19].forEach(function(x) { walls.push({ x: x, y: 9 }); });
+                return walls;
+            }
+
+            // Level 6: Scattered ruins — hard to memorize in the dark
+            walls.push({ x: 3, y: 3 }, { x: 4, y: 3 });
+            walls.push({ x: 15, y: 2 }, { x: 16, y: 2 });
+            walls.push({ x: 8, y: 5 }, { x: 9, y: 5 }, { x: 10, y: 5 });
+            walls.push({ x: 1, y: 8 }, { x: 2, y: 8 });
+            walls.push({ x: 17, y: 7 }, { x: 17, y: 8 });
+            walls.push({ x: 6, y: 11 }, { x: 7, y: 11 });
+            walls.push({ x: 12, y: 10 }, { x: 13, y: 10 }, { x: 13, y: 11 });
+            walls.push({ x: 5, y: 15 }, { x: 5, y: 16 });
+            walls.push({ x: 10, y: 14 }, { x: 11, y: 14 });
+            walls.push({ x: 14, y: 16 }, { x: 15, y: 16 }, { x: 16, y: 16 });
+            walls.push({ x: 18, y: 13 });
+            walls.push({ x: 2, y: 18 }, { x: 3, y: 18 });
+            walls.push({ x: 9, y: 17 });
 
             return walls;
         }
@@ -190,11 +238,19 @@
                 ];
             }
 
-            // Level 5: two patrols near central divider gaps + one in top-left chamber
+            if (level === 5) {
+                // Two patrols near central divider gaps + one in top-left chamber
+                return [
+                    { x: 8, y: 9, path: [8, 9, 10, 11], axis: 'x', pathIndex: 0, dir: 1 },
+                    { x: 11, y: 10, path: [11, 10, 9, 8], axis: 'x', pathIndex: 0, dir: 1 },
+                    { x: 4, y: 5, path: [5, 6, 7], axis: 'y', pathIndex: 0, dir: 1 },
+                ];
+            }
+
+            // Level 6: Two patrols lurking in the darkness
             return [
-                { x: 8, y: 9, path: [8, 9, 10, 11], axis: 'x', pathIndex: 0, dir: 1 },
-                { x: 11, y: 10, path: [11, 10, 9, 8], axis: 'x', pathIndex: 0, dir: 1 },
-                { x: 4, y: 5, path: [5, 6, 7], axis: 'y', pathIndex: 0, dir: 1 },
+                { x: 5, y: 7, path: [5, 6, 7, 8, 9], axis: 'x', pathIndex: 0, dir: 1 },
+                { x: 14, y: 13, path: [13, 12, 11, 10], axis: 'y', pathIndex: 0, dir: 1 },
             ];
         }
 
@@ -224,11 +280,17 @@
         function generatePortals(level) {
             if (level < 5) return [];
 
-            // Two portal pairs: each pair is [entryA, entryB]
-            // Portals placed to bridge the two chambers
+            if (level === 5) {
+                // Two portal pairs bridging the labyrinth chambers
+                return [
+                    { a: { x: 5, y: 5 }, b: { x: 14, y: 14 } },
+                    { a: { x: 1, y: 15 }, b: { x: 18, y: 4 } },
+                ];
+            }
+
+            // Level 6: One portal pair — a lifeline in the dark
             return [
-                { a: { x: 5, y: 5 }, b: { x: 14, y: 14 } },
-                { a: { x: 1, y: 15 }, b: { x: 18, y: 4 } },
+                { a: { x: 2, y: 2 }, b: { x: 17, y: 17 } },
             ];
         }
 
@@ -265,7 +327,7 @@
         var highScoreEl = document.getElementById('highScore');
         var messageEl = document.getElementById('message');
 
-        // --- Level-up message ---
+        // --- Level-up message with narrative ---
         var levelUpTimer = null;
 
         function showLevelUp(level) {
@@ -273,10 +335,21 @@
             messageEl.className = 'levelup';
             if (levelUpTimer) clearTimeout(levelUpTimer);
             levelUpTimer = setTimeout(function() {
-                messageEl.textContent = '';
-                messageEl.className = '';
-                levelUpTimer = null;
-            }, 2000);
+                var narrative = LEVEL_NARRATIVES[level];
+                if (narrative) {
+                    messageEl.textContent = narrative;
+                    messageEl.className = 'narrative';
+                    levelUpTimer = setTimeout(function() {
+                        messageEl.textContent = '';
+                        messageEl.className = '';
+                        levelUpTimer = null;
+                    }, 3000);
+                } else {
+                    messageEl.textContent = '';
+                    messageEl.className = '';
+                    levelUpTimer = null;
+                }
+            }, 1500);
         }
 
         // --- State ---
@@ -496,24 +569,24 @@
 
             // Teleport portals
             if (s.portals.length > 0) {
-                var config5 = getLevelConfig(s.level);
-                if (config5.portalColor) {
+                var portalConfig = getLevelConfig(s.level);
+                if (portalConfig.portalColor) {
                     var portalPulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
-                    s.portals.forEach(function(pair, pairIdx) {
+                    s.portals.forEach(function(pair) {
                         [pair.a, pair.b].forEach(function(pos) {
                             var pcx = pos.x * CELL_SIZE + CELL_SIZE / 2;
                             var pcy = pos.y * CELL_SIZE + CELL_SIZE / 2;
                             // Outer glow ring
-                            ctx.shadowColor = config5.portalColor;
+                            ctx.shadowColor = portalConfig.portalColor;
                             ctx.shadowBlur = 12;
                             ctx.globalAlpha = portalPulse;
-                            ctx.strokeStyle = config5.portalColor;
+                            ctx.strokeStyle = portalConfig.portalColor;
                             ctx.lineWidth = 2;
                             ctx.beginPath();
                             ctx.arc(pcx, pcy, CELL_SIZE / 2 - 1, 0, Math.PI * 2);
                             ctx.stroke();
                             // Inner diamond
-                            ctx.fillStyle = config5.portalColor;
+                            ctx.fillStyle = portalConfig.portalColor;
                             ctx.globalAlpha = portalPulse * 0.6;
                             ctx.beginPath();
                             ctx.moveTo(pcx, pcy - 5);
@@ -548,7 +621,12 @@
             // Snake
             s.snake.forEach(function(seg, i) {
                 var alpha = 1 - (i / s.snake.length) * 0.5;
-                ctx.fillStyle = config.color;
+                if (konamiActivated) {
+                    var hue = ((Date.now() / 10) + i * 20) % 360;
+                    ctx.fillStyle = 'hsl(' + hue + ', 80%, 60%)';
+                } else {
+                    ctx.fillStyle = config.color;
+                }
                 ctx.globalAlpha = alpha;
                 var padding = i === 0 ? 1 : 2;
                 ctx.fillRect(
@@ -559,6 +637,23 @@
                 );
             });
             ctx.globalAlpha = 1;
+
+            // Fog of War overlay
+            if (config.fogRadius && s.started && !s.gameOver) {
+                var headPixX = s.snake[0].x * CELL_SIZE + CELL_SIZE / 2;
+                var headPixY = s.snake[0].y * CELL_SIZE + CELL_SIZE / 2;
+                var flicker = Math.sin(Date.now() / 200) * 0.05 + 1;
+                var outerRadius = config.fogRadius * CELL_SIZE * flicker;
+                var innerRadius = outerRadius * 0.4;
+
+                var fogGrad = ctx.createRadialGradient(headPixX, headPixY, innerRadius, headPixX, headPixY, outerRadius);
+                fogGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                fogGrad.addColorStop(0.6, 'rgba(0, 0, 0, 0.7)');
+                fogGrad.addColorStop(1, 'rgba(0, 0, 0, 0.97)');
+
+                ctx.fillStyle = fogGrad;
+                ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            }
 
             // Game over overlay
             if (s.gameOver) {
@@ -591,6 +686,29 @@
         };
 
         document.addEventListener('keydown', function(e) {
+            // Konami code detection (only before game starts)
+            if (!state.started && !state.gameOver) {
+                if (e.key === KONAMI_SEQUENCE[konamiProgress]) {
+                    konamiProgress++;
+                    e.preventDefault();
+                    if (konamiProgress >= KONAMI_SEQUENCE.length) {
+                        konamiActivated = !konamiActivated;
+                        localStorage.setItem('snake-konami', String(konamiActivated));
+                        messageEl.textContent = konamiActivated ? 'RAINBOW MODE ACTIVATED' : 'RAINBOW MODE OFF';
+                        messageEl.className = konamiActivated ? 'rainbow' : 'active';
+                        konamiProgress = 0;
+                        setTimeout(function() {
+                            if (!state.started) {
+                                messageEl.textContent = 'Press any arrow key to start';
+                                messageEl.className = '';
+                            }
+                        }, 2500);
+                    }
+                    return;
+                }
+                konamiProgress = 0;
+            }
+
             var newDir = DIRECTION_MAP[e.key];
             if (!newDir) return;
 
