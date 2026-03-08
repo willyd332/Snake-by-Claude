@@ -17,14 +17,14 @@ import {
 import { getFragmentForLevel, collectFragment, getCollectedFragments } from './fragments.js';
 import { createBossState } from './boss.js';
 import { setHighestLevel } from './screens.js';
-import { createEndingState, unlockEnding, createStoryScreenState } from './story.js';
+import { createEndingState, unlockEnding } from './story.js';
 import { setEndlessHighScore, setEndlessHighWave, getWaveTitle } from './endless.js';
 import {
     recordFoodEaten, recordDeath, recordLevelComplete, recordPortalUse,
     recordPowerUpCollected, recordBestScore, recordEndlessWave,
 } from './stats.js';
 import {
-    startSpeedrunTimer, recordLevelSplit, stopSpeedrunTimer, pauseSpeedrunTimer,
+    startSpeedrunTimer, recordLevelSplit, stopSpeedrunTimer,
 } from './speedrun.js';
 
 // --- Post-Tick Event Processing ---
@@ -36,7 +36,7 @@ import {
 // MUTATED: state, prevSnake, prevHunterSegments, hunterTrailHistory,
 //          particleSystem, shakeState, highScore, levelStartTime,
 //          fragmentTextState, hunterIntroState, endingState,
-//          storyScreenState, currentScreen
+//          currentScreen
 // CALLBACKS: tryUnlock, checkAllEndings, spawnFragmentForLevel, hideGameplayUI
 
 export function processPostTickEvents(ctx) {
@@ -182,20 +182,8 @@ export function processPostTickEvents(ctx) {
             ctx.hunterIntroState = { text: hunterLevelText, startTime: Date.now() + 1500 };
         }
 
-        // Show inter-level story screen
-        var newStoryState = createStoryScreenState(ctx.state.level);
-        if (newStoryState.lines.length > 0) {
-            ctx.storyScreenState = newStoryState;
-            ctx.currentScreen = 'story_screen';
-            ctx.hideGameplayUI();
-            ctx.ui.clearTimers();
-            // Pause speedrun timer while story screen is displayed
-            if (ctx.speedrunState) {
-                ctx.speedrunState = pauseSpeedrunTimer(ctx.speedrunState);
-            }
-        } else {
-            ctx.ui.showLevelUp(ctx.state.level);
-        }
+        // Show level-up message (story screens removed)
+        ctx.ui.showLevelUp(ctx.state.level);
     }
 
     // Power-up collected: sparkle burst

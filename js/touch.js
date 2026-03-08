@@ -103,10 +103,6 @@ export function setupTouch(canvas, callbacks) {
             callbacks.onPrologueAdvance();
             return;
         }
-        if (screen === 'story_screen') {
-            callbacks.onStoryScreenAdvance();
-            return;
-        }
         if (screen === 'ending') {
             var endingType = callbacks.getEndingType ? callbacks.getEndingType() : null;
             if (endingType !== 'loop') {
@@ -151,10 +147,6 @@ export function setupTouch(canvas, callbacks) {
 
         if (screen === 'prologue') {
             callbacks.onPrologueAdvance();
-            return;
-        }
-        if (screen === 'story_screen') {
-            callbacks.onStoryScreenAdvance();
             return;
         }
         if (screen === 'ending') {

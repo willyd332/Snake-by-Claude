@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, LEVEL_CONFIG } from './constants.js';
+import { CANVAS_SIZE } from './constants.js';
 
 // --- Prologue Text Configuration ---
 // Each line: text to display, visual style, delay from start (ms), y-position on canvas
@@ -72,41 +72,6 @@ export var INTER_LEVEL_STORIES = {
     },
 };
 
-function buildStoryLines(toLevel) {
-    var story = INTER_LEVEL_STORIES[toLevel];
-    if (!story) return [];
-
-    var config = LEVEL_CONFIG[toLevel];
-    var lines = [];
-    var y = 65;
-    var delay = 400;
-
-    // Header in level color
-    lines.push({ text: story.header, style: 'header', delay: delay, y: y, color: config ? config.color : null });
-    y += 35;
-    delay += story.header.length * CHAR_SPEED + 400;
-
-    // Body paragraphs (narrative style)
-    for (var i = 0; i < story.body.length; i++) {
-        lines.push({ text: story.body[i], style: 'narrative', delay: delay, y: y });
-        y += 23;
-        delay += story.body[i].length * CHAR_SPEED + 250;
-    }
-
-    // Gap before coda
-    y += 14;
-    delay += 700;
-
-    // Coda (emphasis style)
-    for (var j = 0; j < story.coda.length; j++) {
-        lines.push({ text: story.coda[j], style: 'emphasis', delay: delay, y: y });
-        y += 23;
-        delay += story.coda[j].length * CHAR_SPEED + 250;
-    }
-
-    return lines;
-}
-
 // --- Prologue Persistence ---
 
 export function hasPrologueSeen() {
@@ -157,48 +122,6 @@ export function renderPrologue(ctx, pState) {
     // Bottom prompt
     var now = Date.now();
     renderPrompt(ctx, elapsed, pState, now);
-}
-
-// --- Inter-Level Story Screen ---
-
-export function createStoryScreenState(toLevel) {
-    return {
-        startTime: Date.now(),
-        toLevel: toLevel,
-        lines: buildStoryLines(toLevel),
-    };
-}
-
-export function isStoryScreenComplete(sState, now) {
-    if (!sState || sState.lines.length === 0) return true;
-    var currentTime = now !== undefined ? now : Date.now();
-    var lastLine = sState.lines[sState.lines.length - 1];
-    var endTime = lastLine.delay + lastLine.text.length * CHAR_SPEED + 800;
-    return (currentTime - sState.startTime) >= endTime;
-}
-
-export function renderStoryScreen(ctx, sState) {
-    var elapsed = Date.now() - sState.startTime;
-    var config = LEVEL_CONFIG[sState.toLevel];
-
-    // Background — dark with subtle level tint
-    ctx.fillStyle = config ? config.bgAccent : '#03030a';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    renderScanlines(ctx, elapsed);
-    renderDataParticles(ctx, elapsed);
-    renderVignette(ctx);
-    renderTextLines(ctx, elapsed, sState.lines);
-
-    // Bottom prompt
-    var promptAlpha = Math.sin(elapsed * 0.003) * 0.25 + 0.45;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(100, 100, 130, ' + promptAlpha + ')';
-    ctx.font = '10px Courier New';
-    var now = Date.now();
-    var text = isStoryScreenComplete(sState, now) ? 'PRESS ENTER' : 'ENTER to continue  \u00b7  ESC to skip';
-    ctx.fillText(text, CANVAS_SIZE / 2, CANVAS_SIZE - 12);
-    ctx.textAlign = 'left';
 }
 
 // --- Text Rendering ---

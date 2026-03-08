@@ -198,7 +198,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         particleSystem: g.particleSystem, shakeState: g.shakeState,
         highScore: g.highScore, levelStartTime: g.levelStartTime,
         fragmentTextState: g.fragmentTextState, hunterIntroState: g.hunterIntroState,
-        endingState: g.endingState, storyScreenState: g.storyScreenState,
+        endingState: g.endingState,
         currentScreen: g.currentScreen, endlessMode: g.endlessMode, config: config,
         speedrunState: g.speedrunState,
         messageEl: deps.messageEl, dom: deps.dom, ui: deps.ui,
@@ -220,7 +220,6 @@ export function applyEventCtx(g, eventCtx) {
     g.fragmentTextState = eventCtx.fragmentTextState;
     g.hunterIntroState = eventCtx.hunterIntroState;
     g.endingState = eventCtx.endingState;
-    g.storyScreenState = eventCtx.storyScreenState;
     g.currentScreen = eventCtx.currentScreen;
     g.speedrunState = eventCtx.speedrunState;
 }
