@@ -20,7 +20,11 @@ import {
     playWaveEventPortalStormSound, playWaveEventGoldRushSound,
     getAudioContext, getMasterGain,
 } from './audio.js';
-import { setMusicIntensity, transitionToWave, playWaveFanfare, stopMusic } from './music.js';
+import {
+    setMusicIntensity, transitionToWave, playWaveFanfare, stopMusic,
+    onMusicFoodEaten, onMusicNearMiss, onMusicPowerUpActive, onMusicPowerUpExpired,
+    onMusicHunterProximity, onMusicLowHealth, onMusicComboChange,
+} from './music.js';
 import { setEndlessHighScore, setEndlessHighWave, getWaveTitle, getGridSizeForWave } from './endless.js';
 import { setGridSize } from './constants.js';
 import {
@@ -85,24 +89,41 @@ export function processPostTickEvents(ctx) {
         // Score popup at food position — show actual scored value and multiplier label
         var comboMult = ctx.state._comboMultiplier || 1;
         var scoreGained = ctx.state._scoreGained || 0;
+        var activeZone = ctx.state._activeZone || null;
         var popupText = comboMult > 1 ? '+' + scoreGained + ' x' + comboMult : '+' + scoreGained;
+        // Zone multiplier label prepended
+        if (activeZone) popupText = activeZone.label + ' ZONE! ' + popupText;
         // Bonus food: prepend label
         if (eatFoodType === 'golden') popupText = 'GOLDEN! ' + popupText;
         if (eatFoodType === 'clock') popupText = 'SLOW TIME! ' + popupText;
         if (eatFoodType === 'speed') popupText = 'SPEED! ' + popupText;
+        var popupColor = activeZone
+            ? activeZone.glowColor
+            : eatFoodType === 'golden'
+            ? '#fbbf24'
+            : eatFoodType === 'clock'
+            ? '#22d3ee'
+            : eatFoodType === 'speed'
+            ? '#f97316'
+            : comboMult > 1
+            ? '#f59e0b'
+            : '#fbbf24';
         ctx.scorePopups = (ctx.scorePopups || []).concat([{
             x: ctx.state._ateFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
             y: ctx.state._ateFoodPos.y * CELL_SIZE + CELL_SIZE / 2,
             text: popupText,
             alpha: 1,
             vy: -0.8,
-            color: eatFoodType === 'golden' ? '#fbbf24' : eatFoodType === 'clock' ? '#22d3ee' : eatFoodType === 'speed' ? '#f97316' : (comboMult > 1 ? '#f59e0b' : '#fbbf24'),
+            color: popupColor,
         }]);
 
         // Combo sound on multiplier increase (2x and above)
         if (ctx.state._comboIncreased && comboMult >= 2) {
             playComboSound(comboMult);
         }
+
+        // Reactive music: melodic flourish pitched to combo level
+        onMusicFoodEaten(comboMult);
 
         // Stats: food eaten + snake length
         recordFoodEaten(ctx.state.snake.length);
@@ -122,6 +143,12 @@ export function processPostTickEvents(ctx) {
         // Length achievements
         if (ctx.state.snake.length >= 20) ctx.tryUnlock('long_snake');
         if (ctx.state.snake.length >= 40) ctx.tryUnlock('serpent_king');
+    }
+
+    // Reactive music: update combo arpeggio layer on any combo change
+    if (ctx.state._ateFood || ctx.state._comboExpired) {
+        var currentComboMult = ctx.state._comboExpired ? 0 : (ctx.state._comboMultiplier || 1);
+        onMusicComboChange(currentComboMult);
     }
 
     // Combo break: flash "COMBO BREAK" when a streak expires
@@ -209,6 +236,13 @@ export function processPostTickEvents(ctx) {
         }
     }
 
+    // Reactive music: power-up shimmer layer on/off
+    if (ctx.state._collectedPowerUp) {
+        onMusicPowerUpActive();
+    } else if (ctx.prevState.activePowerUp && !ctx.state.activePowerUp) {
+        onMusicPowerUpExpired();
+    }
+
     // Power-up collected: sparkle burst
     if (ctx.state._collectedPowerUp) {
         recordPowerUpCollected();
@@ -294,6 +328,7 @@ export function processPostTickEvents(ctx) {
 
     // Shield broke: absorbed a lethal hit — dramatic flash + particles
     if (ctx.state._shieldBroke) {
+        onMusicNearMiss();
         playShieldBreakSound();
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#22d3ee', 20, 70, 0.5);
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 10, 40, 0.3);
@@ -443,6 +478,9 @@ export function processPostTickEvents(ctx) {
                 ctx.dom.livesEl.textContent = newLives;
             }
 
+            // Reactive music: start heartbeat layer when down to last life
+            onMusicLowHealth(newLives === 1);
+
             ctx.messageEl.textContent = 'LIFE LOST \u2014 ' + newLives + ' remaining. Arrow keys or swipe to continue';
             ctx.messageEl.className = 'active';
             ctx.messageEl.style.color = '#ef4444';
@@ -452,6 +490,10 @@ export function processPostTickEvents(ctx) {
         // Final death — true game over
         // Reset frenzy counter so it doesn't carry into the next game
         ctx.frenzyFoodEatenThisFrenzy = 0;
+        // Stop all reactive layers before stopping music
+        onMusicLowHealth(false);
+        onMusicComboChange(0);
+        onMusicPowerUpExpired();
         stopMusic();
         recordDeath(ctx.state.level);
         recordBestScore(ctx.state.level, ctx.state.score);

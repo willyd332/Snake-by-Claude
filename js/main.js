@@ -22,7 +22,7 @@ import {
 import { setSoundEnabled, playAchievementSound } from './audio.js';
 import { getEndlessHighScore, getEndlessHighWave } from './endless.js';
 import { processPostTickEvents, computeHunterDistance } from './game-events.js';
-import { setMusicIntensity } from './music.js';
+import { setMusicIntensity, onMusicHunterProximity } from './music.js';
 import {
     createReplayBuffer, recordFrame, startReplay,
 } from './replay.js';
@@ -48,6 +48,8 @@ import {
 import { createGameCallbacks } from './game-callbacks.js';
 import { showRunSummary } from './run-summary.js';
 import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
+import { getCurrentStreak, getStreakBonus, STREAK_VISUAL_THRESHOLD } from './streak.js';
+import { emitStreakRing } from './particles.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -72,6 +74,8 @@ var dom = {
     livesEl: document.getElementById('lives'),
     comboHudEl: document.getElementById('comboHud'),
     comboLabelEl: document.getElementById('comboLabel'),
+    streakHudEl: document.getElementById('streakHud'),
+    streakLabelEl: document.getElementById('streakLabel'),
 };
 
 var messageEl = document.getElementById('message');
@@ -104,6 +108,7 @@ var g = {
     runPrevHighScore: 0,
     summaryVisible: false,
     waveTransitionActive: false,
+    streakRingEmitted: false,
 
     // Game state
     state: createInitialState(),
@@ -330,6 +335,7 @@ function gameLoop(timestamp) {
                         powerUpsCollected: summaryPowerUps,
                         highScore: g.highScore,
                         previousHighScore: summaryPrevHighScore,
+                        currentStreak: getCurrentStreak(),
                     },
                     function() { g.summaryVisible = false; gameCallbacks.restartGame({ x: 1, y: 0 }); },
                     function() { g.summaryVisible = false; gameCallbacks.goToTitle(); }
@@ -370,6 +376,15 @@ function gameLoop(timestamp) {
         }
         if (g.state._collectedPowerUp) {
             g.runPowerUpsCollected = g.runPowerUpsCollected + 1;
+        }
+
+        // --- Streak ring particle burst on first tick of a new run ---
+        if (g.state.started && !g.streakRingEmitted) {
+            var streak = getCurrentStreak();
+            if (streak >= STREAK_VISUAL_THRESHOLD) {
+                g.particleSystem = emitStreakRing(g.particleSystem, CANVAS_SIZE, '#f97316');
+            }
+            g.streakRingEmitted = true;
         }
 
         // --- Hunter Trail Tracking ---
@@ -419,6 +434,8 @@ function gameLoop(timestamp) {
                 g.state.snake ? g.state.snake.length : 1,
                 tickHunterDist
             );
+            // Reactive music: hunter proximity pulsing bass layer
+            onMusicHunterProximity(tickHunterDist);
         }
 
         // Sync canvas dimensions if grid size changed
@@ -458,6 +475,8 @@ function gameLoop(timestamp) {
         highScore: getEndlessHighScore(),
         endlessHighWave: getEndlessHighWave(),
         headFlashState: g.headFlashState,
+        currentStreak: getCurrentStreak(),
+        streakBonus: getStreakBonus(getCurrentStreak()),
     };
 
     // Apply screen shake (respects settings)

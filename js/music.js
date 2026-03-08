@@ -19,6 +19,20 @@ var MELODY_VOL = 0.06;
 var TEXTURE_VOL = 0.03;
 var RHYTHM_VOL = 0.04;
 
+// --- Reactive Layer Volume Constants ---
+var FLOURISH_VOL = 0.07;       // food-eaten melodic flourish
+var STINGER_VOL = 0.06;        // near-miss dissonant chord
+var SHIMMER_VOL = 0.04;        // power-up shimmer pad
+var HUNTER_BASS_VOL = 0.09;    // hunter proximity pulsing bass
+var HEARTBEAT_VOL = 0.08;      // low-health heartbeat kick
+var ARPEGGIO_VOL = 0.05;       // high-combo rhythmic arpeggio
+
+// Hunter proximity threshold (cells) for the pulsing bass layer
+var HUNTER_DANGER_DISTANCE = 5;
+
+// Combo level at which arpeggio layer kicks in
+var COMBO_ARPEGGIO_THRESHOLD = 2;
+
 // --- Tonal Palettes Per Wave Range ---
 // Each palette defines a 7-note scale, bass roots, and oscillator types.
 // Waves cycle through increasingly tense palettes.
@@ -531,6 +545,14 @@ export function startMusic(audioCtx, masterGainNode) {
             hitCount: 0, volumeScale: 1.0,
         },
         schedulerInterval: null,
+        // Reactive layer nodes (created on demand, nulled when inactive)
+        shimmerNode: null,       // power-up shimmer pad
+        shimmerGain: null,
+        hunterBassNode: null,    // hunter proximity pulsing bass
+        hunterBassGain: null,
+        heartbeatInterval: null, // low-health heartbeat scheduler
+        arpeggioInterval: null,  // combo arpeggio scheduler
+        currentComboLevel: 0,
     };
 
     // Fade in pad layer gently over 3 seconds
@@ -573,12 +595,20 @@ export function startMusic(audioCtx, masterGainNode) {
 export function stopMusic() {
     if (!musicState) return;
     if (musicState.schedulerInterval) clearInterval(musicState.schedulerInterval);
+    if (musicState.heartbeatInterval) clearInterval(musicState.heartbeatInterval);
+    if (musicState.arpeggioInterval) clearInterval(musicState.arpeggioInterval);
     try {
         var ctx = musicState.audioCtx;
         if (ctx) {
             if (musicState.bass) stopBassLayer(musicState.bass, ctx);
             if (musicState.pad) stopPadLayer(musicState.pad, ctx);
             if (musicState.texture) stopTextureLayer(musicState.texture, ctx);
+            if (musicState.shimmerNode) {
+                try { musicState.shimmerNode.stop(); } catch (e2) { /* ignore */ }
+            }
+            if (musicState.hunterBassNode) {
+                try { musicState.hunterBassNode.stop(); } catch (e3) { /* ignore */ }
+            }
             if (musicState.musicGain) {
                 var t = ctx.currentTime;
                 rampGain(musicState.musicGain, t, 0, 0.5);
@@ -695,6 +725,11 @@ export function toggleMusicMute() {
     var settingsVol = getMusicVolumeSetting();
     var targetVol = nowMuted ? 0 : MUSIC_VOL * (1.0 + (musicState.intensity || 0) * 0.4) * settingsVol;
     rampGain(musicState.musicGain, t, targetVol, 0.3);
+    // Silence all reactive layers when muting
+    if (nowMuted) {
+        if (musicState.shimmerGain) rampGain(musicState.shimmerGain, t, 0, 0.2);
+        if (musicState.hunterBassGain) rampGain(musicState.hunterBassGain, t, 0, 0.2);
+    }
     return nowMuted;
 }
 
@@ -707,4 +742,277 @@ export function setMusicVolume(volume) {
     var clamped = Math.max(0, Math.min(1, volume));
     var targetVol = musicState.muted ? 0 : MUSIC_VOL * (1.0 + (musicState.intensity || 0) * 0.4) * clamped;
     rampGain(musicState.musicGain, t, targetVol, 0.2);
+}
+
+// --- Reactive Event Triggers ---
+// Called from game-events.js on specific gameplay moments.
+// All functions are safe to call when musicState is null or muted.
+
+// onMusicFoodEaten — brief melodic flourish at a pitch tied to combo level.
+// comboLevel: current multiplier (1-5); higher = brighter pitch.
+export function onMusicFoodEaten(comboLevel) {
+    if (!musicState || !musicState.running || !musicState.audioCtx) return;
+    if (musicState.muted) return;
+
+    var ctx = musicState.audioCtx;
+    var now = ctx.currentTime;
+    var palette = getPalette(musicState.wave || 1);
+    var scale = palette.scale;
+
+    // Pick pitch: higher combo = higher scale degree
+    var degreeIndex = Math.min((comboLevel || 1) - 1, scale.length - 1);
+    var baseFreq = scale[degreeIndex] * 2; // play an octave up for brightness
+
+    var noteCount = 3;
+    var noteSpacing = 0.06;
+
+    for (var i = 0; i < noteCount; i++) {
+        var freq = baseFreq * (1 + i * 0.5); // simple ascending flourish
+        var t = now + i * noteSpacing;
+        var osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(FLOURISH_VOL, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+        osc.connect(gain);
+        gain.connect(musicState.musicGain);
+        osc.start(t);
+        osc.stop(t + 0.2);
+        osc.onended = (function(o, g) {
+            return function() { o.disconnect(); g.disconnect(); };
+        })(osc, gain);
+    }
+}
+
+// onMusicNearMiss — brief dissonant chord that resolves (triggered on shield break).
+export function onMusicNearMiss() {
+    if (!musicState || !musicState.running || !musicState.audioCtx) return;
+    if (musicState.muted) return;
+
+    var ctx = musicState.audioCtx;
+    var now = ctx.currentTime;
+    var palette = getPalette(musicState.wave || 1);
+
+    // Dissonant tritone clash, then resolve up a semitone
+    var rootFreq = palette.bassRoots[0] * 2;
+    var dissonantFreq = rootFreq * 1.414; // tritone interval (~sqrt(2))
+    var resolveFreq = rootFreq * 1.5;     // perfect fifth resolution
+
+    var dissonantNotes = [rootFreq, dissonantFreq];
+    for (var i = 0; i < dissonantNotes.length; i++) {
+        let freq = dissonantNotes[i];
+        var osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.linearRampToValueAtTime(resolveFreq * (i === 0 ? 1 : 1.5), now + 0.3);
+
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(STINGER_VOL, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(musicState.musicGain);
+        osc.start(now);
+        osc.stop(now + 0.4);
+        osc.onended = (function(o, g) {
+            return function() { o.disconnect(); g.disconnect(); };
+        })(osc, gain);
+    }
+}
+
+// onMusicPowerUpActive — fade in a shimmering pad layer while power-up is active.
+export function onMusicPowerUpActive() {
+    if (!musicState || !musicState.running || !musicState.audioCtx) return;
+    if (musicState.muted) return;
+    if (musicState.shimmerNode) return; // already active
+
+    var ctx = musicState.audioCtx;
+    var now = ctx.currentTime;
+    var palette = getPalette(musicState.wave || 1);
+
+    var shimmer = ctx.createOscillator();
+    shimmer.type = 'sine';
+    shimmer.frequency.setValueAtTime(palette.scale[4] * 2, now); // shimmery high tone
+
+    var shimmerGain = ctx.createGain();
+    shimmerGain.gain.setValueAtTime(0, now);
+    shimmerGain.gain.linearRampToValueAtTime(SHIMMER_VOL, now + 0.4);
+
+    shimmer.connect(shimmerGain);
+    shimmerGain.connect(musicState.musicGain);
+    shimmer.start(now);
+
+    musicState.shimmerNode = shimmer;
+    musicState.shimmerGain = shimmerGain;
+}
+
+// onMusicPowerUpExpired — fade out the shimmer layer.
+export function onMusicPowerUpExpired() {
+    if (!musicState || !musicState.audioCtx) return;
+    if (!musicState.shimmerNode) return;
+
+    var ctx = musicState.audioCtx;
+    var now = ctx.currentTime;
+
+    rampGain(musicState.shimmerGain, now, 0, 0.5);
+    var nodeToStop = musicState.shimmerNode;
+    musicState.shimmerNode = null;
+    musicState.shimmerGain = null;
+    try { nodeToStop.stop(now + 0.6); } catch (e) { /* ignore */ }
+}
+
+// onMusicHunterProximity — pulsing bass note that scales with distance.
+// distance: Manhattan cells from snake head to nearest hunter segment (null = no hunter).
+export function onMusicHunterProximity(distance) {
+    if (!musicState || !musicState.running || !musicState.audioCtx) return;
+    if (musicState.muted) return;
+
+    var ctx = musicState.audioCtx;
+    var now = ctx.currentTime;
+
+    if (distance === null || distance > HUNTER_DANGER_DISTANCE) {
+        // Hunter out of range — fade out hunter bass
+        if (musicState.hunterBassGain) {
+            rampGain(musicState.hunterBassGain, now, 0, 0.4);
+        }
+        return;
+    }
+
+    var palette = getPalette(musicState.wave || 1);
+    // Proximity: 0 = touching, HUNTER_DANGER_DISTANCE = threshold
+    var proximityRatio = 1 - (distance / HUNTER_DANGER_DISTANCE);
+    var targetVol = HUNTER_BASS_VOL * proximityRatio;
+
+    if (!musicState.hunterBassNode) {
+        var hunterOsc = ctx.createOscillator();
+        hunterOsc.type = 'sine';
+        hunterOsc.frequency.setValueAtTime(palette.bassRoots[0] * 0.5, now); // sub-bass
+
+        var hunterGain = ctx.createGain();
+        hunterGain.gain.setValueAtTime(0, now);
+
+        hunterOsc.connect(hunterGain);
+        hunterGain.connect(musicState.musicGain);
+        hunterOsc.start(now);
+
+        musicState.hunterBassNode = hunterOsc;
+        musicState.hunterBassGain = hunterGain;
+    }
+
+    rampGain(musicState.hunterBassGain, now, targetVol, 0.15);
+}
+
+// onMusicLowHealth — start/stop heartbeat rhythm layer (1 life remaining).
+// active: true to start heartbeat, false to stop it.
+export function onMusicLowHealth(active) {
+    if (!musicState || !musicState.running || !musicState.audioCtx) return;
+
+    if (!active) {
+        if (musicState.heartbeatInterval) {
+            clearInterval(musicState.heartbeatInterval);
+            musicState.heartbeatInterval = null;
+        }
+        return;
+    }
+
+    if (musicState.heartbeatInterval) return; // already running
+
+    var ctx = musicState.audioCtx;
+
+    function scheduleHeartbeat() {
+        if (!musicState || !musicState.running) return;
+        if (musicState.muted) return;
+
+        var now = ctx.currentTime;
+        var palette = getPalette(musicState.wave || 1);
+        var beatFreq = palette.bassRoots[0] * 0.25; // low sub-kick
+
+        // Double thump: "lub-dub"
+        var offsets = [0, 0.12];
+        for (var i = 0; i < offsets.length; i++) {
+            var t = now + offsets[i];
+            var osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(beatFreq * 1.5, t);
+            osc.frequency.exponentialRampToValueAtTime(beatFreq, t + 0.08);
+
+            var gain = ctx.createGain();
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(HEARTBEAT_VOL, t + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+            osc.connect(gain);
+            gain.connect(musicState.musicGain);
+            osc.start(t);
+            osc.stop(t + 0.15);
+            osc.onended = (function(o, g) {
+                return function() { o.disconnect(); g.disconnect(); };
+            })(osc, gain);
+        }
+    }
+
+    scheduleHeartbeat();
+    musicState.heartbeatInterval = setInterval(scheduleHeartbeat, 700);
+}
+
+// onMusicComboChange — layer a rhythmic arpeggio that intensifies with combo level.
+// comboLevel: current multiplier (0 = no combo, 1+ = active).
+export function onMusicComboChange(comboLevel) {
+    if (!musicState || !musicState.running || !musicState.audioCtx) return;
+
+    musicState.currentComboLevel = comboLevel || 0;
+
+    if (comboLevel < COMBO_ARPEGGIO_THRESHOLD) {
+        if (musicState.arpeggioInterval) {
+            clearInterval(musicState.arpeggioInterval);
+            musicState.arpeggioInterval = null;
+        }
+        return;
+    }
+
+    if (musicState.arpeggioInterval) return; // already running
+
+    var ctx = musicState.audioCtx;
+
+    function scheduleArpNote() {
+        if (!musicState || !musicState.running) return;
+        if (musicState.muted) return;
+
+        var level = musicState.currentComboLevel;
+        if (level < COMBO_ARPEGGIO_THRESHOLD) return;
+
+        var now = ctx.currentTime;
+        var palette = getPalette(musicState.wave || 1);
+        var scale = palette.scale;
+        // Rotate through scale degrees based on combo
+        var degreeOffset = (Math.floor(Date.now() / 120)) % scale.length;
+        var freq = scale[degreeOffset] * 4; // high register arpeggio
+        // Intensity scales with combo level
+        var vol = ARPEGGIO_VOL * Math.min(1, (level - 1) / 4);
+
+        var osc = ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(vol, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        osc.connect(gain);
+        gain.connect(musicState.musicGain);
+        osc.start(now);
+        osc.stop(now + 0.12);
+        osc.onended = (function(o, g) {
+            return function() { o.disconnect(); g.disconnect(); };
+        })(osc, gain);
+    }
+
+    scheduleArpNote();
+    musicState.arpeggioInterval = setInterval(scheduleArpNote, 120);
 }
