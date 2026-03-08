@@ -45,6 +45,7 @@ import {
     createSpeedrunState, renderSpeedrunTimer, renderSplitOverlay, resumeSpeedrunTimer,
 } from './speedrun.js';
 import { createGameCallbacks } from './game-callbacks.js';
+import { showRunSummary } from './run-summary.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -93,6 +94,9 @@ var g = {
     titleMenuIndex: null,
     speedrunState: createSpeedrunState(),
     gameSessionStartTime: 0,
+    runPowerUpsCollected: 0,
+    runFoodEaten: 0,
+    runPrevHighScore: 0,
 
     // Game state
     state: createInitialState(),
@@ -213,7 +217,8 @@ function gameLoop(timestamp) {
                 g.deathAnimation = createDeathAnimation(
                     g.state.snake,
                     skipDeathConfig.color,
-                    g.state._killedByHunter
+                    g.state._killedByHunter,
+                    g.state._deathCause
                 );
             }
         } else {
@@ -241,7 +246,8 @@ function gameLoop(timestamp) {
                     g.deathAnimation = createDeathAnimation(
                         g.state.snake,
                         deathConfig.color,
-                        g.state._killedByHunter
+                        g.state._killedByHunter,
+                        g.state._deathCause
                     );
                 }
             } else {
@@ -266,9 +272,35 @@ function gameLoop(timestamp) {
 
         if (deathResult.done) {
             if (g.replayDeathContext) {
+                var deathCtxState = g.replayDeathContext.state;
+                var summaryDeathCause = deathCtxState._deathCause;
+                var summaryKilledByHunter = deathCtxState._killedByHunter;
+                var summaryWave = deathCtxState.endlessWave || 1;
+                var summaryScore = deathCtxState.score || 0;
+                var summaryFoodEaten = g.runFoodEaten;
+                var summaryPowerUps = g.runPowerUpsCollected;
+                var summaryTimeAliveMs = g.gameSessionStartTime > 0 ? Date.now() - g.gameSessionStartTime : 0;
+                var summaryPrevHighScore = g.runPrevHighScore;
+
                 processPostTickEvents(g.replayDeathContext);
                 applyEventCtx(g, g.replayDeathContext);
                 g.replayDeathContext = null;
+
+                showRunSummary(
+                    {
+                        wave: summaryWave,
+                        score: summaryScore,
+                        timeAliveMs: summaryTimeAliveMs,
+                        foodEaten: summaryFoodEaten,
+                        deathCause: summaryDeathCause,
+                        killedByHunter: summaryKilledByHunter,
+                        powerUpsCollected: summaryPowerUps,
+                        highScore: g.highScore,
+                        previousHighScore: summaryPrevHighScore,
+                    },
+                    function() { gameCallbacks.restartGame({ x: 1, y: 0 }); },
+                    function() { gameCallbacks.goToTitle(); }
+                );
             }
         } else {
             requestAnimationFrame(gameLoop);
@@ -291,6 +323,14 @@ function gameLoop(timestamp) {
         // --- Record frame for death replay ---
         if (g.state.started && !g.state.gameOver) {
             g.replayBuffer = recordFrame(g.replayBuffer, g.state, g.state.direction);
+        }
+
+        // --- Per-run stat tracking ---
+        if (g.state._ateFood) {
+            g.runFoodEaten = g.runFoodEaten + 1;
+        }
+        if (g.state._collectedPowerUp) {
+            g.runPowerUpsCollected = g.runPowerUpsCollected + 1;
         }
 
         // --- Hunter Trail Tracking ---
@@ -316,7 +356,8 @@ function gameLoop(timestamp) {
             g.deathAnimation = createDeathAnimation(
                 g.state.snake,
                 noReplayConfig.color,
-                g.state._killedByHunter
+                g.state._killedByHunter,
+                g.state._deathCause
             );
         } else {
             // Normal flow: process post-tick events immediately
