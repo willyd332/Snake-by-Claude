@@ -876,9 +876,15 @@ export function onMusicHunterProximity(distance) {
     var now = ctx.currentTime;
 
     if (distance === null || distance > HUNTER_DANGER_DISTANCE) {
-        // Hunter out of range — fade out hunter bass
+        // Hunter out of range — fade out and stop hunter bass node
         if (musicState.hunterBassGain) {
             rampGain(musicState.hunterBassGain, now, 0, 0.4);
+        }
+        if (musicState.hunterBassNode) {
+            var nodeToStop = musicState.hunterBassNode;
+            musicState.hunterBassNode = null;
+            musicState.hunterBassGain = null;
+            try { nodeToStop.stop(now + 0.5); } catch (e) { /* already stopped */ }
         }
         return;
     }

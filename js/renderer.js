@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE } from './constants.js';
+import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, ZONE_SIZE } from './constants.js';
 import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import { manhattanDistance } from './hunter.js';
@@ -174,8 +174,8 @@ function renderScoreZones(ctx, zones, now) {
         var pulse = Math.sin(now / 350 + i * 1.4) * 0.15 + 0.85;
         var zPx = z.x * CELL_SIZE;
         var zPy = z.y * CELL_SIZE;
-        var zW = CELL_SIZE * 2; // ZONE_SIZE = 2
-        var zH = CELL_SIZE * 2;
+        var zW = CELL_SIZE * ZONE_SIZE;
+        var zH = CELL_SIZE * ZONE_SIZE;
 
         // Fill: subtle tinted overlay
         ctx.globalAlpha = 0.18 * fadeAlpha * pulse;

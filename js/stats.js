@@ -179,7 +179,7 @@ export function renderStats(ctx, scrollOffset) {
         { label: 'Portals Used', value: String(stats.portalsUsed), color: '#8b5cf6' },
         { label: 'Power-ups Collected', value: String(stats.powerUpsCollected), color: '#06b6d4' },
         { label: 'Best Endless Wave', value: stats.bestEndlessWave > 0 ? String(stats.bestEndlessWave) : '--', color: '#ef4444' },
-        { label: 'Best Streak', value: stats.bestStreak > 0 ? String(stats.bestStreak) + 'x', color: '#f97316' },
+        { label: 'Best Streak', value: stats.bestStreak > 0 ? String(stats.bestStreak) + 'x' : '--', color: '#f97316' },
     ];
 
     var allRows = [];
