@@ -1,34 +1,7 @@
 'use strict';
 
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
-import { getCollectedFragments } from './fragments.js';
-import { getUnlockedEndings } from './story.js';
-import { LEVEL_NAMES } from './utils.js';
 import { getSettings, getSettingsItems, getDifficultyLabel } from './settings.js';
-
-var LEVEL_TAGS = {
-    1: 'No obstacles',
-    2: 'Walls',
-    3: 'Moving obstacles',
-    4: 'Fire cage',
-    5: 'Portals',
-    6: 'Darkness',
-    7: 'Wrap + Power-ups',
-    8: 'Hunter AI',
-    9: 'Shrinking arena',
-    10: 'Everything',
-};
-
-export function getHighestLevel() {
-    return parseInt(localStorage.getItem('snake-highest-level') || '1', 10);
-}
-
-export function setHighestLevel(level) {
-    var current = getHighestLevel();
-    if (level > current) {
-        localStorage.setItem('snake-highest-level', String(level));
-    }
-}
 
 // --- Demo Snake for Title Screen ---
 function createDemoSnake() {
@@ -143,27 +116,11 @@ function stepDemoSnake(demo) {
     };
 }
 
-// --- Dynamic Subtitle ---
-function getTitleSubtitle() {
-    var collected = getCollectedFragments();
-    if (collected.length >= 10) return 'System fully mapped.';
-
-    var endings = getUnlockedEndings();
-    if (endings.awakening || endings.deletion || endings.loop) return 'The machine remembers.';
-
-    var highest = getHighestLevel();
-    if (highest >= 8) return 'ALPHA is watching.';
-    if (highest >= 5) return 'Deeper into the machine...';
-
-    return 'THE BLUE COMPUTER';
-}
-
 // --- Title Screen Rendering ---
 export function createTitleState() {
     return {
         demo: createDemoSnake(),
         tickAccum: 0,
-        subtitle: getTitleSubtitle(),
     };
 }
 
@@ -173,13 +130,11 @@ export function updateTitleState(titleState) {
         return {
             demo: stepDemoSnake(titleState.demo),
             tickAccum: 0,
-            subtitle: titleState.subtitle,
         };
     }
     return {
         demo: titleState.demo,
         tickAccum: newAccum,
-        subtitle: titleState.subtitle,
     };
 }
 
@@ -236,20 +191,6 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 
-    // Hunter blip in background (after Level 8)
-    var highest = getHighestLevel();
-    if (highest >= 8) {
-        var now = Date.now();
-        var blipCycle = (now / 4000) % 1;
-        if (blipCycle < 0.25) {
-            var blipAlpha = Math.sin(blipCycle / 0.25 * Math.PI) * 0.25;
-            var blipX = ((now * 0.031 + 137) % (CANVAS_SIZE - CELL_SIZE));
-            var blipY = ((now * 0.019 + 89) % (CANVAS_SIZE - CELL_SIZE));
-            ctx.fillStyle = 'rgba(249, 115, 22, ' + blipAlpha + ')';
-            ctx.fillRect(blipX, blipY, CELL_SIZE - 4, CELL_SIZE - 4);
-        }
-    }
-
     // Dark overlay for readability
     ctx.fillStyle = 'rgba(10, 10, 26, 0.65)';
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
@@ -264,17 +205,10 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
     ctx.fillText('SNAKE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 60);
     ctx.shadowBlur = 0;
 
-    // Dynamic subtitle (cached in titleState)
-    var subtitle = titleState.subtitle;
-    var isDefaultSubtitle = subtitle === 'THE BLUE COMPUTER';
-    if (isDefaultSubtitle) {
-        ctx.fillStyle = '#334155';
-    } else {
-        var subPulse = Math.sin(Date.now() / 1200) * 0.15 + 0.55;
-        ctx.fillStyle = 'rgba(150, 170, 200, ' + subPulse + ')';
-    }
+    // Subtitle
+    ctx.fillStyle = '#334155';
     ctx.font = '11px Courier New';
-    ctx.fillText(subtitle, CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 35);
+    ctx.fillText('INFINITE ENDLESS MODE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 35);
 
     // Divider line
     var lineW = 120;
@@ -285,18 +219,14 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
     ctx.lineTo(CANVAS_SIZE / 2 + lineW / 2, CANVAS_SIZE / 2 - 20);
     ctx.stroke();
 
-    // Menu options
+    // Menu options (simplified — no level select, no archive, no codex)
     var menuItems = [
         { text: 'Play', color: 'rgba(224, 224, 224, ', alpha: 0.7, font: '14px Courier New' },
-        { text: 'Level Select', color: 'rgba(150, 150, 170, ', alpha: 0.6, font: '13px Courier New' },
-        { text: 'Data Codex', color: 'rgba(74, 158, 255, ', alpha: 0.4, font: '13px Courier New' },
-        { text: 'Archive', color: 'rgba(150, 130, 170, ', alpha: 0.4, font: '13px Courier New' },
-        { text: 'Endless Mode', color: 'rgba(239, 68, 68, ', alpha: 0.5, font: '13px Courier New' },
         { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.4, font: '13px Courier New' },
         { text: 'Settings', color: 'rgba(120, 120, 140, ', alpha: 0.35, font: '12px Courier New' },
     ];
-    var menuKeys = ['ENTER', 'L', 'C', 'A', 'E', 'T', 'S'];
-    var menuYOffsets = [8, 28, 46, 64, 82, 100, 118];
+    var menuKeys = ['ENTER', 'T', 'S'];
+    var menuYOffsets = [8, 28, 46];
     var hasMenuIndex = menuIndex !== undefined && menuIndex !== null && menuIndex >= 0;
 
     for (var mi = 0; mi < menuItems.length; mi++) {
@@ -326,187 +256,10 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
         }
     }
 
-    // Level dots
-    var dotY = CANVAS_SIZE / 2 + 140;
-    var dotSpacing = 28;
-    var dotsStartX = CANVAS_SIZE / 2 - (dotSpacing * (MAX_LEVEL - 1)) / 2;
-    for (var lv = 1; lv <= MAX_LEVEL; lv++) {
-        var dotX = dotsStartX + (lv - 1) * dotSpacing;
-        var lvColor = LEVEL_CONFIG[lv].color;
-        var unlocked = lv <= highest;
-        var dotPulse = Math.sin(Date.now() / 500 + lv * 0.5) * 0.2 + 0.8;
-
-        if (unlocked) {
-            ctx.fillStyle = lvColor;
-            ctx.globalAlpha = dotPulse * 0.8;
-            ctx.shadowColor = lvColor;
-            ctx.shadowBlur = 6;
-        } else {
-            ctx.fillStyle = '#333';
-            ctx.globalAlpha = 0.3;
-            ctx.shadowBlur = 0;
-        }
-        ctx.beginPath();
-        ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-
-    // Ending icons below level dots
-    var endings = getUnlockedEndings();
-    var iconY = dotY + 18;
-    var iconSpacing = 24;
-    var iconStartX = CANVAS_SIZE / 2 - iconSpacing;
-    ctx.font = '11px Courier New';
-
-    ctx.fillStyle = endings.awakening ? '#eab308' : 'rgba(80, 80, 80, 0.15)';
-    ctx.fillText('\u2605', iconStartX, iconY);
-
-    ctx.fillStyle = endings.deletion ? '#ef4444' : 'rgba(80, 80, 80, 0.15)';
-    ctx.fillText('\u2716', iconStartX + iconSpacing, iconY);
-
-    ctx.fillStyle = endings.loop ? '#666' : 'rgba(80, 80, 80, 0.15)';
-    ctx.fillText('\u21BB', iconStartX + iconSpacing * 2, iconY);
-
     // Footer
     ctx.fillStyle = 'rgba(100, 100, 120, 0.3)';
     ctx.font = '10px Courier New';
-    ctx.fillText('10 levels \u00b7 swipe or arrow keys', CANVAS_SIZE / 2, CANVAS_SIZE - 20);
-
-    ctx.textAlign = 'left';
-}
-
-// --- Level Select Rendering ---
-export function createLevelSelectState() {
-    return {
-        selectedLevel: 1,
-        scrollOffset: 0,
-    };
-}
-
-export function renderLevelSelect(ctx, selectState) {
-    var highest = getHighestLevel();
-    var selected = selectState.selectedLevel;
-
-    // Background
-    ctx.fillStyle = '#0a0a1a';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    // Header
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#4a9eff';
-    ctx.font = 'bold 22px Courier New';
-    ctx.fillText('SELECT LEVEL', CANVAS_SIZE / 2, 35);
-
-    ctx.strokeStyle = 'rgba(74, 158, 255, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(60, 48);
-    ctx.lineTo(CANVAS_SIZE - 60, 48);
-    ctx.stroke();
-
-    // Level cards — 2 columns, 5 rows
-    var cardW = 160;
-    var cardH = 55;
-    var gapX = 16;
-    var gapY = 10;
-    var startX = (CANVAS_SIZE - cardW * 2 - gapX) / 2;
-    var startY = 62;
-
-    for (var lv = 1; lv <= MAX_LEVEL; lv++) {
-        var col = (lv - 1) % 2;
-        var row = Math.floor((lv - 1) / 2);
-        var cx = startX + col * (cardW + gapX);
-        var cy = startY + row * (cardH + gapY);
-        var unlocked = lv <= highest;
-        var isSelected = lv === selected;
-        var config = LEVEL_CONFIG[lv];
-
-        // Card background
-        if (isSelected && unlocked) {
-            ctx.fillStyle = 'rgba(74, 158, 255, 0.12)';
-            ctx.strokeStyle = config.color;
-            ctx.lineWidth = 2;
-            ctx.shadowColor = config.color;
-            ctx.shadowBlur = 8;
-        } else if (unlocked) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-            ctx.lineWidth = 1;
-            ctx.shadowBlur = 0;
-        } else {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.01)';
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-            ctx.lineWidth = 1;
-            ctx.shadowBlur = 0;
-        }
-
-        // Rounded rect
-        roundRect(ctx, cx, cy, cardW, cardH, 4);
-        ctx.fill();
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // Color dot
-        var dotX = cx + 14;
-        var dotCy = cy + cardH / 2;
-        if (unlocked) {
-            ctx.fillStyle = config.color;
-            ctx.shadowColor = config.color;
-            ctx.shadowBlur = 4;
-        } else {
-            ctx.fillStyle = '#333';
-            ctx.shadowBlur = 0;
-        }
-        ctx.beginPath();
-        ctx.arc(dotX, dotCy, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Level number and name
-        ctx.textAlign = 'left';
-        if (unlocked) {
-            ctx.fillStyle = '#e0e0e0';
-        } else {
-            ctx.fillStyle = '#444';
-        }
-        ctx.font = 'bold 13px Courier New';
-        ctx.fillText(lv + '. ' + LEVEL_NAMES[lv], cx + 28, cy + 20);
-
-        // Tag
-        if (unlocked) {
-            ctx.fillStyle = 'rgba(150, 150, 170, 0.6)';
-        } else {
-            ctx.fillStyle = '#333';
-        }
-        ctx.font = '10px Courier New';
-        ctx.fillText(unlocked ? LEVEL_TAGS[lv] : 'LOCKED', cx + 28, cy + 36);
-
-        // Lock icon for locked levels
-        if (!unlocked) {
-            ctx.fillStyle = '#444';
-            ctx.font = '16px Courier New';
-            ctx.textAlign = 'right';
-            ctx.fillText('[X]', cx + cardW - 16, cy + cardH / 2 + 5);
-        }
-
-        // Selected indicator (arrow)
-        if (isSelected && unlocked) {
-            var arrowPulse = Math.sin(Date.now() / 300) * 2;
-            ctx.fillStyle = config.color;
-            ctx.font = 'bold 14px Courier New';
-            ctx.textAlign = 'right';
-            ctx.fillText('\u25B6', cx + cardW - 8 + arrowPulse, cy + 22);
-        }
-    }
-
-    ctx.textAlign = 'center';
-
-    // Footer instructions
-    ctx.fillStyle = 'rgba(150, 150, 170, 0.5)';
-    ctx.font = '11px Courier New';
-    ctx.fillText('Swipe / \u2190\u2191\u2192\u2193  \u00b7  Tap / ENTER  \u00b7  Hold / ESC', CANVAS_SIZE / 2, CANVAS_SIZE - 16);
+    ctx.fillText('swipe or arrow keys', CANVAS_SIZE / 2, CANVAS_SIZE - 20);
 
     ctx.textAlign = 'left';
 }

@@ -35,13 +35,9 @@ export function getEndlessConfig(wave) {
     var hasObstacles = wave >= 5;
     var hasPowerUps = wave >= 6;
     var hasPortals = wave >= 7;
-    var hasFog = wave >= 9;
     var hasWrap = wave >= 11;
     var hasHunter = wave >= 13;
     var hasShrink = wave >= 16;
-
-    // Fog radius shrinks as waves increase
-    var fogRadius = hasFog ? Math.max(3, 6 - Math.floor((wave - 9) / 4)) : null;
 
     // Hunter gets faster over time
     var hunterInterval = hasHunter ? Math.max(2, 4 - Math.floor((wave - 13) / 5)) : null;
@@ -58,7 +54,7 @@ export function getEndlessConfig(wave) {
         gridAlpha: Math.min(0.08, 0.03 + wave * 0.002),
         obstacleColor: hasObstacles ? (base.obstacleColor || base.color) : null,
         portalColor: hasPortals ? (base.portalColor || '#8b5cf6') : null,
-        fogRadius: fogRadius,
+        fogRadius: null,
         wrapAround: hasWrap,
         powerUpsEnabled: hasPowerUps,
         hunterEnabled: hasHunter,

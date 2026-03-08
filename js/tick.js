@@ -1,13 +1,12 @@
 'use strict';
 
-import { GRID_SIZE, FOOD_TO_LEVEL_UP, MAX_LEVEL, POWER_UP_SPAWN_INTERVAL, setGridSize, LEVEL_GRID_SIZE, LEVEL_UP_INVINCIBLE_TICKS } from './constants.js';
+import { GRID_SIZE } from './constants.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
-import { generateWalls, filterWallsFromSnake, generateObstacles, moveObstacles, getObstaclePositions, generatePortals, checkPortalTeleport } from './levels.js';
-import { generateHunter, moveHunter } from './hunter.js';
+import { moveObstacles, getObstaclePositions, checkPortalTeleport } from './levels.js';
+import { moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
-import { tickBoss, createBossState, checkShadowCloneCollision, getShadowCloneHitPenalty, getShockwaveBounds, pushSnakeInward, getBerserkTickInterval } from './boss.js';
 
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
@@ -16,15 +15,8 @@ export function tick(prev) {
         _ateFoodPos: null,
         _collectedPowerUp: null,
         _shrinkOccurred: false,
-        _collectedFragment: false,
-        _collectedFragmentLevel: null,
         _killedByHunter: false,
         _deathCause: null,
-        _bossCloneHit: false,
-        _bossPulseTriggered: false,
-        _bossPhaseChanged: false,
-        _bossShockwaveActivated: false,
-        _bossAteInShockwave: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -119,14 +111,8 @@ export function tick(prev) {
         }
     }
 
-    // Move hunter AI (with berserk speed override on Level 10)
-    var bossConfig = config;
-    if (clean.bossState && clean.bossState.berserkActive && config.hunterTickInterval) {
-        bossConfig = Object.assign({}, config, {
-            hunterTickInterval: getBerserkTickInterval(config.hunterTickInterval),
-        });
-    }
-    var newHunter = clean.hunter ? moveHunter(clean.hunter, newHead, clean.walls, newObstacles, bossConfig) : null;
+    // Move hunter AI
+    var newHunter = clean.hunter ? moveHunter(clean.hunter, newHead, clean.walls, newObstacles, config) : null;
 
     var ate = clean.food && newHead.x === clean.food.x && newHead.y === clean.food.y;
     var newSnake = [newHead].concat(ate ? clean.snake : clean.snake.slice(0, -1));
@@ -160,83 +146,27 @@ export function tick(prev) {
         }
     }
 
-    // Fragment collection
-    var collectedFragment = false;
-    var collectedFragmentLevel = null;
-    var newFragment = clean.fragment;
-    if (newFragment && newHead.x === newFragment.x && newHead.y === newFragment.y) {
-        collectedFragment = true;
-        collectedFragmentLevel = clean.level;
-        newFragment = null;
-    }
-
-    // Power-up state updates
-    var newPowerUp = clean.powerUp;
-    var newActivePowerUp = clean.activePowerUp;
-    var newPowerUpSpawnCounter = clean.powerUpSpawnCounter;
-    var collectedPowerUpType = null;
-
-    // Check power-up collection
-    if (newPowerUp && newHead.x === newPowerUp.x && newHead.y === newPowerUp.y) {
-        var def = getPowerUpDef(newPowerUp.type);
-        newActivePowerUp = { type: newPowerUp.type, ticksLeft: def.duration };
-        collectedPowerUpType = newPowerUp.type;
-        newPowerUp = null;
-        newPowerUpSpawnCounter = 0;
-    }
-
-    // Decrement power-up despawn timer
-    if (newPowerUp) {
-        newPowerUp = Object.assign({}, newPowerUp, { ticksLeft: newPowerUp.ticksLeft - 1 });
-        if (newPowerUp.ticksLeft <= 0) {
-            newPowerUp = null;
-        }
-    }
-
-    // Decrement active power-up duration (skip if just collected this tick)
-    if (newActivePowerUp && !collectedPowerUpType) {
-        newActivePowerUp = Object.assign({}, newActivePowerUp, { ticksLeft: newActivePowerUp.ticksLeft - 1 });
-        if (newActivePowerUp.ticksLeft <= 0) {
-            newActivePowerUp = null;
-        }
-    }
-
-    // Level up / Wave up check
+    // Wave up check (endless mode is the only mode now)
     var endlessWave = clean.endlessWave;
     var endlessConfig = clean.endlessConfig;
-    var foodThreshold = endlessWave > 0 ? ENDLESS_FOOD_PER_WAVE : FOOD_TO_LEVEL_UP;
 
-    if (newFoodEaten >= foodThreshold) {
-        if (endlessWave > 0) {
-            // Endless mode: wave up
-            endlessWave = endlessWave + 1;
-            endlessConfig = getEndlessConfig(endlessWave);
-            newLevel = ((endlessWave - 1) % 10) + 1;
-            newFoodEaten = 0;
-            newWalls = filterWallsFromSnake(generateEndlessWalls(endlessWave), newSnake);
-            newObstacles = generateEndlessObstacles(endlessWave);
-            newPortals = generateEndlessPortals(endlessWave).filter(function(p) {
-                return !collides(p.a, newWalls) && !collides(p.b, newWalls);
-            });
-            newHunter = endlessConfig.hunterEnabled ? generateEndlessHunter(endlessWave) : null;
-            newPowerUp = null;
-            newActivePowerUp = null;
-            newPowerUpSpawnCounter = 0;
-            newFragment = null;
-        } else if (newLevel < MAX_LEVEL) {
-            // Normal mode: level up
-            newLevel = clean.level + 1;
-            newFoodEaten = 0;
-            setGridSize(LEVEL_GRID_SIZE[newLevel] || 20);
-            newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
-            newObstacles = generateObstacles(newLevel);
-            newPortals = generatePortals(newLevel);
-            newHunter = generateHunter(newLevel);
-            newPowerUp = null;
-            newActivePowerUp = null;
-            newPowerUpSpawnCounter = 0;
-            newFragment = null;
-        }
+    if (newFoodEaten >= ENDLESS_FOOD_PER_WAVE) {
+        endlessWave = endlessWave + 1;
+        endlessConfig = getEndlessConfig(endlessWave);
+        newLevel = ((endlessWave - 1) % 10) + 1;
+        newFoodEaten = 0;
+        newWalls = generateEndlessWalls(endlessWave).filter(function(w) {
+            return !newSnake.some(function(seg) { return seg.x === w.x && seg.y === w.y; });
+        });
+        newObstacles = generateEndlessObstacles(endlessWave);
+        newPortals = generateEndlessPortals(endlessWave).filter(function(p) {
+            return !collides(p.a, newWalls) && !collides(p.b, newWalls);
+        });
+        newHunter = endlessConfig.hunterEnabled ? generateEndlessHunter(endlessWave) : null;
+        newFood = null;
+        newPowerUp = null;
+        newActivePowerUp = null;
+        newPowerUpSpawnCounter = 0;
     }
 
     // Shrinking arena
@@ -247,8 +177,8 @@ export function tick(prev) {
     var newShrinkCounter = clean.shrinkCounter;
     var shrinkOccurred = false;
 
-    // Reset arena on level transition
-    if (newLevel !== clean.level) {
+    // Reset arena on wave transition
+    if (endlessWave !== clean.endlessWave) {
         newArenaMinX = 0;
         newArenaMinY = 0;
         newArenaMaxX = GRID_SIZE - 1;
@@ -256,7 +186,7 @@ export function tick(prev) {
         newShrinkCounter = 0;
     }
 
-    if (ate && config.shrinkingArena && newLevel === clean.level) {
+    if (ate && config.shrinkingArena && endlessWave === clean.endlessWave) {
         newShrinkCounter = newShrinkCounter + 1;
         if (newShrinkCounter >= config.shrinkInterval) {
             newShrinkCounter = 0;
@@ -302,12 +232,6 @@ export function tick(prev) {
                 if (newFood && collides(newFood, shrinkCells)) {
                     newFood = null;
                 }
-                if (newPowerUp && collides({ x: newPowerUp.x, y: newPowerUp.y }, shrinkCells)) {
-                    newPowerUp = null;
-                }
-                if (newFragment && collides({ x: newFragment.x, y: newFragment.y }, shrinkCells)) {
-                    newFragment = null;
-                }
             }
         }
     }
@@ -322,80 +246,41 @@ export function tick(prev) {
 
     // Spawn food if needed
     if (!newFood) {
-        newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, newPowerUp, newHunter);
-    }
-
-    // --- Boss Fight Logic (Level 10 only) ---
-    var newBossState = clean.bossState;
-    var bossCloneHit = false;
-    var bossPulseTriggered = false;
-    var bossPhaseChanged = false;
-    var bossShockwaveActivated = false;
-    var bossAteInShockwave = false;
-    var newBossPhase3Ticks = clean.bossPhase3Ticks || 0;
-    var newBossCloneHitThisRun = clean.bossCloneHitThisRun || false;
-
-    if (newLevel === MAX_LEVEL && clean.endlessWave === 0) {
-        // Tick the boss state machine
-        var prevBossPhase = newBossState ? newBossState.phase : 1;
-        var bossGameState = {
-            foodEaten: newFoodEaten,
-            snake: newSnake,
-            walls: newWalls,
-            obstacles: newObstacles,
-            portals: newPortals,
-            powerUp: newPowerUp,
-            hunter: newHunter,
-        };
-        newBossState = tickBoss(newBossState || createBossState(), bossGameState, config);
-
-        if (newBossState && newBossState.phase > prevBossPhase) {
-            bossPhaseChanged = true;
-        }
-
-        // Food pulse: scatter food when pulse triggers
-        if (newBossState && newBossState.pulseTriggered && newFood) {
-            bossPulseTriggered = true;
-            newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, newPowerUp, newHunter);
-        }
-
-        // Shadow clone collision: penalty but no death
-        if (newBossState && newBossState.shadowClones.length > 0) {
-            if (checkShadowCloneCollision(newHead, newBossState.shadowClones)) {
-                bossCloneHit = true;
-                newBossCloneHitThisRun = true;
-                newScore = Math.max(0, newScore - getShadowCloneHitPenalty());
-            }
-        }
-
-        // Detect shockwave activation (just became active this tick)
-        if (newBossState && newBossState.shockwaveActive && !(clean.bossState && clean.bossState.shockwaveActive)) {
-            bossShockwaveActivated = true;
-        }
-
-        // Shockwave: push snake inward when active
-        if (newBossState && newBossState.shockwaveActive) {
-            var swBounds = getShockwaveBounds(newBossState);
-            if (swBounds) {
-                newSnake = pushSnakeInward(newSnake, swBounds);
-            }
-        }
-
-        // Boss achievement tracking
-        if (newBossState && newBossState.phase === 3) {
-            newBossPhase3Ticks = newBossPhase3Ticks + 1;
-        }
-        if (ate && newBossState && newBossState.shockwaveActive) {
-            bossAteInShockwave = true;
-        }
-    } else if (newLevel !== MAX_LEVEL || clean.endlessWave > 0) {
-        // Reset boss state when not on Level 10
-        newBossState = null;
-        newBossPhase3Ticks = 0;
-        newBossCloneHitThisRun = false;
+        newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
     }
 
     // Power-up spawning
+    var newPowerUp = (newFoodEaten === 0 && endlessWave !== clean.endlessWave) ? null : clean.powerUp;
+    var newActivePowerUp = (newFoodEaten === 0 && endlessWave !== clean.endlessWave) ? null : clean.activePowerUp;
+    var newPowerUpSpawnCounter = (newFoodEaten === 0 && endlessWave !== clean.endlessWave) ? 0 : clean.powerUpSpawnCounter;
+    var collectedPowerUpType = null;
+
+    // Check power-up collection
+    if (newPowerUp && newHead.x === newPowerUp.x && newHead.y === newPowerUp.y) {
+        var def = getPowerUpDef(newPowerUp.type);
+        newActivePowerUp = { type: newPowerUp.type, ticksLeft: def.duration };
+        collectedPowerUpType = newPowerUp.type;
+        newPowerUp = null;
+        newPowerUpSpawnCounter = 0;
+    }
+
+    // Decrement power-up despawn timer
+    if (newPowerUp) {
+        newPowerUp = Object.assign({}, newPowerUp, { ticksLeft: newPowerUp.ticksLeft - 1 });
+        if (newPowerUp.ticksLeft <= 0) {
+            newPowerUp = null;
+        }
+    }
+
+    // Decrement active power-up duration (skip if just collected this tick)
+    if (newActivePowerUp && !collectedPowerUpType) {
+        newActivePowerUp = Object.assign({}, newActivePowerUp, { ticksLeft: newActivePowerUp.ticksLeft - 1 });
+        if (newActivePowerUp.ticksLeft <= 0) {
+            newActivePowerUp = null;
+        }
+    }
+
+    // Power-up spawning from config
     var newConfig = getLevelConfig(newLevel, endlessConfig);
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
@@ -403,6 +288,14 @@ export function tick(prev) {
         if (newPowerUpSpawnCounter >= puInterval) {
             newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter);
             newPowerUpSpawnCounter = 0;
+        }
+    }
+
+    // Handle power-up/shrink items cleared by arena shrink
+    if (shrinkOccurred && newPowerUp) {
+        var shrinkWalls = newWalls;
+        if (collides({ x: newPowerUp.x, y: newPowerUp.y }, shrinkWalls)) {
+            newPowerUp = null;
         }
     }
 
@@ -429,26 +322,15 @@ export function tick(prev) {
         arenaMaxX: newArenaMaxX,
         arenaMaxY: newArenaMaxY,
         shrinkCounter: newShrinkCounter,
-        fragment: newFragment,
         endlessWave: endlessWave,
         endlessConfig: endlessConfig,
         lives: clean.lives,
-        invincibleTicks: (newLevel !== clean.level) ? LEVEL_UP_INVINCIBLE_TICKS : (isInvincible ? clean.invincibleTicks - 1 : 0),
-        bossState: newBossState,
+        invincibleTicks: isInvincible ? clean.invincibleTicks - 1 : 0,
         _collectedPowerUp: collectedPowerUpType,
-        _collectedFragment: collectedFragment,
-        _collectedFragmentLevel: collectedFragmentLevel,
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
         _ateFoodPos: ate ? clean.food : null,
         _killedByHunter: false,
         _deathCause: null,
-        _bossCloneHit: bossCloneHit,
-        _bossPulseTriggered: bossPulseTriggered,
-        _bossPhaseChanged: bossPhaseChanged,
-        _bossShockwaveActivated: bossShockwaveActivated,
-        _bossAteInShockwave: bossAteInShockwave,
-        bossPhase3Ticks: newBossPhase3Ticks,
-        bossCloneHitThisRun: newBossCloneHitThisRun,
     };
 }

@@ -3,11 +3,9 @@
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE } from './constants.js';
 import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
-import { renderEnvironment } from './environment.js';
 import { manhattanDistance } from './hunter.js';
 import { getActiveSkin, getActiveTrail } from './achievements.js';
 import { getSettingsRef } from './settings.js';
-import { renderShadowClones, renderShockwaveBorder, renderPhaseTransition, renderPulseBurst, renderBossPhaseIndicator } from './boss.js';
 
 function getDeathMessage(deathCause, level, config) {
     if (deathCause === 'hunter') {
@@ -18,9 +16,6 @@ function getDeathMessage(deathCause, level, config) {
     }
     if (deathCause === 'obstacle') {
         return 'The patrol caught you. These corridors don\'t forgive mistakes.';
-    }
-    if (config.fogRadius) {
-        return 'Lost in the dark. The fog swallows your light whole.';
     }
     if (deathCause === 'self') {
         return 'You consumed yourself. The data loop closes.';
@@ -177,9 +172,6 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         }
     }
 
-    // Environmental details (rendered behind game elements)
-    renderEnvironment(ctx, state);
-
     // Wrap-around edge indicators
     if (config.wrapAround && state.started && !state.gameOver) {
         var edgePulse = Math.sin(Date.now() / 500) * 0.3 + 0.5;
@@ -200,11 +192,6 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineWidth = 2;
         ctx.strokeRect(arenaMinPx + 1, arenaMinPy + 1, arenaW - 2, arenaH - 2);
         ctx.lineWidth = 0.5;
-    }
-
-    // Boss shockwave border (Level 10 boss Phase 3)
-    if (state.bossState && state.started && !state.gameOver) {
-        renderShockwaveBorder(ctx, state.bossState);
     }
 
     // Walls
@@ -266,7 +253,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
         // Proximity calculation for eye glow
         var proximityDist = manhattanDistance(state.hunter.segments[0], state.snake[0], config.wrapAround);
-        var proximityFactor = Math.max(0, 1 - proximityDist / (GRID_SIZE * 0.75)); // 1=close, 0=far
+        var proximityFactor = Math.max(0, 1 - proximityDist / (GRID_SIZE * 0.75));
 
         // Afterimage trail (render before main body)
         if (hunterTrail && hunterTrail.length > 0) {
@@ -361,11 +348,6 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineWidth = 0.5;
     }
 
-    // Boss shadow clones (Level 10 boss Phase 2+)
-    if (state.bossState && state.bossState.shadowClones.length > 0 && state.started && !state.gameOver) {
-        renderShadowClones(ctx, state.bossState.shadowClones, config.hunterColor || '#ff6600');
-    }
-
     // Teleport portals
     if (state.portals.length > 0) {
         var portalConfig = getLevelConfig(state.level, state.endlessConfig);
@@ -397,36 +379,6 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 });
             });
         }
-    }
-
-    // Data fragment
-    if (state.fragment) {
-        var fragPulse = Math.sin(Date.now() / 400) * 0.3 + 0.7;
-        var fragX = state.fragment.x * CELL_SIZE + CELL_SIZE / 2;
-        var fragY = state.fragment.y * CELL_SIZE + CELL_SIZE / 2;
-        ctx.shadowColor = '#4a9eff';
-        ctx.shadowBlur = 10;
-        ctx.globalAlpha = fragPulse;
-        ctx.fillStyle = '#4a9eff';
-        // Diamond shape (rotated square)
-        ctx.beginPath();
-        ctx.moveTo(fragX, fragY - 6);
-        ctx.lineTo(fragX + 6, fragY);
-        ctx.lineTo(fragX, fragY + 6);
-        ctx.lineTo(fragX - 6, fragY);
-        ctx.closePath();
-        ctx.fill();
-        // Inner highlight
-        ctx.fillStyle = 'rgba(200, 230, 255, 0.7)';
-        ctx.beginPath();
-        ctx.moveTo(fragX, fragY - 3);
-        ctx.lineTo(fragX + 3, fragY);
-        ctx.lineTo(fragX, fragY + 3);
-        ctx.lineTo(fragX - 3, fragY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
     }
 
     // Power-up
@@ -550,32 +502,6 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineWidth = 0.5;
     }
 
-    // Fog of War overlay (uses interpolated head position)
-    if (config.fogRadius && state.started && !state.gameOver) {
-        var headPixX = interpHeadX * CELL_SIZE + CELL_SIZE / 2;
-        var headPixY = interpHeadY * CELL_SIZE + CELL_SIZE / 2;
-        var flicker = Math.sin(Date.now() / 200) * 0.05 + 1;
-        var outerRadius = config.fogRadius * CELL_SIZE * flicker;
-        var innerRadius = outerRadius * 0.4;
-
-        var fogGrad = ctx.createRadialGradient(headPixX, headPixY, innerRadius, headPixX, headPixY, outerRadius);
-        fogGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        fogGrad.addColorStop(0.6, 'rgba(0, 0, 0, 0.7)');
-        fogGrad.addColorStop(1, 'rgba(0, 0, 0, 0.97)');
-
-        ctx.fillStyle = fogGrad;
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    }
-
-    // Boss phase transition flash and pulse burst (Level 10)
-    if (state.bossState && state.started) {
-        renderPhaseTransition(ctx, state.bossState);
-        if (state.hunter) {
-            renderPulseBurst(ctx, state.bossState, state.hunter.segments[0]);
-        }
-        renderBossPhaseIndicator(ctx, state.bossState);
-    }
-
     // Game over overlay
     if (state.gameOver) {
         var goDeathCause = state._deathCause || 'boundary';
@@ -619,10 +545,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.fillStyle = config.foodColor;
         ctx.fillText('\u25CF Food: ' + goTotalFood, goCenterX, goBreakdownY);
         ctx.fillStyle = config.color;
-        var goLevelLabel = state.endlessWave > 0
-            ? '\u25B2 Wave: ' + state.endlessWave
-            : '\u25B2 Level: ' + state.level;
-        ctx.fillText(goLevelLabel, goCenterX, goBreakdownY + 18);
+        ctx.fillText('\u25B2 Wave: ' + state.endlessWave, goCenterX, goBreakdownY + 18);
         ctx.fillStyle = '#ccc';
         ctx.fillText('\u2605 Score: ' + state.score, goCenterX, goBreakdownY + 36);
 
@@ -644,8 +567,8 @@ export function render(ctx, state, konamiActivated, dom, interp) {
             ctx.fillText('High Score: ' + goHighScore, goCenterX, goBreakdownY + 62);
         }
 
-        // Endless mode best wave
-        if (state.endlessWave > 0 && interp && interp.endlessHighWave > 0) {
+        // Best wave
+        if (interp && interp.endlessHighWave > 0) {
             ctx.fillStyle = '#666';
             ctx.font = '10px Courier New';
             ctx.fillText('Best Wave: ' + interp.endlessHighWave, goCenterX, goBreakdownY + 80);
@@ -662,11 +585,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
     // HUD
     dom.scoreEl.textContent = state.score;
-    if (state.endlessWave > 0) {
-        dom.levelEl.textContent = 'W' + state.endlessWave;
-    } else {
-        dom.levelEl.textContent = state.level;
-    }
+    dom.levelEl.textContent = 'W' + state.endlessWave;
 
     // Power-up HUD indicator
     if (state.activePowerUp) {
@@ -711,7 +630,6 @@ function renderSnakeSegment(ctx, drawX, drawY, index, total, color, skin) {
             ctx.fillStyle = color;
             var innerPad = isHead ? 3 : 4;
             ctx.fillRect(px + innerPad, py + innerPad, CELL_SIZE - innerPad * 2, CELL_SIZE - innerPad * 2);
-            // Corner dots
             ctx.fillRect(px + pad, py + pad, 2, 2);
             ctx.fillRect(px + CELL_SIZE - pad - 2, py + pad, 2, 2);
             ctx.fillRect(px + pad, py + CELL_SIZE - pad - 2, 2, 2);
@@ -730,7 +648,6 @@ function renderSnakeSegment(ctx, drawX, drawY, index, total, color, skin) {
         case 'digital':
             ctx.fillStyle = color;
             ctx.fillRect(px + pad, py + pad, CELL_SIZE - pad * 2, CELL_SIZE - pad * 2);
-            // Binary overlay
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             if (index % 2 === 0) {
                 ctx.fillRect(px + pad, py + pad, (CELL_SIZE - pad * 2) / 2, CELL_SIZE - pad * 2);
@@ -810,7 +727,6 @@ export function renderReplayGhost(ctx, currentFrame, trailFrames, config, progre
     ctx.fillStyle = '#ef4444';
     ctx.fillText('REPLAY', CANVAS_SIZE / 2, 18);
 
-    // Progress bar
     var barWidth = 80;
     var barHeight = 3;
     var barX = (CANVAS_SIZE - barWidth) / 2;

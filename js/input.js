@@ -15,76 +15,6 @@ export function setupInput(callbacks) {
     document.addEventListener('keydown', function(e) {
         var screen = callbacks.getScreen();
 
-        // --- Prologue ---
-        if (screen === 'prologue') {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                callbacks.onPrologueAdvance();
-            }
-            return;
-        }
-
-        // --- Ending Screen ---
-        if (screen === 'ending') {
-            // Loop ending auto-returns — no manual advance
-            var endingType = callbacks.getEndingType ? callbacks.getEndingType() : null;
-            if (endingType !== 'loop' && (e.key === 'Enter' || e.key === 'Escape')) {
-                e.preventDefault();
-                callbacks.onEndingAdvance();
-            }
-            return;
-        }
-
-        // --- Codex Screen ---
-        if (screen === 'codex') {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                callbacks.onCodexBack();
-                return;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                callbacks.onCodexScroll(-1);
-                return;
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                callbacks.onCodexScroll(1);
-                return;
-            }
-            return;
-        }
-
-        // --- Archive Screen ---
-        if (screen === 'archive') {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                callbacks.onArchiveBack();
-                return;
-            }
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                callbacks.onArchiveTabChange(-1);
-                return;
-            }
-            if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                callbacks.onArchiveTabChange(1);
-                return;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                callbacks.onArchiveScroll(-1);
-                return;
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                callbacks.onArchiveScroll(1);
-                return;
-            }
-            return;
-        }
-
         // --- Title Screen ---
         if (screen === 'title') {
             // Dev console open — only accept close keys
@@ -104,26 +34,6 @@ export function setupInput(callbacks) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 callbacks.onTitlePlay();
-                return;
-            }
-            if (e.key === 'l' || e.key === 'L') {
-                e.preventDefault();
-                callbacks.onTitleLevelSelect();
-                return;
-            }
-            if (e.key === 'c' || e.key === 'C') {
-                e.preventDefault();
-                callbacks.onTitleCodex();
-                return;
-            }
-            if (e.key === 'a' || e.key === 'A') {
-                e.preventDefault();
-                callbacks.onTitleArchive();
-                return;
-            }
-            if (e.key === 'e' || e.key === 'E') {
-                e.preventDefault();
-                callbacks.onTitleEndless();
                 return;
             }
             if (e.key === 't' || e.key === 'T') {
@@ -204,41 +114,6 @@ export function setupInput(callbacks) {
             return;
         }
 
-        // --- Level Select ---
-        if (screen === 'levelSelect') {
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                callbacks.onLevelSelectNavigate(-2);
-                return;
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                callbacks.onLevelSelectNavigate(2);
-                return;
-            }
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                callbacks.onLevelSelectNavigate(-1);
-                return;
-            }
-            if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                callbacks.onLevelSelectNavigate(1);
-                return;
-            }
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                callbacks.onLevelSelectConfirm();
-                return;
-            }
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                callbacks.onLevelSelectBack();
-                return;
-            }
-            return;
-        }
-
         // --- Gameplay ---
         var state = callbacks.getState();
 
@@ -258,7 +133,7 @@ export function setupInput(callbacks) {
             return;
         }
 
-        // R to restart level on game over
+        // R to restart on game over
         if (state.gameOver && (e.key === 'r' || e.key === 'R')) {
             e.preventDefault();
             callbacks.onRestartLevel();

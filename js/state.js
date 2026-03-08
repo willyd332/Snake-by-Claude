@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE, LEVEL_CONFIG, MAX_LEVEL, INITIAL_LIVES } from './constants.js';
+import { GRID_SIZE, INITIAL_LIVES } from './constants.js';
 import { getObstaclePositions, getPortalPositions } from './levels.js';
 import { getHunterPositions } from './hunter.js';
 
@@ -28,12 +28,10 @@ export function createInitialState() {
         arenaMaxX: GRID_SIZE - 1,
         arenaMaxY: GRID_SIZE - 1,
         shrinkCounter: 0,
-        fragment: null,
-        endlessWave: 0,
+        endlessWave: 1,
         endlessConfig: null,
         lives: INITIAL_LIVES,
         invincibleTicks: 0,
-        bossState: null,
     };
 }
 
@@ -58,8 +56,8 @@ export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter
 
 export function getLevelConfig(level, endlessConfig) {
     if (endlessConfig) return endlessConfig;
-    var clamped = Math.min(level, MAX_LEVEL);
-    return LEVEL_CONFIG[clamped];
+    // Fallback: return a basic config (should not be reached in normal gameplay)
+    return { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null, bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null, portalColor: null, fogRadius: null, wrapAround: false, powerUpsEnabled: false };
 }
 
 export function collides(pos, segments) {

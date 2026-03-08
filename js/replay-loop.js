@@ -28,7 +28,6 @@ import { CANVAS_SIZE } from './constants.js';
 //   particleSystem,
 //   shakeState,
 //   frameSettings,    // from getSettingsRef()
-//   endlessMode,
 //   highScore,
 // }
 export function runReplayFrame(params) {
@@ -43,8 +42,8 @@ export function runReplayFrame(params) {
     var replayInterp = {
         progress: 0, prevSnake: null, prevHunter: null,
         hunterTrail: [], trailHistory: [],
-        highScore: params.endlessMode ? getEndlessHighScore() : params.highScore,
-        endlessHighWave: params.endlessMode ? getEndlessHighWave() : 0,
+        highScore: getEndlessHighScore(),
+        endlessHighWave: getEndlessHighWave(),
     };
 
     var replayOffset = params.frameSettings.screenShake

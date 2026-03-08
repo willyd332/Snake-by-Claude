@@ -1,9 +1,6 @@
 'use strict';
 
 import { CANVAS_SIZE } from './constants.js';
-import { getCollectedFragments } from './fragments.js';
-import { getUnlockedEndings } from './story.js';
-import { getHighestLevel } from './screens.js';
 
 // --- Constants ---
 
@@ -180,16 +177,11 @@ export function renderMatrixRain(ctx, mState) {
 export function renderDevConsole(ctx) {
     if (!activeSecrets.devConsole) return;
 
-    var fragments = getCollectedFragments();
-    var endings = getUnlockedEndings();
-    var highest = getHighestLevel();
-    var highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
     var endlessWave = parseInt(localStorage.getItem('snake-endless-highwave') || '0', 10);
     var endlessScore = parseInt(localStorage.getItem('snake-endless-highscore') || '0', 10);
     var secretsInfo = getSecretsDiscovered();
 
-    var endingCount = (endings.awakening ? 1 : 0) + (endings.deletion ? 1 : 0) + (endings.loop ? 1 : 0);
-    var alphaStatus = highest >= 8 ? 'HUNTING' : (highest >= 5 ? 'DORMANT' : 'UNKNOWN');
+    var alphaStatus = endlessWave >= 8 ? 'HUNTING' : (endlessWave >= 5 ? 'DORMANT' : 'UNKNOWN');
     var secretsLabel = secretsInfo.found >= secretsInfo.total
         ? secretsInfo.found + '/' + secretsInfo.total + ' \u2014 ALL FOUND'
         : secretsInfo.found + '/' + secretsInfo.total;
@@ -221,19 +213,13 @@ export function renderDevConsole(ctx) {
         { text: '> \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500', color: '#005500' },
         { text: '>', color: '#003300' },
         { text: '> MEMORY:     640K ALLOCATED', color: '#00bb00' },
-        { text: '> PROCESS:    DATA-FRAGMENT [ACTIVE]', color: '#00bb00' },
+        { text: '> PROCESS:    ENDLESS-MODE [ACTIVE]', color: '#00bb00' },
         { text: '>', color: '#003300' },
         { text: '> \u2500\u2500 DIAGNOSTICS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500', color: '#005500' },
         { text: '>', color: '#003300' },
-        { text: '> FRAGMENTS:  ' + fragments.length + '/10 COLLECTED', color: fragments.length >= 10 ? '#ffd700' : '#00bb00' },
-        { text: '> LEVELS:     ' + highest + '/10 MAPPED', color: highest >= 10 ? '#ffd700' : '#00bb00' },
-        { text: '> ENDINGS:    ' + endingCount + '/3 DISCOVERED', color: endingCount >= 3 ? '#ffd700' : '#00bb00' },
+        { text: '> BEST WAVE:  W' + endlessWave, color: endlessWave >= 10 ? '#ffd700' : '#00bb00' },
+        { text: '> HIGH SCORE: ' + endlessScore, color: endlessScore >= 1000 ? '#ffd700' : '#00bb00' },
         { text: '> SECURITY:   ALPHA [' + alphaStatus + ']', color: alphaStatus === 'HUNTING' ? '#ff6600' : '#00bb00' },
-        { text: '>', color: '#003300' },
-        { text: '> \u2500\u2500 SCORES \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500', color: '#005500' },
-        { text: '>', color: '#003300' },
-        { text: '> HIGH SCORE: ' + highScore, color: '#00bb00' },
-        { text: '> ENDLESS:    W' + endlessWave + ' / ' + endlessScore + ' pts', color: '#00bb00' },
         { text: '>', color: '#003300' },
         { text: '> \u2500\u2500 SECRETS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500', color: '#005500' },
         { text: '>', color: '#003300' },

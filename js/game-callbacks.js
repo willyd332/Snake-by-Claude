@@ -2,35 +2,20 @@
 
 // --- Game Callbacks Factory ---
 // Returns the gameCallbacks object used by input.js and touch.js.
-// Extracted from main.js to keep that file under the 800-line limit.
-//
-// Parameters:
-//   g          - mutable game context object
-//   navDeps    - DOM/helper bundle passed to screen-nav helpers
-//   hudEl      - HUD element (for showGameplayUI / hideGameplayUI)
-//   titleEl    - title element
-//   messageEl  - message element
-//   canvas     - canvas element (for secrets that need it)
-//   konamiRef  - { value: boolean } reference shared with main.js
-//   tryUnlock  - achievement unlock helper
 
-import { MAX_LEVEL } from './constants.js';
 import { randomPosition } from './state.js';
 import {
     initAudio, playMenuSelectSound, playMenuNavigateSound, playStartSound,
     playSecretSound, setSoundEnabled,
 } from './audio.js';
-import { markPrologueSeen } from './story.js';
-import { createTitleState, getHighestLevel } from './screens.js';
+import { createTitleState } from './screens.js';
 import {
     getSettingsItems, toggleSetting, cycleSetting,
 } from './settings.js';
-import { getArchiveMaxScroll } from './archive.js';
 import {
     getGalleryItemCount, SKINS, TRAILS,
     setActiveSkin, setActiveTrail, isSkinUnlocked, isTrailUnlocked,
 } from './achievements.js';
-import { FRAGMENT_DATA } from './fragments.js';
 import { TITLE_MENU_COUNT } from './touch.js';
 import {
     handleSecretKey, toggleDevConsole, isDevConsoleOpen,
@@ -38,9 +23,9 @@ import {
 } from './secrets.js';
 import {
     hideGameplayUI,
-    switchToTitle, switchToCodex, switchToArchive, switchToGallery,
-    switchToSettings, switchToLevelSelect,
-    startGameAtLevel, startEndlessMode,
+    switchToTitle, switchToGallery,
+    switchToSettings,
+    startEndlessMode,
     restartGame, goToTitle, onRestartLevel,
 } from './game-context.js';
 
@@ -48,51 +33,11 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
     return {
         getState: function() { return g.state; },
         getScreen: function() { return g.currentScreen; },
-        getLevelSelectState: function() { return g.levelSelectState; },
         isReplaying: function() { return g.replayState !== null; },
         onReplaySkip: function() { g.replaySkipRequested = true; },
 
-        // Prologue actions
-        onPrologueAdvance: function() {
-            initAudio();
-            markPrologueSeen();
-            playMenuSelectSound();
-            g.prologueState = null;
-            g.currentScreen = 'title';
-            g.titleState = createTitleState();
-            hideGameplayUI(hudEl, titleEl, messageEl);
-        },
-
-        // Ending screen actions
-        getEndingType: function() { return g.endingState ? g.endingState.endingType : null; },
-        onEndingAdvance: function() {
-            playMenuSelectSound();
-            g.endingState = null;
-            switchToTitle(g, navDeps);
-        },
-
         // Title screen actions
         onTitlePlay: function() {
-            initAudio();
-            playMenuSelectSound();
-            startGameAtLevel(g, navDeps, 1);
-        },
-        onTitleLevelSelect: function() {
-            initAudio();
-            playMenuSelectSound();
-            switchToLevelSelect(g, navDeps);
-        },
-        onTitleCodex: function() {
-            initAudio();
-            playMenuSelectSound();
-            switchToCodex(g, navDeps);
-        },
-        onTitleArchive: function() {
-            initAudio();
-            playMenuSelectSound();
-            switchToArchive(g, navDeps, 0);
-        },
-        onTitleEndless: function() {
             initAudio();
             playMenuSelectSound();
             startEndlessMode(g, navDeps);
@@ -133,27 +78,6 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
                 }
             } else if (item.type === 'cycle') {
                 cycleSetting(item.key, item.options, direction);
-            }
-        },
-
-        // Archive actions
-        onArchiveBack: function() {
-            playMenuNavigateSound();
-            switchToTitle(g, navDeps);
-        },
-        onArchiveTabChange: function(delta) {
-            var newTab = g.archiveState.tab + delta;
-            if (newTab >= 0 && newTab <= 2) {
-                playMenuNavigateSound();
-                g.archiveState = Object.assign({}, g.archiveState, { tab: newTab, scrollOffset: 0 });
-            }
-        },
-        onArchiveScroll: function(delta) {
-            var maxScroll = getArchiveMaxScroll(g.archiveState.tab);
-            var newOffset = Math.max(0, Math.min(maxScroll, g.archiveState.scrollOffset + delta));
-            if (newOffset !== g.archiveState.scrollOffset) {
-                playMenuNavigateSound();
-                g.archiveState = Object.assign({}, g.archiveState, { scrollOffset: newOffset });
             }
         },
 
@@ -204,43 +128,6 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             }
         },
 
-        // Codex actions
-        onCodexBack: function() {
-            playMenuNavigateSound();
-            switchToTitle(g, navDeps);
-        },
-        onCodexScroll: function(delta) {
-            var maxScroll = Math.max(0, FRAGMENT_DATA.length - 8);
-            var newOffset = Math.max(0, Math.min(maxScroll, g.codexState.scrollOffset + delta));
-            if (newOffset !== g.codexState.scrollOffset) {
-                playMenuNavigateSound();
-                g.codexState = Object.assign({}, g.codexState, { scrollOffset: newOffset });
-            }
-        },
-
-        // Level select actions
-        onLevelSelectNavigate: function(delta) {
-            var highest = getHighestLevel();
-            var newLevel = g.levelSelectState.selectedLevel + delta;
-            if (newLevel >= 1 && newLevel <= Math.min(highest, MAX_LEVEL)) {
-                playMenuNavigateSound();
-                g.levelSelectState = Object.assign({}, g.levelSelectState, {
-                    selectedLevel: newLevel,
-                });
-            }
-        },
-        onLevelSelectConfirm: function() {
-            var highest = getHighestLevel();
-            if (g.levelSelectState.selectedLevel <= highest) {
-                playMenuSelectSound();
-                startGameAtLevel(g, navDeps, g.levelSelectState.selectedLevel);
-            }
-        },
-        onLevelSelectBack: function() {
-            playMenuNavigateSound();
-            switchToTitle(g, navDeps);
-        },
-
         // Gameplay actions
         toggleKonami: function() {
             konamiRef.value = !konamiRef.value;
@@ -251,7 +138,7 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             messageEl.className = konamiRef.value ? 'rainbow' : 'active';
             setTimeout(function() {
                 if (!g.state.started) {
-                    messageEl.textContent = 'Arrow keys or swipe to start';
+                    messageEl.textContent = 'Swipe or press arrow to begin';
                     messageEl.className = '';
                 }
             }, 2500);
@@ -283,7 +170,7 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
                     messageEl.style.color = result.name === 'matrix' ? '#00ff00' : '#e0e0e0';
                     setTimeout(function() {
                         if (!g.state.started) {
-                            messageEl.textContent = 'Arrow keys or swipe to start';
+                            messageEl.textContent = 'Swipe or press arrow to begin';
                             messageEl.className = '';
                             messageEl.style.color = '';
                         }

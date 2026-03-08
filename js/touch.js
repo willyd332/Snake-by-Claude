@@ -13,10 +13,6 @@ var DIRECTION_MAP = {
 
 var TITLE_MENU_ACTIONS = [
     'onTitlePlay',
-    'onTitleLevelSelect',
-    'onTitleCodex',
-    'onTitleArchive',
-    'onTitleEndless',
     'onTitleGallery',
     'onTitleSettings',
 ];
@@ -102,17 +98,6 @@ export function setupTouch(canvas, callbacks) {
 
         var screen = callbacks.getScreen();
 
-        if (screen === 'prologue') {
-            callbacks.onPrologueAdvance();
-            return;
-        }
-        if (screen === 'ending') {
-            var endingType = callbacks.getEndingType ? callbacks.getEndingType() : null;
-            if (endingType !== 'loop') {
-                callbacks.onEndingAdvance();
-            }
-            return;
-        }
         if (screen === 'title') {
             var idx = callbacks.getTitleMenuIndex();
             if (idx === null || idx === undefined) idx = 0;
@@ -120,10 +105,6 @@ export function setupTouch(canvas, callbacks) {
             if (callbacks[actionName]) {
                 callbacks[actionName]();
             }
-            return;
-        }
-        if (screen === 'levelSelect') {
-            callbacks.onLevelSelectConfirm();
             return;
         }
         if (screen === 'gallery') {
@@ -151,33 +132,10 @@ export function setupTouch(canvas, callbacks) {
         var screen = callbacks.getScreen();
         var newDir = DIRECTION_MAP[direction];
 
-        if (screen === 'prologue') {
-            callbacks.onPrologueAdvance();
-            return;
-        }
-        if (screen === 'ending') {
-            var endingType = callbacks.getEndingType ? callbacks.getEndingType() : null;
-            if (endingType !== 'loop') {
-                callbacks.onEndingAdvance();
-            }
-            return;
-        }
         if (screen === 'title') {
             if (direction === 'up' || direction === 'down') {
                 callbacks.onTitleMenuNavigate(direction === 'down' ? 1 : -1);
             }
-            return;
-        }
-        if (screen === 'codex') {
-            if (direction === 'up') callbacks.onCodexScroll(-1);
-            else if (direction === 'down') callbacks.onCodexScroll(1);
-            return;
-        }
-        if (screen === 'archive') {
-            if (direction === 'left') callbacks.onArchiveTabChange(-1);
-            else if (direction === 'right') callbacks.onArchiveTabChange(1);
-            else if (direction === 'up') callbacks.onArchiveScroll(-1);
-            else if (direction === 'down') callbacks.onArchiveScroll(1);
             return;
         }
         if (screen === 'gallery') {
@@ -192,13 +150,6 @@ export function setupTouch(canvas, callbacks) {
             else if (direction === 'down') callbacks.onSettingsNavigate(1);
             else if (direction === 'left') callbacks.onSettingsToggle(-1);
             else if (direction === 'right') callbacks.onSettingsToggle(1);
-            return;
-        }
-        if (screen === 'levelSelect') {
-            if (direction === 'up') callbacks.onLevelSelectNavigate(-2);
-            else if (direction === 'down') callbacks.onLevelSelectNavigate(2);
-            else if (direction === 'left') callbacks.onLevelSelectNavigate(-1);
-            else if (direction === 'right') callbacks.onLevelSelectNavigate(1);
             return;
         }
 
@@ -229,11 +180,8 @@ export function setupTouch(canvas, callbacks) {
 
         var screen = callbacks.getScreen();
 
-        if (screen === 'codex') { callbacks.onCodexBack(); return; }
-        if (screen === 'archive') { callbacks.onArchiveBack(); return; }
         if (screen === 'gallery') { callbacks.onGalleryBack(); return; }
         if (screen === 'settings') { callbacks.onSettingsBack(); return; }
-        if (screen === 'levelSelect') { callbacks.onLevelSelectBack(); return; }
 
         var state = callbacks.getState();
         if (screen === 'gameplay' && (!state.started || state.gameOver)) {
