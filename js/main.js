@@ -3,7 +3,7 @@
 import { CANVAS_SIZE, MAX_LEVEL, setGridSize, LEVEL_GRID_SIZE, ENDLESS_GRID_SIZE, getGridOffset } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
-import { render } from './renderer.js';
+import { render, renderReplayGhost } from './renderer.js';
 import { createUI } from './ui.js';
 import { setupInput } from './input.js';
 import { setupTouch, TITLE_MENU_COUNT } from './touch.js';
@@ -42,6 +42,11 @@ import {
     getEndlessHighWave, setEndlessHighWave,
 } from './endless.js';
 import { processPostTickEvents } from './game-events.js';
+import {
+    createReplayBuffer, recordFrame, startReplay,
+    replayTick, isReplayComplete, getReplayFrame,
+    getReplayProgress, getReplayTrail,
+} from './replay.js';
 import {
     handleSecretKey, toggleDevConsole, isDevConsoleOpen,
     applyInvertFilter, markSecretFound,
@@ -101,6 +106,9 @@ var achievementPopupQueue = [];
 var galleryState = createGalleryState();
 var settingsState = createSettingsState();
 var snakeTrailHistory = [];
+var replayBuffer = createReplayBuffer();
+var replayState = null;
+var replayDeathContext = null; // Stashed death context for post-replay processing
 var levelStartTime = 0;
 var gameSessionStartTime = 0;
 var titleMenuIndex = null;
@@ -234,6 +242,9 @@ function startGameAtLevel(level) {
     prevHunterSegments = null;
     hunterTrailHistory = [];
     snakeTrailHistory = [];
+    replayBuffer = createReplayBuffer();
+    replayState = null;
+    replayDeathContext = null;
 
     var diffPreset = getDifficultyPreset(getSettings().difficulty);
     state = createInitialState();
@@ -284,6 +295,9 @@ function startEndlessMode() {
     prevHunterSegments = null;
     hunterTrailHistory = [];
     snakeTrailHistory = [];
+    replayBuffer = createReplayBuffer();
+    replayState = null;
+    replayDeathContext = null;
 
     var wave1Config = getEndlessConfig(1);
     var endlessDiffPreset = getDifficultyPreset(getSettings().difficulty);
@@ -314,6 +328,7 @@ var gameCallbacks = {
     getState: function() { return state; },
     getScreen: function() { return currentScreen; },
     getLevelSelectState: function() { return levelSelectState; },
+    isReplaying: function() { return replayState !== null; },
 
     // Prologue actions
     onPrologueAdvance: function() {
@@ -598,6 +613,9 @@ var gameCallbacks = {
         hunterIntroState = null;
         hunterTrailHistory = [];
         snakeTrailHistory = [];
+        replayBuffer = createReplayBuffer();
+        replayState = null;
+        replayDeathContext = null;
         var restartDiff = getDifficultyPreset(getSettings().difficulty);
         setGridSize(endlessMode ? ENDLESS_GRID_SIZE : (LEVEL_GRID_SIZE[startingLevel] || 20));
         canvas.width = CANVAS_SIZE;
@@ -707,6 +725,40 @@ var gameCallbacks = {
 setupInput(gameCallbacks);
 setupTouch(canvas, gameCallbacks);
 
+// --- Event context helpers (avoid duplication in game loop) ---
+function buildEventCtx(prevState, prevLevel, config) {
+    return {
+        state: state, prevState: prevState, prevLevel: prevLevel,
+        prevSnake: prevSnake, prevHunterSegments: prevHunterSegments,
+        hunterTrailHistory: hunterTrailHistory,
+        particleSystem: particleSystem, shakeState: shakeState,
+        highScore: highScore, levelStartTime: levelStartTime,
+        fragmentTextState: fragmentTextState, hunterIntroState: hunterIntroState,
+        endingState: endingState, storyScreenState: storyScreenState,
+        currentScreen: currentScreen, endlessMode: endlessMode, config: config,
+        messageEl: messageEl, dom: dom, ui: ui,
+        tryUnlock: tryUnlock, checkAllEndings: checkAllEndings,
+        spawnFragmentForLevel: spawnFragmentForLevel,
+        hideGameplayUI: hideGameplayUI,
+    };
+}
+
+function applyEventCtx(eventCtx) {
+    state = eventCtx.state;
+    prevSnake = eventCtx.prevSnake;
+    prevHunterSegments = eventCtx.prevHunterSegments;
+    hunterTrailHistory = eventCtx.hunterTrailHistory;
+    particleSystem = eventCtx.particleSystem;
+    shakeState = eventCtx.shakeState;
+    highScore = eventCtx.highScore;
+    levelStartTime = eventCtx.levelStartTime;
+    fragmentTextState = eventCtx.fragmentTextState;
+    hunterIntroState = eventCtx.hunterIntroState;
+    endingState = eventCtx.endingState;
+    storyScreenState = eventCtx.storyScreenState;
+    currentScreen = eventCtx.currentScreen;
+}
+
 // --- Game loop ---
 function gameLoop(timestamp) {
     var dt = lastFrameTime > 0 ? (timestamp - lastFrameTime) / 1000 : 0.016;
@@ -792,6 +844,52 @@ function gameLoop(timestamp) {
         speed = speed * 2;
     }
 
+    // --- Death Replay Mode ---
+    if (replayState) {
+        replayState = replayTick(replayState, timestamp);
+
+        if (isReplayComplete(replayState)) {
+            // Replay finished — process stashed death events
+            replayState = null;
+            if (replayDeathContext) {
+                processPostTickEvents(replayDeathContext);
+                applyEventCtx(replayDeathContext);
+                replayDeathContext = null;
+            }
+        } else {
+            // Render the level background with a non-gameOver state for replay
+            var replayRenderState = Object.assign({}, state, { gameOver: false });
+            var replayInterp = {
+                progress: 0, prevSnake: null, prevHunter: null,
+                hunterTrail: [], trailHistory: [],
+                highScore: endlessMode ? getEndlessHighScore() : highScore,
+                endlessHighWave: endlessMode ? getEndlessHighWave() : 0,
+            };
+
+            var replayOffset = frameSettings.screenShake ? getShakeOffset(shakeState) : { x: 0, y: 0 };
+            ctx.save();
+            ctx.translate(replayOffset.x, replayOffset.y);
+
+            render(ctx, replayRenderState, konamiActivated, dom, replayInterp);
+
+            // Render ghost snake on top
+            var currentFrame = getReplayFrame(replayState);
+            var trailFrames = getReplayTrail(replayState);
+            var replayProgress = getReplayProgress(replayState);
+            renderReplayGhost(ctx, currentFrame, trailFrames, config, replayProgress);
+
+            renderMatrixRain(ctx, matrixState);
+            if (frameSettings.particles) {
+                renderParticles(ctx, particleSystem);
+            }
+
+            ctx.restore();
+
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+    }
+
     var elapsed = timestamp - state.lastTick;
 
     if (elapsed >= speed) {
@@ -804,6 +902,11 @@ function gameLoop(timestamp) {
         state = tick(Object.assign({}, state, { lastTick: timestamp }));
         state = Object.assign({}, state, { lastTick: timestamp });
 
+        // --- Record frame for death replay ---
+        if (state.started && !state.gameOver) {
+            replayBuffer = recordFrame(replayBuffer, state);
+        }
+
         // --- Hunter Trail Tracking ---
         if (state.hunter && !state.gameOver) {
             hunterTrailHistory = [state.hunter.segments[0]].concat(hunterTrailHistory.slice(0, 2));
@@ -815,35 +918,18 @@ function gameLoop(timestamp) {
             snakeTrailHistory = [tail].concat(snakeTrailHistory.slice(0, 7));
         }
 
-        // Process post-tick game events (sounds, particles, screen transitions)
-        var eventCtx = {
-            state: state, prevState: prevState, prevLevel: prevLevel,
-            prevSnake: prevSnake, prevHunterSegments: prevHunterSegments,
-            hunterTrailHistory: hunterTrailHistory,
-            particleSystem: particleSystem, shakeState: shakeState,
-            highScore: highScore, levelStartTime: levelStartTime,
-            fragmentTextState: fragmentTextState, hunterIntroState: hunterIntroState,
-            endingState: endingState, storyScreenState: storyScreenState,
-            currentScreen: currentScreen, endlessMode: endlessMode, config: config,
-            messageEl: messageEl, dom: dom, ui: ui,
-            tryUnlock: tryUnlock, checkAllEndings: checkAllEndings,
-            spawnFragmentForLevel: spawnFragmentForLevel,
-            hideGameplayUI: hideGameplayUI,
-        };
-        processPostTickEvents(eventCtx);
-        state = eventCtx.state;
-        prevSnake = eventCtx.prevSnake;
-        prevHunterSegments = eventCtx.prevHunterSegments;
-        hunterTrailHistory = eventCtx.hunterTrailHistory;
-        particleSystem = eventCtx.particleSystem;
-        shakeState = eventCtx.shakeState;
-        highScore = eventCtx.highScore;
-        levelStartTime = eventCtx.levelStartTime;
-        fragmentTextState = eventCtx.fragmentTextState;
-        hunterIntroState = eventCtx.hunterIntroState;
-        endingState = eventCtx.endingState;
-        storyScreenState = eventCtx.storyScreenState;
-        currentScreen = eventCtx.currentScreen;
+        // Check for final death — start replay instead of immediate game-over
+        var isFinalDeath = state.gameOver && !prevState.gameOver && state.lives <= 1;
+        if (isFinalDeath && replayBuffer.frames.length > 0 && !replayState) {
+            // Stash the death context and start replay
+            replayDeathContext = buildEventCtx(prevState, prevLevel, config);
+            replayState = startReplay(replayBuffer, speed);
+        } else {
+            // Normal flow: process post-tick events immediately
+            var eventCtx = buildEventCtx(prevState, prevLevel, config);
+            processPostTickEvents(eventCtx);
+            applyEventCtx(eventCtx);
+        }
 
         // Sync canvas dimensions if grid size changed (level transition)
         if (canvas.width !== CANVAS_SIZE) {

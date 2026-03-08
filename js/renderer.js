@@ -736,6 +736,77 @@ function renderSnakeSegment(ctx, drawX, drawY, index, total, color, skin) {
     }
 }
 
+// --- Death Replay Ghost Rendering ---
+export function renderReplayGhost(ctx, currentFrame, trailFrames, config, progress) {
+    if (!currentFrame) return;
+
+    var snake = currentFrame.snake;
+
+    // Render ghost trail (previous frames fading out)
+    for (var t = 0; t < trailFrames.length; t++) {
+        var trailFrame = trailFrames[t];
+        var trailAlpha = 0.08 + (t / trailFrames.length) * 0.12;
+        ctx.globalAlpha = trailAlpha;
+        ctx.fillStyle = config.color;
+        for (var ts = 0; ts < trailFrame.snake.length; ts++) {
+            var tSeg = trailFrame.snake[ts];
+            ctx.fillRect(
+                tSeg.x * CELL_SIZE + 3,
+                tSeg.y * CELL_SIZE + 3,
+                CELL_SIZE - 6,
+                CELL_SIZE - 6
+            );
+        }
+    }
+
+    // Render current frame snake as semi-transparent ghost
+    for (var i = 0; i < snake.length; i++) {
+        var seg = snake[i];
+        var segAlpha = (0.5 - (i / snake.length) * 0.25);
+        var isHead = i === 0;
+        var pad = isHead ? 1 : 2;
+
+        ctx.globalAlpha = segAlpha;
+        ctx.fillStyle = config.color;
+        ctx.shadowColor = config.color;
+        ctx.shadowBlur = isHead ? 8 : 4;
+        ctx.fillRect(
+            seg.x * CELL_SIZE + pad,
+            seg.y * CELL_SIZE + pad,
+            CELL_SIZE - pad * 2,
+            CELL_SIZE - pad * 2
+        );
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    // "REPLAY" label with progress bar
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 10px Courier New';
+    var labelPulse = Math.sin(Date.now() / 300) * 0.2 + 0.8;
+    ctx.globalAlpha = labelPulse;
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('REPLAY', CANVAS_SIZE / 2, 18);
+
+    // Progress bar
+    var barWidth = 80;
+    var barHeight = 3;
+    var barX = (CANVAS_SIZE - barWidth) / 2;
+    var barY = 24;
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+    ctx.restore();
+}
+
 // --- Trail Rendering ---
 function renderTrailEffect(ctx, trailHistory, config, trailType) {
     ctx.save();

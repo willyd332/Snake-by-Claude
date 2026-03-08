@@ -94,6 +94,9 @@ export function setupTouch(canvas, callbacks) {
     }, { passive: false });
 
     function handleTap() {
+        // Block tap during death replay
+        if (callbacks.isReplaying && callbacks.isReplaying()) return;
+
         var screen = callbacks.getScreen();
 
         if (screen === 'prologue') {
@@ -140,6 +143,9 @@ export function setupTouch(canvas, callbacks) {
     }
 
     function handleSwipe(direction) {
+        // Block swipe during death replay
+        if (callbacks.isReplaying && callbacks.isReplaying()) return;
+
         var screen = callbacks.getScreen();
         var newDir = DIRECTION_MAP[direction];
 
@@ -217,6 +223,9 @@ export function setupTouch(canvas, callbacks) {
     }
 
     function handleLongPress() {
+        // Block long press during death replay
+        if (callbacks.isReplaying && callbacks.isReplaying()) return;
+
         var screen = callbacks.getScreen();
 
         if (screen === 'codex') { callbacks.onCodexBack(); return; }

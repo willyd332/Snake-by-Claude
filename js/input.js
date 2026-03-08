@@ -251,6 +251,12 @@ export function setupInput(callbacks) {
         // --- Gameplay ---
         var state = callbacks.getState();
 
+        // Block all gameplay input during death replay
+        if (callbacks.isReplaying && callbacks.isReplaying()) {
+            e.preventDefault();
+            return;
+        }
+
         // ESC to return to title (when not mid-game)
         if (e.key === 'Escape' && (!state.started || state.gameOver)) {
             e.preventDefault();
