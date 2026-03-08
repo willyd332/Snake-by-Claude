@@ -96,10 +96,11 @@
         var FOOD_TO_LEVEL_UP = 5;
 
         var LEVEL_CONFIG = {
-            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null },
-            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null },
-            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed' },
-            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c' },
+            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', wallColor: null,      bgAccent: '#0d1117', gridAlpha: 0.03, obstacleColor: null, portalColor: null },
+            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', wallColor: '#1e3a5f', bgAccent: '#0d1320', gridAlpha: 0.04, obstacleColor: null, portalColor: null },
+            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', wallColor: '#3b1f5e', bgAccent: '#130d1a', gridAlpha: 0.05, obstacleColor: '#7c3aed', portalColor: null },
+            4: { speed: 75,  color: '#f97316', foodColor: '#06b6d4', wallColor: '#78350f', bgAccent: '#1a0f0a', gridAlpha: 0.06, obstacleColor: '#ea580c', portalColor: null },
+            5: { speed: 60,  color: '#06b6d4', foodColor: '#f43f5e', wallColor: '#164e63', bgAccent: '#0a1419', gridAlpha: 0.07, obstacleColor: '#0891b2', portalColor: '#8b5cf6' },
         };
 
         var MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
@@ -131,16 +132,32 @@
                 return walls;
             }
 
-            // Level 4: cage ring with cardinal gaps
-            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 4 }); });
-            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 15 }); });
-            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 4, y: y }); });
-            [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 15, y: y }); });
-            // Inner cross pillars
-            walls.push({ x: 9, y: 7 }, { x: 10, y: 7 });
-            walls.push({ x: 9, y: 12 }, { x: 10, y: 12 });
-            walls.push({ x: 7, y: 9 }, { x: 7, y: 10 });
-            walls.push({ x: 12, y: 9 }, { x: 12, y: 10 });
+            if (level === 4) {
+                // Cage ring with cardinal gaps
+                [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 4 }); });
+                [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 15 }); });
+                [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 4, y: y }); });
+                [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 15, y: y }); });
+                // Inner cross pillars
+                walls.push({ x: 9, y: 7 }, { x: 10, y: 7 });
+                walls.push({ x: 9, y: 12 }, { x: 10, y: 12 });
+                walls.push({ x: 7, y: 9 }, { x: 7, y: 10 });
+                walls.push({ x: 12, y: 9 }, { x: 12, y: 10 });
+                return walls;
+            }
+
+            // Level 5: labyrinth chambers with portal access
+            // Top-left chamber
+            [3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 3 }); });
+            [3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 8 }); });
+            [4, 5, 6, 7].forEach(function(y) { walls.push({ x: 3, y: y }); });
+            // Bottom-right chamber
+            [12, 13, 14, 15, 16].forEach(function(x) { walls.push({ x: x, y: 11 }); });
+            [12, 13, 14, 15, 16].forEach(function(x) { walls.push({ x: x, y: 16 }); });
+            [12, 13, 14, 15].forEach(function(y) { walls.push({ x: 16, y: y }); });
+            // Central divider with gaps
+            [0, 1, 2, 3, 4, 5, 6, 7].forEach(function(x) { walls.push({ x: x, y: 10 }); });
+            [12, 13, 14, 15, 16, 17, 18, 19].forEach(function(x) { walls.push({ x: x, y: 9 }); });
 
             return walls;
         }
@@ -163,12 +180,21 @@
                 ];
             }
 
-            // Level 4: four patrols circling through cage gaps
+            if (level === 4) {
+                // Four patrols circling through cage gaps
+                return [
+                    { x: 9, y: 1, path: [1, 2, 3], axis: 'y', pathIndex: 0, dir: 1 },
+                    { x: 10, y: 16, path: [16, 17, 18], axis: 'y', pathIndex: 0, dir: 1 },
+                    { x: 1, y: 9, path: [1, 2, 3], axis: 'x', pathIndex: 0, dir: 1 },
+                    { x: 18, y: 10, path: [18, 17, 16], axis: 'x', pathIndex: 0, dir: 1 },
+                ];
+            }
+
+            // Level 5: two patrols near central divider gaps + one in top-left chamber
             return [
-                { x: 9, y: 1, path: [1, 2, 3], axis: 'y', pathIndex: 0, dir: 1 },
-                { x: 10, y: 16, path: [16, 17, 18], axis: 'y', pathIndex: 0, dir: 1 },
-                { x: 1, y: 9, path: [1, 2, 3], axis: 'x', pathIndex: 0, dir: 1 },
-                { x: 18, y: 10, path: [18, 17, 16], axis: 'x', pathIndex: 0, dir: 1 },
+                { x: 8, y: 9, path: [8, 9, 10, 11], axis: 'x', pathIndex: 0, dir: 1 },
+                { x: 11, y: 10, path: [11, 10, 9, 8], axis: 'x', pathIndex: 0, dir: 1 },
+                { x: 4, y: 5, path: [5, 6, 7], axis: 'y', pathIndex: 0, dir: 1 },
             ];
         }
 
@@ -192,6 +218,40 @@
 
         function getObstaclePositions(obstacles) {
             return obstacles.map(function(ob) { return { x: ob.x, y: ob.y }; });
+        }
+
+        // --- Teleport portals ---
+        function generatePortals(level) {
+            if (level < 5) return [];
+
+            // Two portal pairs: each pair is [entryA, entryB]
+            // Portals placed to bridge the two chambers
+            return [
+                { a: { x: 5, y: 5 }, b: { x: 14, y: 14 } },
+                { a: { x: 1, y: 15 }, b: { x: 18, y: 4 } },
+            ];
+        }
+
+        function getPortalPositions(portals) {
+            var positions = [];
+            portals.forEach(function(pair) {
+                positions.push(pair.a);
+                positions.push(pair.b);
+            });
+            return positions;
+        }
+
+        function checkPortalTeleport(head, portals) {
+            for (var i = 0; i < portals.length; i++) {
+                var pair = portals[i];
+                if (head.x === pair.a.x && head.y === pair.a.y) {
+                    return pair.b;
+                }
+                if (head.x === pair.b.x && head.y === pair.b.y) {
+                    return pair.a;
+                }
+            }
+            return null;
         }
 
         // --- Canvas setup ---
@@ -228,6 +288,7 @@
                 food: null,
                 walls: [],
                 obstacles: [],
+                portals: [],
                 score: 0,
                 level: 1,
                 foodEaten: 0,
@@ -242,9 +303,10 @@
         highScoreEl.textContent = highScore;
 
         // --- Pure helpers ---
-        function randomPosition(snake, walls, obstacles) {
+        function randomPosition(snake, walls, obstacles, portals) {
             var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
-            var occupied = (walls || []).concat(snake).concat(obPositions);
+            var portalPositions = portals ? getPortalPositions(portals) : [];
+            var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions);
             var pos;
             do {
                 pos = {
@@ -295,6 +357,24 @@
                 return Object.assign({}, prev, { gameOver: true, direction: dir });
             }
 
+            // Portal teleportation — check before food/collision with body at destination
+            if (prev.portals.length > 0) {
+                var teleportDest = checkPortalTeleport(newHead, prev.portals);
+                if (teleportDest) {
+                    // Exit one cell beyond the portal in the current direction
+                    newHead = { x: teleportDest.x + dir.x, y: teleportDest.y + dir.y };
+                    // Boundary check after teleport
+                    if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
+                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
+                        return Object.assign({}, prev, { gameOver: true, direction: dir });
+                    }
+                    // Wall check after teleport
+                    if (collides(newHead, prev.walls)) {
+                        return Object.assign({}, prev, { gameOver: true, direction: dir });
+                    }
+                }
+            }
+
             // Move obstacles
             var newObstacles = prev.obstacles.length > 0 ? moveObstacles(prev.obstacles) : prev.obstacles;
 
@@ -313,6 +393,7 @@
             var newFoodEaten = ate ? prev.foodEaten + 1 : prev.foodEaten;
             var newLevel = prev.level;
             var newWalls = prev.walls;
+            var newPortals = prev.portals;
             var newFood = ate ? null : prev.food;
 
             // Level up check
@@ -321,11 +402,12 @@
                 newFoodEaten = 0;
                 newWalls = filterWallsFromSnake(generateWalls(newLevel), newSnake);
                 newObstacles = generateObstacles(newLevel);
+                newPortals = generatePortals(newLevel);
             }
 
-            // Spawn food if needed (avoid snake, walls, and obstacles)
+            // Spawn food if needed (avoid snake, walls, obstacles, and portals)
             if (!newFood) {
-                newFood = randomPosition(newSnake, newWalls, newObstacles);
+                newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals);
             }
 
             return {
@@ -335,6 +417,7 @@
                 food: newFood,
                 walls: newWalls,
                 obstacles: newObstacles,
+                portals: newPortals,
                 score: newScore,
                 level: newLevel,
                 foodEaten: newFoodEaten,
@@ -409,6 +492,41 @@
                     ctx.fill();
                     ctx.shadowBlur = 0;
                 });
+            }
+
+            // Teleport portals
+            if (s.portals.length > 0) {
+                var config5 = getLevelConfig(s.level);
+                if (config5.portalColor) {
+                    var portalPulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+                    s.portals.forEach(function(pair, pairIdx) {
+                        [pair.a, pair.b].forEach(function(pos) {
+                            var pcx = pos.x * CELL_SIZE + CELL_SIZE / 2;
+                            var pcy = pos.y * CELL_SIZE + CELL_SIZE / 2;
+                            // Outer glow ring
+                            ctx.shadowColor = config5.portalColor;
+                            ctx.shadowBlur = 12;
+                            ctx.globalAlpha = portalPulse;
+                            ctx.strokeStyle = config5.portalColor;
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.arc(pcx, pcy, CELL_SIZE / 2 - 1, 0, Math.PI * 2);
+                            ctx.stroke();
+                            // Inner diamond
+                            ctx.fillStyle = config5.portalColor;
+                            ctx.globalAlpha = portalPulse * 0.6;
+                            ctx.beginPath();
+                            ctx.moveTo(pcx, pcy - 5);
+                            ctx.lineTo(pcx + 5, pcy);
+                            ctx.lineTo(pcx, pcy + 5);
+                            ctx.lineTo(pcx - 5, pcy);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.globalAlpha = 1;
+                            ctx.shadowBlur = 0;
+                        });
+                    });
+                }
             }
 
             // Food
@@ -488,7 +606,7 @@
                 state = Object.assign({}, state, {
                     started: true,
                     nextDirection: newDir,
-                    food: randomPosition(state.snake, state.walls, state.obstacles),
+                    food: randomPosition(state.snake, state.walls, state.obstacles, state.portals),
                 });
                 messageEl.textContent = '';
                 messageEl.className = '';
@@ -499,7 +617,7 @@
                 state = Object.assign({}, state, {
                     started: true,
                     nextDirection: newDir,
-                    food: randomPosition(state.snake, state.walls, state.obstacles),
+                    food: randomPosition(state.snake, state.walls, state.obstacles, state.portals),
                 });
                 messageEl.textContent = '';
                 messageEl.className = '';
