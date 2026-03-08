@@ -88,6 +88,7 @@ function seededRand(seed) {
 export function generateEndlessWalls(wave) {
     if (wave < 3) return [];
 
+    var GRID_SIZE = getGridSizeForWave(wave);
     var walls = [];
     var complexity = Math.min(wave - 2, 10);
     var numClusters = Math.min(2 + Math.floor(complexity / 2), 7);
