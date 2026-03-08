@@ -32,6 +32,7 @@ export function createInitialState() {
         endlessConfig: null,
         lives: INITIAL_LIVES,
         invincibleTicks: 0,
+        wallInset: 0,
     };
 }
 
@@ -47,6 +48,27 @@ export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter
         pos = {
             x: Math.floor(Math.random() * GRID_SIZE),
             y: Math.floor(Math.random() * GRID_SIZE),
+        };
+        attempts++;
+        if (attempts > 1000) return pos;
+    } while (occupied.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
+    return pos;
+}
+
+export function randomPositionInBounds(snake, walls, obstacles, portals, powerUp, hunter, minX, minY, maxX, maxY) {
+    var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
+    var portalPositions = portals ? getPortalPositions(portals) : [];
+    var hunterPositions = hunter ? getHunterPositions(hunter) : [];
+    var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions).concat(hunterPositions);
+    if (powerUp) occupied = occupied.concat([powerUp]);
+    var rangeX = maxX - minX + 1;
+    var rangeY = maxY - minY + 1;
+    var pos;
+    var attempts = 0;
+    do {
+        pos = {
+            x: minX + Math.floor(Math.random() * rangeX),
+            y: minY + Math.floor(Math.random() * rangeY),
         };
         attempts++;
         if (attempts > 1000) return pos;

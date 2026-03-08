@@ -1,9 +1,20 @@
 'use strict';
 
-import { GRID_SIZE, LEVEL_CONFIG } from './constants.js';
+import { GRID_SIZE, ENDLESS_GRID_SIZE, LEVEL_CONFIG } from './constants.js';
 
 // Food eaten per wave before advancing
 export var ENDLESS_FOOD_PER_WAVE = 3;
+
+// Expanding walls: inset grows by 1 on each side every N waves
+var WALL_INSET_WAVE_INTERVAL = 3;
+var WALL_INSET_MIN_PLAYABLE = 8;
+
+export function getWallInsetForWave(wave) {
+    var gridSize = ENDLESS_GRID_SIZE || GRID_SIZE;
+    var maxInset = Math.floor((gridSize - WALL_INSET_MIN_PLAYABLE) / 2);
+    var inset = Math.floor(wave / WALL_INSET_WAVE_INTERVAL);
+    return Math.min(inset, maxInset);
+}
 
 // Wave names for narrative flavor
 var WAVE_TITLES = {

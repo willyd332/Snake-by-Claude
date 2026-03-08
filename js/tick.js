@@ -5,8 +5,8 @@ import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { moveObstacles, getObstaclePositions, checkPortalTeleport } from './levels.js';
 import { moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
-import { getLevelConfig, collides, randomPosition } from './state.js';
-import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
+import { getLevelConfig, collides, randomPosition, randomPositionInBounds } from './state.js';
+import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter, getWallInsetForWave } from './endless.js';
 
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
@@ -46,6 +46,15 @@ export function tick(prev) {
         if (newHead.x < clean.arenaMinX || newHead.x > clean.arenaMaxX ||
             newHead.y < clean.arenaMinY || newHead.y > clean.arenaMaxY) {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena' });
+        }
+    }
+
+    // Expanding walls boundary — inset from each edge closes in per wave (invincible bypasses)
+    if (clean.wallInset > 0 && !isInvincible) {
+        var inset = clean.wallInset;
+        if (newHead.x < inset || newHead.x >= GRID_SIZE - inset ||
+            newHead.y < inset || newHead.y >= GRID_SIZE - inset) {
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush' });
         }
     }
 
@@ -149,6 +158,7 @@ export function tick(prev) {
     // Wave up check (endless mode is the only mode now)
     var endlessWave = clean.endlessWave;
     var endlessConfig = clean.endlessConfig;
+    var newWallInset = clean.wallInset;
 
     var newPowerUp = clean.powerUp;
     var newActivePowerUp = clean.activePowerUp;
@@ -159,9 +169,20 @@ export function tick(prev) {
         endlessConfig = getEndlessConfig(endlessWave);
         newLevel = ((endlessWave - 1) % 10) + 1;
         newFoodEaten = 0;
+        newWallInset = getWallInsetForWave(endlessWave);
         newWalls = generateEndlessWalls(endlessWave).filter(function(w) {
             return !newSnake.some(function(seg) { return seg.x === w.x && seg.y === w.y; });
         });
+        // Kill snake if it's inside the new inset wall zone
+        if (newWallInset > 0 && !isInvincible) {
+            var snakeCrushedByInset = newSnake.some(function(seg) {
+                return seg.x < newWallInset || seg.x >= GRID_SIZE - newWallInset ||
+                       seg.y < newWallInset || seg.y >= GRID_SIZE - newWallInset;
+            });
+            if (snakeCrushedByInset) {
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush' });
+            }
+        }
         newObstacles = generateEndlessObstacles(endlessWave);
         newPortals = generateEndlessPortals(endlessWave).filter(function(p) {
             return !collides(p.a, newWalls) && !collides(p.b, newWalls);
@@ -248,9 +269,17 @@ export function tick(prev) {
         });
     }
 
-    // Spawn food if needed
+    // Spawn food if needed (constrained to inset-safe area)
     if (!newFood) {
-        newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
+        if (newWallInset > 0) {
+            newFood = randomPositionInBounds(
+                newSnake, newWalls, newObstacles, newPortals, null, newHunter,
+                newWallInset, newWallInset,
+                GRID_SIZE - newWallInset - 1, GRID_SIZE - newWallInset - 1
+            );
+        } else {
+            newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
+        }
     }
 
     // Power-up spawning
@@ -325,6 +354,7 @@ export function tick(prev) {
         shrinkCounter: newShrinkCounter,
         endlessWave: endlessWave,
         endlessConfig: endlessConfig,
+        wallInset: newWallInset,
         lives: clean.lives,
         invincibleTicks: isInvincible ? clean.invincibleTicks - 1 : 0,
         _collectedPowerUp: collectedPowerUpType,
