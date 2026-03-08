@@ -6,6 +6,8 @@ import { getPowerUpDef } from './powerups.js';
 import {
     emitBurst, emitExplosion, emitLevelUpShower, emitPortalSwirl,
     triggerShake,
+    SHAKE_FOOD, SHAKE_POWER_UP, SHAKE_WAVE_UP, SHAKE_SHRINK,
+    SHAKE_LIFE_LOST, SHAKE_DEATH, SHAKE_HUNTER_KILL,
 } from './particles.js';
 import {
     playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
@@ -36,7 +38,8 @@ export function processPostTickEvents(ctx) {
         ctx.prevSnake = null;
         playEatSound();
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateFoodPos.x, ctx.state._ateFoodPos.y, ctx.config.foodColor, 12, 60, 0.5);
-        ctx.shakeState = triggerShake(2, 0.1);
+        ctx.shakeState = triggerShake(SHAKE_FOOD.intensity, SHAKE_FOOD.duration);
+        ctx.headFlashState = { remaining: 0.18, duration: 0.18, color: ctx.config.foodColor };
 
         // Score popup at food position
         ctx.scorePopups = (ctx.scorePopups || []).concat([{
@@ -102,7 +105,7 @@ export function processPostTickEvents(ctx) {
         setMusicIntensity(ctx.state.endlessWave, ctx.state.wallInset || 0);
         var waveConfig = ctx.state.endlessConfig;
         ctx.particleSystem = emitLevelUpShower(ctx.particleSystem, CANVAS_SIZE, waveConfig.color);
-        ctx.shakeState = triggerShake(4, 0.3);
+        ctx.shakeState = triggerShake(SHAKE_WAVE_UP.intensity, SHAKE_WAVE_UP.duration);
         ctx.hunterTrailHistory = [];
 
         // ALPHA intro on first hunter wave
@@ -144,6 +147,7 @@ export function processPostTickEvents(ctx) {
             playPowerUpCollectSound();
             ctx.ui.showPowerUpCollected(collectedDef);
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
+            ctx.shakeState = triggerShake(SHAKE_POWER_UP.intensity, SHAKE_POWER_UP.duration);
 
             // Popup label for power-up at snake head position
             ctx.scorePopups = (ctx.scorePopups || []).concat([{
@@ -161,7 +165,7 @@ export function processPostTickEvents(ctx) {
     if (ctx.state._shrinkOccurred) {
         playShrinkSound();
         ctx.ui.showShrinkMessage();
-        ctx.shakeState = triggerShake(5, 0.25);
+        ctx.shakeState = triggerShake(SHAKE_SHRINK.intensity, SHAKE_SHRINK.duration);
         setMusicIntensity(ctx.state.endlessWave || 1, ctx.state.wallInset || 0);
         var arenaW = ctx.state.arenaMaxX - ctx.state.arenaMinX + 1;
         var arenaH = ctx.state.arenaMaxY - ctx.state.arenaMinY + 1;
@@ -193,7 +197,7 @@ export function processPostTickEvents(ctx) {
             // Life lost: respawn with invincibility instead of game over
             playLifeLostSound();
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 16, 50, 0.4);
-            ctx.shakeState = triggerShake(5, 0.2);
+            ctx.shakeState = triggerShake(SHAKE_LIFE_LOST.intensity, SHAKE_LIFE_LOST.duration);
 
             // Respawn snake at a safe position within current grid
             var spawnPos = randomPositionInBounds([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1);
@@ -255,11 +259,11 @@ export function processPostTickEvents(ctx) {
             // ALPHA kill: distinctive sound, orange particles, heavier shake
             playHunterKillSound();
             ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, ctx.config.hunterColor || '#f97316', '#ff2200');
-            ctx.shakeState = triggerShake(12, 0.5);
+            ctx.shakeState = triggerShake(SHAKE_HUNTER_KILL.intensity, SHAKE_HUNTER_KILL.duration);
         } else {
             playDeathSound();
             ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, ctx.config.color, '#ef4444');
-            ctx.shakeState = triggerShake(8, 0.4);
+            ctx.shakeState = triggerShake(SHAKE_DEATH.intensity, SHAKE_DEATH.duration);
         }
     }
 }

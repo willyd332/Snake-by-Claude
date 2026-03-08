@@ -104,6 +104,7 @@ var g = {
     state: createInitialState(),
     particleSystem: createParticleSystem(),
     shakeState: createShakeState(),
+    headFlashState: null,
     prevSnake: null,
     prevHunterSegments: null,
     highScore: parseInt(localStorage.getItem('snake-endless-highscore') || '0', 10),
@@ -168,9 +169,15 @@ function gameLoop(timestamp) {
     dt = Math.min(dt, 0.05); // cap delta to avoid huge jumps
     lastFrameTime = timestamp;
 
-    // Update particles, shake, matrix rain, and score popups every frame
+    // Update particles, shake, head flash, matrix rain, and score popups every frame
     g.particleSystem = updateParticles(g.particleSystem, dt);
     g.shakeState = updateShake(g.shakeState, dt);
+    if (g.headFlashState && g.headFlashState.remaining > 0) {
+        g.headFlashState = { remaining: g.headFlashState.remaining - dt, duration: g.headFlashState.duration, color: g.headFlashState.color };
+        if (g.headFlashState.remaining <= 0) {
+            g.headFlashState = null;
+        }
+    }
     matrixState = updateMatrixState(matrixState, dt);
     if (g.scorePopups && g.scorePopups.length > 0) {
         g.scorePopups = g.scorePopups
@@ -406,6 +413,7 @@ function gameLoop(timestamp) {
         trailHistory: g.snakeTrailHistory,
         highScore: getEndlessHighScore(),
         endlessHighWave: getEndlessHighWave(),
+        headFlashState: g.headFlashState,
     };
 
     // Apply screen shake (respects settings)

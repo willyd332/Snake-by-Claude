@@ -200,6 +200,15 @@ export function emitPortalSwirl(system, gridX, gridY, color) {
 
 // --- Screen Shake ---
 
+// Named shake presets — intensity (pixels) and duration (seconds)
+export var SHAKE_FOOD = { intensity: 2, duration: 0.15 };
+export var SHAKE_POWER_UP = { intensity: 4, duration: 0.2 };
+export var SHAKE_WAVE_UP = { intensity: 4, duration: 0.3 };
+export var SHAKE_SHRINK = { intensity: 5, duration: 0.25 };
+export var SHAKE_LIFE_LOST = { intensity: 5, duration: 0.2 };
+export var SHAKE_DEATH = { intensity: 8, duration: 0.4 };
+export var SHAKE_HUNTER_KILL = { intensity: 12, duration: 0.5 };
+
 export function createShakeState() {
     return { intensity: 0, duration: 0, remaining: 0 };
 }
@@ -221,8 +230,9 @@ export function updateShake(shake, dt) {
 
 export function getShakeOffset(shake) {
     if (shake.remaining <= 0) return { x: 0, y: 0 };
-    var decay = shake.remaining / shake.duration;
-    var mag = shake.intensity * decay;
+    // Exponential decay: starts strong, eases out quickly
+    var linearDecay = shake.remaining / shake.duration;
+    var mag = shake.intensity * linearDecay * linearDecay;
     return {
         x: (Math.random() - 0.5) * 2 * mag,
         y: (Math.random() - 0.5) * 2 * mag,

@@ -65,6 +65,7 @@ export function startEndlessMode(g, deps) {
     deps.ui.clearTimers();
     g.particleSystem = createParticleSystem();
     g.shakeState = createShakeState();
+    g.headFlashState = null;
     g.prevSnake = null;
     g.prevHunterSegments = null;
     g.hunterTrailHistory = [];
@@ -116,6 +117,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         prevSnake: g.prevSnake, prevHunterSegments: g.prevHunterSegments,
         hunterTrailHistory: g.hunterTrailHistory,
         particleSystem: g.particleSystem, shakeState: g.shakeState,
+        headFlashState: g.headFlashState,
         highScore: g.highScore,
         hunterIntroState: g.hunterIntroState,
         currentScreen: g.currentScreen, config: config,
@@ -134,6 +136,7 @@ export function applyEventCtx(g, eventCtx) {
     g.hunterTrailHistory = eventCtx.hunterTrailHistory;
     g.particleSystem = eventCtx.particleSystem;
     g.shakeState = eventCtx.shakeState;
+    g.headFlashState = eventCtx.headFlashState;
     g.highScore = eventCtx.highScore;
     g.hunterIntroState = eventCtx.hunterIntroState;
     g.currentScreen = eventCtx.currentScreen;
@@ -163,6 +166,7 @@ export function restartGame(g, deps, newDir) {
     deps.ui.clearTimers();
     g.particleSystem = createParticleSystem();
     g.shakeState = createShakeState();
+    g.headFlashState = null;
     g.prevSnake = null;
     g.prevHunterSegments = null;
     g.hunterIntroState = null;

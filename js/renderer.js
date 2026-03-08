@@ -487,6 +487,29 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     });
     ctx.globalAlpha = 1;
 
+    // Head flash ring (food eaten pulse)
+    var headFlash = interp ? interp.headFlashState : null;
+    if (headFlash && headFlash.remaining > 0 && state.started && !state.gameOver) {
+        var flashProgress = headFlash.remaining / headFlash.duration;
+        var flashScale = 1 + (1 - flashProgress) * 0.8;
+        var flashAlpha = flashProgress * 0.85;
+        var flashRadius = (CELL_SIZE / 2 + 3) * flashScale;
+        ctx.save();
+        ctx.globalAlpha = flashAlpha;
+        ctx.strokeStyle = headFlash.color;
+        ctx.shadowColor = headFlash.color;
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(
+            interpHeadX * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadY * CELL_SIZE + CELL_SIZE / 2,
+            flashRadius, 0, Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.restore();
+    }
+
     // Ghost aura around head (uses interpolated position)
     if (isGhost && state.started && !state.gameOver) {
         var ghostPulse = Math.sin(Date.now() / 150) * 0.2 + 0.3;
