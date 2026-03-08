@@ -1,11 +1,12 @@
 'use strict';
 
 // --- Death Replay System ---
-// Records game state snapshots in a circular buffer during normal play.
-// On death, replays the last N frames at half speed with a ghost trail effect.
+// Records full game state snapshots in a circular buffer during normal play.
+// On death, replays the last N frames at 0.3x speed using the actual renderer,
+// with an input timeline showing which direction was pressed each frame.
 
 var REPLAY_BUFFER_SIZE = 150;
-var REPLAY_SPEED_MULT = 0.5; // Half speed (takes 2x longer to play each frame)
+var REPLAY_SPEED_MULT = 0.3; // Slow-motion (takes ~3.3x longer to play each frame)
 
 // Creates a new empty circular buffer for recording game frames.
 // Returns an immutable buffer object.
@@ -16,16 +17,33 @@ export function createReplayBuffer() {
     };
 }
 
-// Records a snapshot of the current game state into the buffer.
-// Only captures the data needed for replay rendering (snake segments + level).
+// Records a full snapshot of the current game state into the buffer.
+// Captures all entities needed for the actual renderer to reproduce the frame.
 // Returns a new buffer (immutable).
-export function recordFrame(buffer, gameState) {
+export function recordFrame(buffer, gameState, direction) {
     var snapshot = {
         snake: gameState.snake.map(function(seg) {
             return { x: seg.x, y: seg.y };
         }),
+        food: gameState.food ? { x: gameState.food.x, y: gameState.food.y } : null,
+        walls: gameState.walls,
+        obstacles: gameState.obstacles,
+        portals: gameState.portals,
+        powerUp: gameState.powerUp,
+        activePowerUp: gameState.activePowerUp,
+        hunter: gameState.hunter,
+        score: gameState.score,
         level: gameState.level,
+        endlessWave: gameState.endlessWave,
         endlessConfig: gameState.endlessConfig,
+        arenaMinX: gameState.arenaMinX,
+        arenaMinY: gameState.arenaMinY,
+        arenaMaxX: gameState.arenaMaxX,
+        arenaMaxY: gameState.arenaMaxY,
+        wallInset: gameState.wallInset,
+        invincibleTicks: gameState.invincibleTicks,
+        lives: gameState.lives,
+        direction: direction ? { x: direction.x, y: direction.y } : null,
     };
 
     var newFrames = buffer.frames.concat([snapshot]);
