@@ -75,7 +75,7 @@ export function runReplayFrame(params) {
     params.ctx.font = '10px Courier New';
     params.ctx.fillStyle = '#ffffff';
     params.ctx.textAlign = 'center';
-    params.ctx.fillText('SPACE to skip', CANVAS_SIZE / 2, CANVAS_SIZE - 8);
+    params.ctx.fillText('TAP / SPACE to skip', CANVAS_SIZE / 2, CANVAS_SIZE - 8);
     params.ctx.textAlign = 'left';
     params.ctx.globalAlpha = 1;
     params.ctx.restore();
