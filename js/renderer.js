@@ -773,6 +773,36 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.restore();
     }
 
+    // Magnet aura around head (uses interpolated position)
+    var isMagnetHeadActive = state.activePowerUp && state.activePowerUp.type === 'magnet';
+    if (isMagnetHeadActive && state.started && !state.gameOver) {
+        var magnetHeadPulse = Math.sin(Date.now() / 130) * 0.25 + 0.55;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, ' + magnetHeadPulse + ')';
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(
+            interpHeadX * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadY * CELL_SIZE + CELL_SIZE / 2,
+            CELL_SIZE / 2 + 4, 0, Math.PI * 2
+        );
+        ctx.stroke();
+        // Second outer ring for depth
+        ctx.globalAlpha = magnetHeadPulse * 0.4;
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(
+            interpHeadX * CELL_SIZE + CELL_SIZE / 2,
+            interpHeadY * CELL_SIZE + CELL_SIZE / 2,
+            CELL_SIZE / 2 + 7, 0, Math.PI * 2
+        );
+        ctx.stroke();
+        ctx.restore();
+    }
+
     // Game over overlay
     if (state.gameOver) {
         var goDeathCause = state._deathCause || 'boundary';
