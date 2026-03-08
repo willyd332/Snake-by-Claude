@@ -92,6 +92,7 @@ export function startEndlessMode(g, deps) {
     g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     deps.dom.levelLabelEl.textContent = 'Wave:';
     g.gameSessionStartTime = Date.now();
+    g.gameSessionEndTime = 0;
     g.runPowerUpsCollected = 0;
     g.runFoodEaten = 0;
     g.runPrevHighScore = g.highScore || 0;
@@ -147,6 +148,7 @@ export function restartGame(g, deps, newDir) {
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;
+        g.gameSessionEndTime = 0;
     }
     setEndlessHighScore(g.state.score);
     setEndlessHighWave(g.state.endlessWave);
@@ -205,6 +207,7 @@ export function goToTitle(g, deps) {
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;
+        g.gameSessionEndTime = 0;
     }
     setEndlessHighScore(g.state.score);
     setEndlessHighWave(g.state.endlessWave);
@@ -221,6 +224,7 @@ export function onRestartLevel(g, deps) {
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;
+        g.gameSessionEndTime = 0;
     }
     setEndlessHighScore(g.state.score);
     setEndlessHighWave(g.state.endlessWave);

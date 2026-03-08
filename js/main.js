@@ -94,6 +94,7 @@ var g = {
     titleMenuIndex: null,
     speedrunState: createSpeedrunState(),
     gameSessionStartTime: 0,
+    gameSessionEndTime: 0,
     runPowerUpsCollected: 0,
     runFoodEaten: 0,
     runPrevHighScore: 0,
@@ -197,6 +198,12 @@ function gameLoop(timestamp) {
         return;
     }
 
+    // When summary overlay is visible, idle the loop
+    if (g.summaryVisible) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     // Gameplay
     var config = getLevelConfig(g.state.level, g.state.endlessConfig);
     var frameSettings = getSettingsRef();
@@ -280,7 +287,7 @@ function gameLoop(timestamp) {
                 var summaryScore = deathCtxState.score || 0;
                 var summaryFoodEaten = g.runFoodEaten;
                 var summaryPowerUps = g.runPowerUpsCollected;
-                var summaryTimeAliveMs = g.gameSessionStartTime > 0 ? Date.now() - g.gameSessionStartTime : 0;
+                var summaryTimeAliveMs = g.gameSessionStartTime > 0 ? (g.gameSessionEndTime || Date.now()) - g.gameSessionStartTime : 0;
                 var summaryPrevHighScore = g.runPrevHighScore;
 
                 processPostTickEvents(g.replayDeathContext);
@@ -348,6 +355,9 @@ function gameLoop(timestamp) {
 
         // Check for final death — start replay instead of immediate game-over
         var isFinalDeath = g.state.gameOver && !prevState.gameOver && g.state.lives <= 1;
+        if (isFinalDeath) {
+            g.gameSessionEndTime = Date.now();
+        }
         if (isFinalDeath && g.replayBuffer.frames.length > 0 && !g.replayState) {
             g.scorePopups = [];
             g.replayDeathContext = buildEventCtx(g, prevState, prevLevel, config, navDeps);

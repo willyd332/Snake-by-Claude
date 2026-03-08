@@ -543,8 +543,9 @@ function renderHunterExplode(ctx, anim, elapsed) {
         var dx = seg.x - head.x;
         var dy = seg.y - head.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
-        var normX = dist > 0 ? dx / dist : (Math.random() - 0.5) * 2;
-        var normY = dist > 0 ? dy / dist : (Math.random() - 0.5) * 2;
+        var fallbackAngle = (j / Math.max(anim.segments.length, 1)) * Math.PI * 2;
+        var normX = dist > 0 ? dx / dist : Math.cos(fallbackAngle);
+        var normY = dist > 0 ? dy / dist : Math.sin(fallbackAngle);
 
         var scatterDist = explodeProgress * 90 * (1 + j * 0.1);
         var drawX = seg.x + normX * scatterDist;
