@@ -40,3 +40,7 @@ export var LEVEL_NARRATIVES = {
 };
 
 export var KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
+
+// Level 10 ending thresholds — foodEaten accumulates on MAX_LEVEL since no level-up resets it
+export var AWAKENING_FOOD_THRESHOLD = 20;
+export var DELETION_FOOD_THRESHOLD = 10;

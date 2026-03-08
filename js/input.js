@@ -33,6 +33,17 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // --- Ending Screen ---
+        if (screen === 'ending') {
+            // Loop ending auto-returns — no manual advance
+            var endingType = callbacks.getEndingType ? callbacks.getEndingType() : null;
+            if (endingType !== 'loop' && (e.key === 'Enter' || e.key === 'Escape')) {
+                e.preventDefault();
+                callbacks.onEndingAdvance();
+            }
+            return;
+        }
+
         // --- Title Screen ---
         if (screen === 'title') {
             if (e.key === 'Enter') {

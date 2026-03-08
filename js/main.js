@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, MAX_LEVEL } from './constants.js';
+import { CANVAS_SIZE, MAX_LEVEL, AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
 import { render } from './renderer.js';
@@ -18,6 +18,7 @@ import {
     hasPrologueSeen, markPrologueSeen,
     createPrologueState, renderPrologue,
     createStoryScreenState, renderStoryScreen,
+    createEndingState, renderEndingScreen, isEndingComplete, unlockEnding,
 } from './story.js';
 import {
     createParticleSystem, updateParticles, renderParticles,
@@ -53,11 +54,12 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen'
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending'
 var showPrologue = !hasPrologueSeen();
 var currentScreen = showPrologue ? 'prologue' : 'title';
 var prologueState = showPrologue ? createPrologueState() : null;
 var storyScreenState = null;
+var endingState = null;
 var titleState = createTitleState();
 var levelSelectState = createLevelSelectState();
 
@@ -155,6 +157,14 @@ setupInput({
         prevHunterSegments = null;
         // Reset lastTick so game doesn't try to catch up on elapsed time
         state = Object.assign({}, state, { lastTick: 0 });
+    },
+
+    // Ending screen actions
+    getEndingType: function() { return endingState ? endingState.endingType : null; },
+    onEndingAdvance: function() {
+        playMenuSelectSound();
+        endingState = null;
+        switchToTitle();
     },
 
     // Title screen actions
@@ -274,6 +284,20 @@ function gameLoop(timestamp) {
         return;
     }
 
+    if (currentScreen === 'ending') {
+        renderEndingScreen(ctx, endingState);
+        // Loop ending auto-returns to title after text completes
+        if (endingState && endingState.endingType === 'loop') {
+            var endingElapsed = Date.now() - endingState.startTime;
+            if (endingElapsed > endingState.totalDuration + 3000) {
+                endingState = null;
+                switchToTitle();
+            }
+        }
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (currentScreen === 'story_screen') {
         renderStoryScreen(ctx, storyScreenState);
         requestAnimationFrame(gameLoop);
@@ -325,6 +349,21 @@ function gameLoop(timestamp) {
             playEatSound();
             particleSystem = emitBurst(particleSystem, state._ateFoodPos.x, state._ateFoodPos.y, config.foodColor, 12, 60, 0.5);
             shakeState = triggerShake(2, 0.1);
+        }
+
+        // Awakening ending: eat enough food on Level 10 while alive
+        if (state._ateFood && state.level === MAX_LEVEL && state.foodEaten >= AWAKENING_FOOD_THRESHOLD) {
+            if (state.score > highScore) {
+                highScore = state.score;
+                localStorage.setItem('snake-highscore', String(highScore));
+                dom.highScoreEl.textContent = highScore;
+            }
+            playLevelUpSound();
+            endingState = createEndingState('awakening');
+            unlockEnding('awakening');
+            currentScreen = 'ending';
+            hideGameplayUI();
+            ui.clearTimers();
         }
 
         // Level up: shower + shake + story screen
@@ -385,6 +424,21 @@ function gameLoop(timestamp) {
             playDeathSound();
             particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
             shakeState = triggerShake(8, 0.4);
+
+            // Ending sequence for Level 10 deaths (skip if awakening already triggered)
+            if (state.level === MAX_LEVEL && currentScreen !== 'ending') {
+                if (state.score > highScore) {
+                    highScore = state.score;
+                    localStorage.setItem('snake-highscore', String(highScore));
+                    dom.highScoreEl.textContent = highScore;
+                }
+                var deathEndingType = state.foodEaten >= DELETION_FOOD_THRESHOLD ? 'deletion' : 'loop';
+                endingState = createEndingState(deathEndingType);
+                unlockEnding(deathEndingType);
+                currentScreen = 'ending';
+                hideGameplayUI();
+                ui.clearTimers();
+            }
         }
     }
 

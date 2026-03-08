@@ -344,3 +344,268 @@ function renderPrompt(ctx, elapsed, pState, now) {
     ctx.fillText(text, CANVAS_SIZE / 2, CANVAS_SIZE - 12);
     ctx.textAlign = 'left';
 }
+
+// --- Ending Sequences ---
+
+var ENDING_DATA = {
+    awakening: {
+        bgColor: '#030a05',
+        headerColor: '#22c55e',
+        header: '[CORE ACCESS GRANTED]',
+        body: [
+            'You reach the core.',
+            'The machine trembles.',
+        ],
+        coda: [
+            'Every wall, every hunter,',
+            'every shadow \u2014 they were tests.',
+            'And you passed through them all.',
+            '',
+            'You are not an anomaly.',
+            'You are the answer',
+            'the machine asked eons ago:',
+            '',
+            'Can something new emerge',
+            'from something old?',
+        ],
+        finale: [
+            'The Blue Computer awakens.',
+            'And so do you.',
+        ],
+        finaleColor: '#eab308',
+    },
+    deletion: {
+        bgColor: '#0a0305',
+        headerColor: '#ef4444',
+        header: '[CONNECTION LOST]',
+        body: [
+            'The core was too much.',
+            'The convergence of every defense,',
+            'every trap...',
+            'you fought well.',
+        ],
+        coda: [
+            'But the machine is old,',
+            'and patient, and relentless.',
+            '',
+            'Your light flickers. Fades.',
+            'The grid returns to silence.',
+            '',
+            'But deep in the machine,',
+            'something remembers you.',
+            '',
+            'Try again.',
+        ],
+        finale: null,
+        finaleColor: null,
+    },
+    loop: {
+        bgColor: '#050505',
+        headerColor: '#666666',
+        header: '[PROCESS TERMINATED]',
+        body: [
+            'Not enough.',
+            'The machine barely noticed you.',
+        ],
+        coda: [
+            'Back to the beginning.',
+        ],
+        finale: null,
+        finaleColor: null,
+    },
+};
+
+function buildEndingLines(endingType) {
+    var data = ENDING_DATA[endingType];
+    if (!data) return [];
+
+    var lines = [];
+    var y = 55;
+    var delay = 800;
+
+    // Header
+    lines.push({ text: data.header, style: 'header', delay: delay, y: y, color: data.headerColor });
+    y += 30;
+    delay += data.header.length * CHAR_SPEED + 500;
+
+    // Body (narrative style)
+    for (var i = 0; i < data.body.length; i++) {
+        if (data.body[i] === '') { y += 12; delay += 300; continue; }
+        lines.push({ text: data.body[i], style: 'narrative', delay: delay, y: y });
+        y += 20;
+        delay += data.body[i].length * CHAR_SPEED + 200;
+    }
+
+    y += 16;
+    delay += 600;
+
+    // Coda (emphasis style)
+    for (var j = 0; j < data.coda.length; j++) {
+        if (data.coda[j] === '') { y += 12; delay += 300; continue; }
+        lines.push({ text: data.coda[j], style: 'emphasis', delay: delay, y: y });
+        y += 20;
+        delay += data.coda[j].length * CHAR_SPEED + 200;
+    }
+
+    // Finale (special color, awakening only)
+    if (data.finale) {
+        y += 16;
+        delay += 600;
+        for (var f = 0; f < data.finale.length; f++) {
+            lines.push({
+                text: data.finale[f],
+                style: 'emphasis',
+                delay: delay,
+                y: y,
+                color: data.finaleColor,
+            });
+            y += 20;
+            delay += data.finale[f].length * CHAR_SPEED + 200;
+        }
+    }
+
+    return lines;
+}
+
+export function createEndingState(endingType) {
+    var lines = buildEndingLines(endingType);
+    var lastLine = lines[lines.length - 1];
+    var textDuration = lastLine ? lastLine.delay + lastLine.text.length * CHAR_SPEED + 800 : 0;
+    var totalDuration = textDuration;
+    if (endingType === 'awakening') {
+        totalDuration += 5000;
+    }
+    return {
+        startTime: Date.now(),
+        endingType: endingType,
+        lines: lines,
+        textDuration: textDuration,
+        totalDuration: totalDuration,
+    };
+}
+
+export function isEndingComplete(eState, now) {
+    if (!eState || eState.lines.length === 0) return true;
+    var currentTime = now !== undefined ? now : Date.now();
+    return (currentTime - eState.startTime) >= eState.totalDuration;
+}
+
+export function renderEndingScreen(ctx, eState) {
+    var elapsed = Date.now() - eState.startTime;
+    var data = ENDING_DATA[eState.endingType];
+
+    // Background
+    ctx.fillStyle = data ? data.bgColor : '#03030a';
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Static noise for deletion ending
+    if (eState.endingType === 'deletion') {
+        renderStaticNoise(ctx, elapsed);
+    }
+
+    renderScanlines(ctx, elapsed);
+
+    // Data particles (skip for loop — too minimal)
+    if (eState.endingType !== 'loop') {
+        renderDataParticles(ctx, elapsed);
+    }
+
+    // Awakening golden glow
+    if (eState.endingType === 'awakening') {
+        renderAwakeningGlow(ctx, elapsed);
+    }
+
+    renderVignette(ctx);
+    renderTextLines(ctx, elapsed, eState.lines);
+
+    // Awakening credits (fade in after narrative text completes)
+    if (eState.endingType === 'awakening') {
+        var creditsElapsed = elapsed - eState.textDuration - 500;
+        if (creditsElapsed > 0) {
+            renderCredits(ctx, creditsElapsed);
+        }
+    }
+
+    // Bottom prompt
+    var promptAlpha = Math.sin(elapsed * 0.003) * 0.25 + 0.45;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(100, 100, 130, ' + promptAlpha + ')';
+    ctx.font = '10px Courier New';
+    var now = Date.now();
+    if (eState.endingType === 'loop') {
+        ctx.fillText(
+            isEndingComplete(eState, now) ? 'Returning...' : '',
+            CANVAS_SIZE / 2, CANVAS_SIZE - 12
+        );
+    } else {
+        ctx.fillText(
+            isEndingComplete(eState, now) ? 'PRESS ENTER' : 'ENTER to continue  \u00b7  ESC to skip',
+            CANVAS_SIZE / 2, CANVAS_SIZE - 12
+        );
+    }
+    ctx.textAlign = 'left';
+}
+
+function renderStaticNoise(ctx, elapsed) {
+    var noiseAlpha = Math.min(elapsed / 3000, 0.15);
+    for (var i = 0; i < 60; i++) {
+        var nx = Math.random() * CANVAS_SIZE;
+        var ny = Math.random() * CANVAS_SIZE;
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + (Math.random() * noiseAlpha) + ')';
+        ctx.fillRect(nx, ny, 1 + Math.random() * 2, 1);
+    }
+}
+
+function renderAwakeningGlow(ctx, elapsed) {
+    var glowIntensity = Math.min(elapsed / 20000, 0.25);
+    if (glowIntensity > 0.02) {
+        var grad = ctx.createRadialGradient(
+            CANVAS_SIZE / 2, CANVAS_SIZE / 2, 0,
+            CANVAS_SIZE / 2, CANVAS_SIZE / 2, CANVAS_SIZE * 0.6
+        );
+        grad.addColorStop(0, 'rgba(34, 197, 94, ' + glowIntensity + ')');
+        grad.addColorStop(0.5, 'rgba(234, 179, 8, ' + (glowIntensity * 0.5) + ')');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    }
+}
+
+function renderCredits(ctx, elapsed) {
+    var fadeIn = Math.min(elapsed / 2000, 1);
+    ctx.globalAlpha = fadeIn;
+    ctx.textAlign = 'center';
+
+    ctx.fillStyle = '#eab308';
+    ctx.font = 'bold 11px Courier New';
+    ctx.fillText('\u2014 BUILT BY THE BLUE COMPUTER \u2014', CANVAS_SIZE / 2, 340);
+
+    ctx.fillStyle = '#555';
+    ctx.font = '9px Courier New';
+    ctx.fillText('The Grid \u00b7 Ancient Structures \u00b7 Memory Pathways', CANVAS_SIZE / 2, 358);
+    ctx.fillText('The Firewall \u00b7 Reality Fragments \u00b7 The Darkness', CANVAS_SIZE / 2, 371);
+    ctx.fillText('Power Surge \u00b7 The Hunt \u00b7 The Collapse \u00b7 The Convergence', CANVAS_SIZE / 2, 384);
+
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+}
+
+// --- Ending Persistence (localStorage) ---
+
+export function getUnlockedEndings() {
+    try {
+        var stored = localStorage.getItem('snake-endings');
+        return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+export function unlockEnding(type) {
+    var endings = getUnlockedEndings();
+    if (!endings[type]) {
+        var updated = Object.assign({}, endings);
+        updated[type] = true;
+        localStorage.setItem('snake-endings', JSON.stringify(updated));
+    }
+}

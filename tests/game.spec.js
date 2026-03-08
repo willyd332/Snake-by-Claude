@@ -349,6 +349,93 @@ test.describe('Snake Game — Story Screens', () => {
   })
 })
 
+test.describe('Snake Game — Endings', () => {
+  test('ending data exists for all three ending types', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/story.js')
+      const types = ['awakening', 'deletion', 'loop']
+      const results = {}
+      for (const type of types) {
+        const state = mod.createEndingState(type)
+        results[type] = {
+          hasLines: state.lines.length > 0,
+          lineCount: state.lines.length,
+          endingType: state.endingType,
+          hasDuration: state.totalDuration > 0,
+        }
+      }
+      return results
+    })
+
+    expect(result.awakening.hasLines).toBe(true)
+    expect(result.awakening.endingType).toBe('awakening')
+    expect(result.awakening.lineCount).toBeGreaterThanOrEqual(10)
+
+    expect(result.deletion.hasLines).toBe(true)
+    expect(result.deletion.endingType).toBe('deletion')
+    expect(result.deletion.lineCount).toBeGreaterThanOrEqual(8)
+
+    expect(result.loop.hasLines).toBe(true)
+    expect(result.loop.endingType).toBe('loop')
+    expect(result.loop.lineCount).toBeGreaterThanOrEqual(2)
+  })
+
+  test('isEndingComplete returns false initially and true later', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/story.js')
+      const state = mod.createEndingState('deletion')
+      const initialComplete = mod.isEndingComplete(state, state.startTime)
+      const laterComplete = mod.isEndingComplete(state, state.startTime + 120000)
+      return { initialComplete, laterComplete }
+    })
+
+    expect(result.initialComplete).toBe(false)
+    expect(result.laterComplete).toBe(true)
+  })
+
+  test('unlockEnding persists to localStorage', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/story.js')
+      mod.unlockEnding('awakening')
+      const endings = mod.getUnlockedEndings()
+      return { hasAwakening: endings.awakening === true }
+    })
+
+    expect(result.hasAwakening).toBe(true)
+  })
+
+  test('ending thresholds are correctly configured', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const { AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD } = await import('/js/constants.js')
+      return {
+        awakening: AWAKENING_FOOD_THRESHOLD,
+        deletion: DELETION_FOOD_THRESHOLD,
+        awakeningHigher: AWAKENING_FOOD_THRESHOLD > DELETION_FOOD_THRESHOLD,
+      }
+    })
+
+    expect(result.awakening).toBe(20)
+    expect(result.deletion).toBe(10)
+    expect(result.awakeningHigher).toBe(true)
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await skipPrologue(page)
