@@ -439,8 +439,17 @@ export function tick(prev) {
     }
 
     // Magnet effect: move food one cell closer to snake head each tick
-    if (newFood && newActivePowerUp && newActivePowerUp.type === 'magnet') {
+    var magnetActive = newActivePowerUp && newActivePowerUp.type === 'magnet';
+    if (newFood && magnetActive) {
         newFood = magnetizeFood(newFood, newHead, newArenaMinX, newArenaMinY, newArenaMaxX, newArenaMaxY);
+    }
+
+    // Magnet also attracts bonus food during FOOD_SURGE
+    if (magnetActive && newWaveEvent && newWaveEvent.bonusFood && newWaveEvent.bonusFood.length > 0) {
+        var attractedBonusFood = newWaveEvent.bonusFood.map(function(bf) {
+            return magnetizeFood(bf, newHead, newArenaMinX, newArenaMinY, newArenaMaxX, newArenaMaxY);
+        });
+        newWaveEvent = Object.assign({}, newWaveEvent, { bonusFood: attractedBonusFood });
     }
 
     // Power-up spawning
@@ -514,6 +523,10 @@ export function tick(prev) {
         powerUp: newPowerUp,
         hunter: newHunter,
         food: newFood,
+        arenaMinX: newArenaMinX,
+        arenaMinY: newArenaMinY,
+        arenaMaxX: newArenaMaxX,
+        arenaMaxY: newArenaMaxY,
     });
     newWaveEvent = waveTickResult.waveEvent;
 

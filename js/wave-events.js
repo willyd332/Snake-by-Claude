@@ -35,7 +35,7 @@ var EVENT_TYPES = {
 var EVENT_DISPLAY = {};
 EVENT_DISPLAY[EVENT_TYPES.FOOD_SURGE] = { icon: '\u2728', label: 'FOOD SURGE!', color: '#4ade80' };
 EVENT_DISPLAY[EVENT_TYPES.SPEED_BURST] = { icon: '\u26A1', label: 'SPEED BURST!', color: '#f97316' };
-EVENT_DISPLAY[EVENT_TYPES.GRAVITY_FLIP] = { icon: '\uD83C\uDF00', label: 'GRAVITY FLIP!', color: '#a855f7' };
+EVENT_DISPLAY[EVENT_TYPES.GRAVITY_FLIP] = { icon: '\u2195\uFE0F', label: 'GRAVITY FLIP!', color: '#a855f7' };
 EVENT_DISPLAY[EVENT_TYPES.PORTAL_STORM] = { icon: '\uD83C\uDF00', label: 'PORTAL STORM!', color: '#8b5cf6' };
 EVENT_DISPLAY[EVENT_TYPES.GOLD_RUSH] = { icon: '\uD83D\uDCB0', label: 'GOLD RUSH!', color: '#fbbf24' };
 
@@ -110,11 +110,12 @@ function generateStormPortals(count, snake, walls, obstacles, existingPortals, h
     return portals;
 }
 
-function mirrorPosition(pos) {
-    return {
-        x: (GRID_SIZE - 1) - pos.x,
-        y: (GRID_SIZE - 1) - pos.y,
-    };
+function mirrorPosition(pos, arenaMinX, arenaMinY, arenaMaxX, arenaMaxY) {
+    var mirroredX = (GRID_SIZE - 1) - pos.x;
+    var mirroredY = (GRID_SIZE - 1) - pos.y;
+    var clampedX = Math.max(arenaMinX, Math.min(arenaMaxX, mirroredX));
+    var clampedY = Math.max(arenaMinY, Math.min(arenaMaxY, mirroredY));
+    return { x: clampedX, y: clampedY };
 }
 
 // --- Tick Update ---
@@ -159,7 +160,7 @@ function tickActiveEvent(waveEvent, gameState, bannerTicks, bannerEvent) {
 
     // SPEED_BURST: transition from warning to active phase
     if (waveEvent.activeEvent === EVENT_TYPES.SPEED_BURST && waveEvent.speedBurstWarning) {
-        if (remaining <= SPEED_BURST_DURATION_TICKS - SPEED_BURST_WARNING_TICKS) {
+        if (remaining <= SPEED_BURST_WARNING_TICKS) {
             return {
                 waveEvent: Object.assign({}, waveEvent, {
                     activeEventTicksLeft: remaining,
@@ -275,7 +276,11 @@ function buildGravityFlipEffects(gameState) {
     if (!gameState.food) {
         return { type: 'gravityFlip', newFoodPos: null };
     }
-    var mirrored = mirrorPosition(gameState.food);
+    var arenaMinX = gameState.arenaMinX !== undefined ? gameState.arenaMinX : 0;
+    var arenaMinY = gameState.arenaMinY !== undefined ? gameState.arenaMinY : 0;
+    var arenaMaxX = gameState.arenaMaxX !== undefined ? gameState.arenaMaxX : GRID_SIZE - 1;
+    var arenaMaxY = gameState.arenaMaxY !== undefined ? gameState.arenaMaxY : GRID_SIZE - 1;
+    var mirrored = mirrorPosition(gameState.food, arenaMinX, arenaMinY, arenaMaxX, arenaMaxY);
     return { type: 'gravityFlip', newFoodPos: mirrored };
 }
 
