@@ -1,6 +1,6 @@
 'use strict';
 
-import { GRID_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
+import { GRID_SIZE, LEVEL_CONFIG, MAX_LEVEL, INITIAL_LIVES } from './constants.js';
 import { getObstaclePositions, getPortalPositions } from './levels.js';
 import { getHunterPositions } from './hunter.js';
 
@@ -31,6 +31,8 @@ export function createInitialState() {
         fragment: null,
         endlessWave: 0,
         endlessConfig: null,
+        lives: INITIAL_LIVES,
+        invincibleTicks: 0,
     };
 }
 

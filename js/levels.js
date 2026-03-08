@@ -25,14 +25,11 @@ export function generateWalls(level) {
     }
 
     if (level === 4) {
-        [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 4 }); });
-        [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 15 }); });
-        [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 4, y: y }); });
-        [5, 6, 7, 8, 11, 12, 13, 14].forEach(function(y) { walls.push({ x: 15, y: y }); });
-        walls.push({ x: 9, y: 7 }, { x: 10, y: 7 });
-        walls.push({ x: 9, y: 12 }, { x: 10, y: 12 });
-        walls.push({ x: 7, y: 9 }, { x: 7, y: 10 });
-        walls.push({ x: 12, y: 9 }, { x: 12, y: 10 });
+        // Cage ring with wider 3-cell gaps at cardinal directions
+        [5, 6, 7, 8, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 4 }); });
+        [5, 6, 7, 8, 12, 13, 14].forEach(function(x) { walls.push({ x: x, y: 15 }); });
+        [5, 6, 7, 8, 12, 13, 14].forEach(function(y) { walls.push({ x: 4, y: y }); });
+        [5, 6, 7, 8, 12, 13, 14].forEach(function(y) { walls.push({ x: 15, y: y }); });
         return walls;
     }
 
@@ -140,9 +137,7 @@ export function generateObstacles(level) {
     if (level === 4) {
         return [
             { x: 9, y: 1, path: [1, 2, 3], axis: 'y', pathIndex: 0, dir: 1 },
-            { x: 10, y: 16, path: [16, 17, 18], axis: 'y', pathIndex: 0, dir: 1 },
             { x: 1, y: 9, path: [1, 2, 3], axis: 'x', pathIndex: 0, dir: 1 },
-            { x: 18, y: 10, path: [18, 17, 16], axis: 'x', pathIndex: 0, dir: 1 },
         ];
     }
 

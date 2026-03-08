@@ -255,6 +255,24 @@ export function playStartSound() {
     });
 }
 
+export function playLifeLostSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Warning descending tone — less dramatic than death, signals danger
+    var tone = createTone(ctx, 'triangle', now, now + 0.35);
+    tone.osc.frequency.setValueAtTime(600, now);
+    tone.osc.frequency.exponentialRampToValueAtTime(200, now + 0.35);
+    tone.gain.gain.setValueAtTime(0.2, now);
+    tone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    // Short noise burst
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.15);
+    buf.gain.gain.setValueAtTime(0.08, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+}
+
 export function playHunterKillSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

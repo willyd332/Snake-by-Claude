@@ -27,11 +27,12 @@ export function tick(prev) {
 
     var config = getLevelConfig(clean.level, clean.endlessConfig);
     var isGhost = clean.activePowerUp && clean.activePowerUp.type === 'ghost';
+    var isInvincible = clean.invincibleTicks > 0;
     var head = clean.snake[0];
     var newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
-    // Boundary: wrap-around or collision
-    if (config.wrapAround || isGhost) {
+    // Boundary: wrap-around or collision (invincible wraps instead of dying)
+    if (config.wrapAround || isGhost || isInvincible) {
         newHead = {
             x: (newHead.x + GRID_SIZE) % GRID_SIZE,
             y: (newHead.y + GRID_SIZE) % GRID_SIZE,
@@ -41,31 +42,31 @@ export function tick(prev) {
         return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary' });
     }
 
-    // Shrinking arena boundary — cannot be bypassed even with ghost
-    if (config.shrinkingArena) {
+    // Shrinking arena boundary — cannot be bypassed even with ghost (invincible can bypass)
+    if (config.shrinkingArena && !isInvincible) {
         if (newHead.x < clean.arenaMinX || newHead.x > clean.arenaMaxX ||
             newHead.y < clean.arenaMinY || newHead.y > clean.arenaMaxY) {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena' });
         }
     }
 
-    // Wall obstacle collision (ghost passes through)
-    if (!isGhost && collides(newHead, clean.walls)) {
+    // Wall obstacle collision (ghost or invincible passes through)
+    if (!isGhost && !isInvincible && collides(newHead, clean.walls)) {
         return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall' });
     }
 
-    // Self collision (ghost passes through)
-    if (!isGhost && collides(newHead, clean.snake)) {
+    // Self collision (ghost or invincible passes through)
+    if (!isGhost && !isInvincible && collides(newHead, clean.snake)) {
         return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self' });
     }
 
-    // Moving obstacle collision (always fatal, even with ghost)
-    if (clean.obstacles.length > 0 && collides(newHead, getObstaclePositions(clean.obstacles))) {
+    // Moving obstacle collision (invincible passes through)
+    if (!isInvincible && clean.obstacles.length > 0 && collides(newHead, getObstaclePositions(clean.obstacles))) {
         return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle' });
     }
 
-    // Hunter collision (ghost passes through hunter body but not head)
-    if (clean.hunter) {
+    // Hunter collision (invincible passes through; ghost passes through body but not head)
+    if (clean.hunter && !isInvincible) {
         var hunterHead = clean.hunter.segments[0];
         var hitHunterHead = newHead.x === hunterHead.x && newHead.y === hunterHead.y;
         if (hitHunterHead) {
@@ -84,7 +85,7 @@ export function tick(prev) {
         var teleportDest = checkPortalTeleport(newHead, clean.portals);
         if (teleportDest) {
             newHead = { x: teleportDest.x + dir.x, y: teleportDest.y + dir.y };
-            if (config.wrapAround || isGhost) {
+            if (config.wrapAround || isGhost || isInvincible) {
                 newHead = {
                     x: (newHead.x + GRID_SIZE) % GRID_SIZE,
                     y: (newHead.y + GRID_SIZE) % GRID_SIZE,
@@ -93,7 +94,7 @@ export function tick(prev) {
                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary' });
             }
-            if (!isGhost && collides(newHead, clean.walls)) {
+            if (!isGhost && !isInvincible && collides(newHead, clean.walls)) {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall' });
             }
         }
@@ -102,8 +103,8 @@ export function tick(prev) {
     // Move obstacles
     var newObstacles = clean.obstacles.length > 0 ? moveObstacles(clean.obstacles) : clean.obstacles;
 
-    // Check if obstacle moved onto snake body
-    if (newObstacles.length > 0) {
+    // Check if obstacle moved onto snake body (invincible ignores)
+    if (!isInvincible && newObstacles.length > 0) {
         var obPositions = getObstaclePositions(newObstacles);
         var snakeHit = obPositions.some(function(op) { return collides(op, [newHead].concat(clean.snake)); });
         if (snakeHit) {
@@ -123,8 +124,8 @@ export function tick(prev) {
     var newPortals = clean.portals;
     var newFood = ate ? null : clean.food;
 
-    // Check if hunter moved onto player snake
-    if (newHunter) {
+    // Check if hunter moved onto player snake (invincible ignores)
+    if (newHunter && !isInvincible) {
         var newHunterHead = newHunter.segments[0];
         var playerHead = newSnake[0];
         if (newHunterHead.x === playerHead.x && newHunterHead.y === playerHead.y) {
@@ -286,7 +287,7 @@ export function tick(prev) {
                 var snakeCrushed = newSnake.some(function(seg) {
                     return collides(seg, shrinkCells);
                 });
-                if (snakeCrushed) {
+                if (snakeCrushed && !isInvincible) {
                     return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush' });
                 }
                 if (newFood && collides(newFood, shrinkCells)) {
@@ -351,6 +352,8 @@ export function tick(prev) {
         fragment: newFragment,
         endlessWave: endlessWave,
         endlessConfig: endlessConfig,
+        lives: clean.lives,
+        invincibleTicks: isInvincible ? clean.invincibleTicks - 1 : 0,
         _collectedPowerUp: collectedPowerUpType,
         _collectedFragment: collectedFragment,
         _collectedFragmentLevel: collectedFragmentLevel,

@@ -1,14 +1,14 @@
 'use strict';
 
-import { CANVAS_SIZE, MAX_LEVEL, AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD } from './constants.js';
-import { getLevelConfig } from './state.js';
+import { CANVAS_SIZE, GRID_SIZE, MAX_LEVEL, AWAKENING_FOOD_THRESHOLD, DELETION_FOOD_THRESHOLD, INVINCIBLE_TICKS } from './constants.js';
+import { getLevelConfig, randomPosition } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import {
     emitBurst, emitExplosion, emitLevelUpShower, emitPortalSwirl,
     triggerShake,
 } from './particles.js';
 import {
-    playEatSound, playLevelUpSound, playDeathSound,
+    playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playFragmentCollectSound, playHunterKillSound, playHunterIntroSound,
 } from './audio.js';
@@ -211,12 +211,55 @@ export function processPostTickEvents(ctx) {
         }
     }
 
-    // Game over: explosion + stop interpolation
+    // Death detected: check lives for respawn or game over
     if (ctx.state.gameOver && !ctx.prevState.gameOver) {
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         ctx.hunterIntroState = null;
 
+        if (ctx.state.lives > 1) {
+            // Life lost: respawn with invincibility instead of game over
+            playLifeLostSound();
+            ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 16, 50, 0.4);
+            ctx.shakeState = triggerShake(5, 0.2);
+
+            // Respawn snake at a safe position (avoids walls, obstacles, portals, hunter)
+            var spawnPos = randomPosition([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter);
+            var spawnSnake = [spawnPos];
+            var newLives = ctx.state.lives - 1;
+            var respawnState = Object.assign({}, ctx.state, {
+                snake: spawnSnake,
+                direction: { x: 0, y: 0 },
+                nextDirection: { x: 0, y: 0 },
+                gameOver: false,
+                started: false,
+                lives: newLives,
+                invincibleTicks: INVINCIBLE_TICKS,
+                powerUp: null,
+                activePowerUp: null,
+                powerUpSpawnCounter: 0,
+                _killedByHunter: false,
+                _deathCause: null,
+            });
+            // Respawn food at safe location
+            respawnState = Object.assign({}, respawnState, {
+                food: randomPosition(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter),
+            });
+            ctx.state = respawnState;
+            ctx.hunterTrailHistory = [];
+
+            // Update lives HUD
+            if (ctx.dom.livesEl) {
+                ctx.dom.livesEl.textContent = newLives;
+            }
+
+            ctx.messageEl.textContent = 'LIFE LOST \u2014 ' + newLives + ' remaining. Arrow keys or swipe to continue';
+            ctx.messageEl.className = 'active';
+            ctx.messageEl.style.color = '#ef4444';
+            return;
+        }
+
+        // Final death — true game over
         // Save endless high scores on death
         if (ctx.endlessMode) {
             setEndlessHighScore(ctx.state.score);

@@ -487,10 +487,15 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         }
         var alpha = 1 - (i / state.snake.length) * 0.5;
         if (isGhost) alpha *= 0.45;
+        if (state.invincibleTicks > 0) {
+            alpha *= Math.sin(Date.now() / 60) * 0.35 + 0.65;
+        }
         var segColor;
         if (konamiActivated) {
             var hue = ((Date.now() / 10) + i * 20) % 360;
             segColor = 'hsl(' + hue + ', 80%, 60%)';
+        } else if (state.invincibleTicks > 0) {
+            segColor = '#ffffff';
         } else {
             segColor = config.color;
         }

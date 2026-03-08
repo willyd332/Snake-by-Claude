@@ -59,6 +59,10 @@
             letter-spacing: 1px;
         }
 
+        #livesHud .value {
+            color: #ef4444;
+        }
+
         canvas {
             border: 2px solid #1a3a5c;
             border-radius: 4px;
@@ -139,6 +143,7 @@
         <div><span>High:</span> <span class="value" id="highScore">0</span></div>
         <div id="powerUpHud"><span class="value" id="powerUpName"></span></div>
         <div id="arenaHud" style="display:none"><span>Arena:</span> <span class="value" id="arenaSize"></span></div>
+        <div id="livesHud" style="display:none"><span>Lives:</span> <span class="value" id="lives">3</span></div>
     </div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="message">Arrow keys or swipe to start</div>

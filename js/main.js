@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, MAX_LEVEL } from './constants.js';
+import { CANVAS_SIZE, MAX_LEVEL, INITIAL_LIVES } from './constants.js';
 import { createInitialState, randomPosition, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
 import { render } from './renderer.js';
@@ -68,6 +68,8 @@ var dom = {
     arenaHudEl: document.getElementById('arenaHud'),
     arenaSizeEl: document.getElementById('arenaSize'),
     levelLabelEl: document.getElementById('levelLabel'),
+    livesHudEl: document.getElementById('livesHud'),
+    livesEl: document.getElementById('lives'),
 };
 
 var messageEl = document.getElementById('message');
@@ -135,6 +137,15 @@ function spawnFragmentForLevel(level, foodEaten) {
     if (isFragmentCollected(level)) return null;
     if (foodEaten < fragData.requiresFood) return null;
     return { x: fragData.position.x, y: fragData.position.y };
+}
+
+function updateLivesHUD(lives) {
+    if (dom.livesEl) {
+        dom.livesEl.textContent = lives;
+    }
+    if (dom.livesHudEl) {
+        dom.livesHudEl.style.display = lives < INITIAL_LIVES ? 'inline' : 'none';
+    }
 }
 
 // --- Screen Management ---
@@ -222,6 +233,7 @@ function startGameAtLevel(level) {
     }
 
     levelStartTime = Date.now();
+    updateLivesHUD(INITIAL_LIVES);
     messageEl.textContent = 'Arrow keys or swipe to start';
     messageEl.className = '';
     messageEl.style.color = '';
@@ -253,6 +265,7 @@ function startEndlessMode() {
     hunterIntroState = null;
 
     dom.levelLabelEl.textContent = 'Wave:';
+    updateLivesHUD(INITIAL_LIVES);
 
     messageEl.textContent = 'ENDLESS MODE \u2014 Swipe or press arrow to begin';
     messageEl.className = '';
@@ -536,6 +549,7 @@ var gameCallbacks = {
         state = Object.assign({}, state, {
             food: randomPosition(state.snake, state.walls, state.obstacles, state.portals, state.powerUp, state.hunter),
         });
+        updateLivesHUD(INITIAL_LIVES);
         messageEl.textContent = '';
         messageEl.className = '';
         messageEl.style.color = '';
