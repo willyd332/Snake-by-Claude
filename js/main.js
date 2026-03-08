@@ -36,6 +36,7 @@ import {
     FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected, collectFragment,
     renderFragmentOverlay, renderCodex,
 } from './fragments.js';
+import { createArchiveState, renderArchive, getArchiveMaxScroll } from './archive.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -59,7 +60,7 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex'
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen', 'ending', 'codex', 'archive'
 var showPrologue = !hasPrologueSeen();
 var currentScreen = showPrologue ? 'prologue' : 'title';
 var prologueState = showPrologue ? createPrologueState() : null;
@@ -68,6 +69,7 @@ var endingState = null;
 var titleState = createTitleState();
 var levelSelectState = createLevelSelectState();
 var codexState = { scrollOffset: 0 };
+var archiveState = createArchiveState();
 var fragmentTextState = null;
 var hunterIntroState = null;
 var hunterTrailHistory = [];
@@ -118,6 +120,12 @@ function switchToTitle() {
 function switchToCodex() {
     currentScreen = 'codex';
     codexState = { scrollOffset: 0 };
+    hideGameplayUI();
+}
+
+function switchToArchive(initialTab) {
+    currentScreen = 'archive';
+    archiveState = createArchiveState(initialTab || 0);
     hideGameplayUI();
 }
 
@@ -220,6 +228,32 @@ setupInput({
         initAudio();
         playMenuSelectSound();
         switchToCodex();
+    },
+    onTitleArchive: function() {
+        initAudio();
+        playMenuSelectSound();
+        switchToArchive(0);
+    },
+
+    // Archive actions
+    onArchiveBack: function() {
+        playMenuNavigateSound();
+        switchToTitle();
+    },
+    onArchiveTabChange: function(delta) {
+        var newTab = archiveState.tab + delta;
+        if (newTab >= 0 && newTab <= 2) {
+            playMenuNavigateSound();
+            archiveState = Object.assign({}, archiveState, { tab: newTab, scrollOffset: 0 });
+        }
+    },
+    onArchiveScroll: function(delta) {
+        var maxScroll = getArchiveMaxScroll(archiveState.tab);
+        var newOffset = Math.max(0, Math.min(maxScroll, archiveState.scrollOffset + delta));
+        if (newOffset !== archiveState.scrollOffset) {
+            playMenuNavigateSound();
+            archiveState = Object.assign({}, archiveState, { scrollOffset: newOffset });
+        }
     },
 
     // Codex actions
@@ -378,6 +412,12 @@ function gameLoop(timestamp) {
 
     if (currentScreen === 'codex') {
         renderCodex(ctx, codexState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    if (currentScreen === 'archive') {
+        renderArchive(ctx, archiveState);
         requestAnimationFrame(gameLoop);
         return;
     }

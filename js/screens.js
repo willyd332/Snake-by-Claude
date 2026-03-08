@@ -1,6 +1,8 @@
 'use strict';
 
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
+import { getCollectedFragments } from './fragments.js';
+import { getUnlockedEndings } from './story.js';
 
 var LEVEL_NAMES = {
     1: 'The Beginning',
@@ -152,11 +154,27 @@ function stepDemoSnake(demo) {
     };
 }
 
+// --- Dynamic Subtitle ---
+function getTitleSubtitle() {
+    var collected = getCollectedFragments();
+    if (collected.length >= 10) return 'System fully mapped.';
+
+    var endings = getUnlockedEndings();
+    if (endings.awakening || endings.deletion || endings.loop) return 'The machine remembers.';
+
+    var highest = getHighestLevel();
+    if (highest >= 8) return 'ALPHA is watching.';
+    if (highest >= 5) return 'Deeper into the machine...';
+
+    return 'THE BLUE COMPUTER';
+}
+
 // --- Title Screen Rendering ---
 export function createTitleState() {
     return {
         demo: createDemoSnake(),
         tickAccum: 0,
+        subtitle: getTitleSubtitle(),
     };
 }
 
@@ -227,6 +245,20 @@ export function renderTitleScreen(ctx, titleState) {
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 
+    // Hunter blip in background (after Level 8)
+    var highest = getHighestLevel();
+    if (highest >= 8) {
+        var now = Date.now();
+        var blipCycle = (now / 4000) % 1;
+        if (blipCycle < 0.25) {
+            var blipAlpha = Math.sin(blipCycle / 0.25 * Math.PI) * 0.25;
+            var blipX = ((now * 0.031 + 137) % (CANVAS_SIZE - CELL_SIZE));
+            var blipY = ((now * 0.019 + 89) % (CANVAS_SIZE - CELL_SIZE));
+            ctx.fillStyle = 'rgba(249, 115, 22, ' + blipAlpha + ')';
+            ctx.fillRect(blipX, blipY, CELL_SIZE - 4, CELL_SIZE - 4);
+        }
+    }
+
     // Dark overlay for readability
     ctx.fillStyle = 'rgba(10, 10, 26, 0.65)';
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
@@ -241,10 +273,17 @@ export function renderTitleScreen(ctx, titleState) {
     ctx.fillText('SNAKE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 60);
     ctx.shadowBlur = 0;
 
-    // Subtitle
-    ctx.fillStyle = '#334155';
+    // Dynamic subtitle (cached in titleState)
+    var subtitle = titleState.subtitle;
+    var isDefaultSubtitle = subtitle === 'THE BLUE COMPUTER';
+    if (isDefaultSubtitle) {
+        ctx.fillStyle = '#334155';
+    } else {
+        var subPulse = Math.sin(Date.now() / 1200) * 0.15 + 0.55;
+        ctx.fillStyle = 'rgba(150, 170, 200, ' + subPulse + ')';
+    }
     ctx.font = '11px Courier New';
-    ctx.fillText('THE BLUE COMPUTER', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 35);
+    ctx.fillText(subtitle, CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 35);
 
     // Divider line
     var lineW = 120;
@@ -259,21 +298,24 @@ export function renderTitleScreen(ctx, titleState) {
     var enterPulse = Math.sin(Date.now() / 600) * 0.3 + 0.7;
     ctx.fillStyle = 'rgba(224, 224, 224, ' + enterPulse + ')';
     ctx.font = '14px Courier New';
-    ctx.fillText('ENTER — Play', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 15);
+    ctx.fillText('ENTER \u2014 Play', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
 
     ctx.fillStyle = 'rgba(150, 150, 170, 0.6)';
     ctx.font = '13px Courier New';
-    ctx.fillText('L — Level Select', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 40);
+    ctx.fillText('L \u2014 Level Select', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 32);
 
     ctx.fillStyle = 'rgba(74, 158, 255, 0.4)';
     ctx.font = '13px Courier New';
-    ctx.fillText('C — Data Codex', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 60);
+    ctx.fillText('C \u2014 Data Codex', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 52);
 
-    // Level dots at bottom
-    var dotY = CANVAS_SIZE / 2 + 90;
+    ctx.fillStyle = 'rgba(150, 130, 170, 0.4)';
+    ctx.font = '13px Courier New';
+    ctx.fillText('A \u2014 Archive', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 72);
+
+    // Level dots
+    var dotY = CANVAS_SIZE / 2 + 98;
     var dotSpacing = 28;
     var dotsStartX = CANVAS_SIZE / 2 - (dotSpacing * (MAX_LEVEL - 1)) / 2;
-    var highest = getHighestLevel();
     for (var lv = 1; lv <= MAX_LEVEL; lv++) {
         var dotX = dotsStartX + (lv - 1) * dotSpacing;
         var lvColor = LEVEL_CONFIG[lv].color;
@@ -296,6 +338,22 @@ export function renderTitleScreen(ctx, titleState) {
     }
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
+
+    // Ending icons below level dots
+    var endings = getUnlockedEndings();
+    var iconY = dotY + 18;
+    var iconSpacing = 24;
+    var iconStartX = CANVAS_SIZE / 2 - iconSpacing;
+    ctx.font = '11px Courier New';
+
+    ctx.fillStyle = endings.awakening ? '#eab308' : 'rgba(80, 80, 80, 0.15)';
+    ctx.fillText('\u2605', iconStartX, iconY);
+
+    ctx.fillStyle = endings.deletion ? '#ef4444' : 'rgba(80, 80, 80, 0.15)';
+    ctx.fillText('\u2716', iconStartX + iconSpacing, iconY);
+
+    ctx.fillStyle = endings.loop ? '#666' : 'rgba(80, 80, 80, 0.15)';
+    ctx.fillText('\u21BB', iconStartX + iconSpacing * 2, iconY);
 
     // Footer
     ctx.fillStyle = 'rgba(100, 100, 120, 0.3)';

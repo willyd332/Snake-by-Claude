@@ -64,6 +64,36 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // --- Archive Screen ---
+        if (screen === 'archive') {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onArchiveBack();
+                return;
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                callbacks.onArchiveTabChange(-1);
+                return;
+            }
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                callbacks.onArchiveTabChange(1);
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onArchiveScroll(-1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onArchiveScroll(1);
+                return;
+            }
+            return;
+        }
+
         // --- Title Screen ---
         if (screen === 'title') {
             if (e.key === 'Enter') {
@@ -79,6 +109,11 @@ export function setupInput(callbacks) {
             if (e.key === 'c' || e.key === 'C') {
                 e.preventDefault();
                 callbacks.onTitleCodex();
+                return;
+            }
+            if (e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                callbacks.onTitleArchive();
                 return;
             }
             return;

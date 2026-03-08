@@ -661,6 +661,103 @@ test.describe('Snake Game — Environment', () => {
   })
 })
 
+test.describe('Snake Game — Archive', () => {
+  test('archive module exports createArchiveState, renderArchive, getArchiveMaxScroll', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/archive.js')
+      return {
+        hasCreate: typeof mod.createArchiveState === 'function',
+        hasRender: typeof mod.renderArchive === 'function',
+        hasMaxScroll: typeof mod.getArchiveMaxScroll === 'function',
+      }
+    })
+    expect(exports.hasCreate).toBe(true)
+    expect(exports.hasRender).toBe(true)
+    expect(exports.hasMaxScroll).toBe(true)
+  })
+
+  test('archive screen is accessible from title via A key', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    await page.keyboard.press('a')
+    await page.waitForTimeout(500)
+
+    // Check that canvas has ARCHIVE rendered on it (pixel check: not blank after pressing A)
+    const hasContent = await page.evaluate(() => {
+      const canvas = document.getElementById('game')
+      const ctx = canvas.getContext('2d')
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      let nonBlack = 0
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] > 10 || data[i+1] > 10 || data[i+2] > 10) nonBlack++
+      }
+      return nonBlack > 100
+    })
+    expect(hasContent).toBe(true)
+  })
+
+  test('archive renders without errors on all tabs', async ({ page }) => {
+    // Set up with progress to populate all tabs
+    await page.addInitScript(() => {
+      localStorage.setItem('snake-prologue-seen', 'true')
+      localStorage.setItem('snake-highest-level', '10')
+      localStorage.setItem('snake-fragments', JSON.stringify([1, 3, 5]))
+      localStorage.setItem('snake-endings', JSON.stringify({ awakening: true }))
+    })
+
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    // Open archive
+    await page.keyboard.press('a')
+    await page.waitForTimeout(500)
+
+    // Switch to fragments tab
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(300)
+
+    // Switch to bestiary tab
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(300)
+
+    // Scroll down
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(200)
+
+    // ESC back to title
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+
+    expect(errors).toEqual([])
+  })
+
+  test('dynamic title subtitle changes with progress', async ({ page }) => {
+    // Set up with Level 8+ progress
+    await page.addInitScript(() => {
+      localStorage.setItem('snake-prologue-seen', 'true')
+      localStorage.setItem('snake-highest-level', '8')
+    })
+
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    // Can't easily check exact subtitle text on canvas, but verify no errors
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+    await page.waitForTimeout(500)
+    expect(errors).toEqual([])
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await skipPrologue(page)

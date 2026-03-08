@@ -24,7 +24,7 @@ var CHAR_SPEED = 35; // ms per character typewriter speed
 
 // --- Inter-Level Story Data ---
 // Compact format: header (terminal), body (narrative), coda (emphasis)
-var INTER_LEVEL_STORIES = {
+export var INTER_LEVEL_STORIES = {
     2: {
         header: 'SECTOR 0x01 \u2014 CLEARED',
         body: ['You explore the grid and find', 'ancient data structures \u2014', 'stone-like walls that predate', 'your existence.'],
