@@ -119,6 +119,7 @@ export function startEndlessMode(g, deps) {
     g.runZoneFoodsThisWave = 0;
     resetStreak();
     g.streakRingEmitted = false;
+    g.frenzyFoodEatenThisFrenzy = 0;
     recordGameStart();
     deps.updateLivesHUD(endlessDiffPreset.livesCount);
 
@@ -156,6 +157,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         runEverCollectedPowerUp: g.runEverCollectedPowerUp || false,
         runFoodEaten: g.runFoodEaten || 0,
         runZoneFoodsThisWave: g.runZoneFoodsThisWave || 0,
+        frenzyFoodEatenThisFrenzy: g.frenzyFoodEatenThisFrenzy || 0,
         recordPowerUpTypeCollected: recordPowerUpTypeCollected,
         recordShieldHit: recordShieldHit,
         getAllPowerUpTypesCollected: getAllPowerUpTypesCollected,
@@ -189,6 +191,7 @@ export function applyEventCtx(g, eventCtx) {
     g.runEverCollectedPowerUp = eventCtx.runEverCollectedPowerUp;
     g.runFoodEaten = eventCtx.runFoodEaten;
     g.runZoneFoodsThisWave = eventCtx.runZoneFoodsThisWave;
+    g.frenzyFoodEatenThisFrenzy = eventCtx.frenzyFoodEatenThisFrenzy;
 }
 
 // --- Gameplay action helpers ---
@@ -249,6 +252,7 @@ export function restartGame(g, deps, newDir) {
     recordBestStreak(newStreak);
     var streakBonus = getStreakBonus(newStreak);
     g.streakRingEmitted = false;
+    g.frenzyFoodEatenThisFrenzy = 0;
 
     if (newStreak >= 5 && deps.tryUnlock) {
         deps.tryUnlock('relentless');

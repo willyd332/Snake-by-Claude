@@ -8,7 +8,7 @@ var STORAGE_KEY = 'snake-achievements';
 var SKIN_KEY = 'snake-active-skin';
 var TRAIL_KEY = 'snake-active-trail';
 
-// --- Achievement Definitions (50 total) ---
+// --- Achievement Definitions (53 total: 28 original + 25 new) ---
 export var ACHIEVEMENTS = [
     // Score milestones (5)
     { id: 'first_byte', name: 'First Byte', desc: 'Score 100 points', category: 'score' },
@@ -51,8 +51,8 @@ export var ACHIEVEMENTS = [
     { id: 'terabyte', name: 'Terabyte', desc: 'Score 25,000 points in one run', category: 'score' },
 
     // Wave milestones — extended (2)
-    { id: 'century', name: 'Century', desc: 'Reach wave 100', category: 'endless' },
     { id: 'deep_space', name: 'Deep Space', desc: 'Reach wave 75', category: 'endless' },
+    { id: 'century', name: 'Century', desc: 'Reach wave 100', category: 'endless' },
 
     // Survival / endurance (4)
     { id: 'serpent_god', name: 'Serpent God', desc: 'Reach length 60', category: 'skill' },
