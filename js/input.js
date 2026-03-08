@@ -24,6 +24,15 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // --- Story Screen (inter-level) ---
+        if (screen === 'story_screen') {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onStoryScreenAdvance();
+            }
+            return;
+        }
+
         // --- Title Screen ---
         if (screen === 'title') {
             if (e.key === 'Enter') {

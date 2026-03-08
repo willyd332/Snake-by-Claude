@@ -17,6 +17,7 @@ import {
 import {
     hasPrologueSeen, markPrologueSeen,
     createPrologueState, renderPrologue,
+    createStoryScreenState, renderStoryScreen,
 } from './story.js';
 import {
     createParticleSystem, updateParticles, renderParticles,
@@ -52,10 +53,11 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'prologue', 'title', 'levelSelect', 'gameplay'
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay', 'story_screen'
 var showPrologue = !hasPrologueSeen();
 var currentScreen = showPrologue ? 'prologue' : 'title';
 var prologueState = showPrologue ? createPrologueState() : null;
+var storyScreenState = null;
 var titleState = createTitleState();
 var levelSelectState = createLevelSelectState();
 
@@ -137,6 +139,16 @@ setupInput({
         currentScreen = 'title';
         titleState = createTitleState();
         hideGameplayUI();
+    },
+
+    // Story screen actions (inter-level)
+    onStoryScreenAdvance: function() {
+        playMenuSelectSound();
+        storyScreenState = null;
+        currentScreen = 'gameplay';
+        showGameplayUI();
+        // Reset lastTick so game doesn't try to catch up on elapsed time
+        state = Object.assign({}, state, { lastTick: 0 });
     },
 
     // Title screen actions
@@ -252,6 +264,12 @@ function gameLoop(timestamp) {
         return;
     }
 
+    if (currentScreen === 'story_screen') {
+        renderStoryScreen(ctx, storyScreenState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     // Update particles and shake every frame (title, level select, gameplay)
     particleSystem = updateParticles(particleSystem, dt);
     shakeState = updateShake(shakeState, dt);
@@ -294,14 +312,24 @@ function gameLoop(timestamp) {
             shakeState = triggerShake(2, 0.1);
         }
 
-        // Level up: shower + bigger shake
+        // Level up: shower + shake + story screen
         if (state.level > prevLevel) {
             playLevelUpSound();
-            ui.showLevelUp(state.level);
             setHighestLevel(state.level);
             var newConfig = getLevelConfig(state.level);
             particleSystem = emitLevelUpShower(particleSystem, CANVAS_SIZE, newConfig.color);
             shakeState = triggerShake(4, 0.3);
+
+            // Show inter-level story screen
+            var newStoryState = createStoryScreenState(state.level);
+            if (newStoryState.lines.length > 0) {
+                storyScreenState = newStoryState;
+                currentScreen = 'story_screen';
+                hideGameplayUI();
+                ui.clearTimers();
+            } else {
+                ui.showLevelUp(state.level);
+            }
         }
 
         // Power-up collected: sparkle burst

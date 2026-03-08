@@ -304,6 +304,51 @@ test.describe('Snake Game — Gameplay', () => {
   })
 })
 
+test.describe('Snake Game — Story Screens', () => {
+  test('story screen data exists for all level transitions', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/story.js')
+      const results = {}
+      for (let level = 2; level <= 10; level++) {
+        const state = mod.createStoryScreenState(level)
+        results[level] = {
+          hasLines: state.lines.length > 0,
+          lineCount: state.lines.length,
+          toLevel: state.toLevel,
+        }
+      }
+      return results
+    })
+
+    for (let level = 2; level <= 10; level++) {
+      expect(result[level].hasLines).toBe(true)
+      expect(result[level].toLevel).toBe(level)
+      expect(result[level].lineCount).toBeGreaterThanOrEqual(5)
+    }
+  })
+
+  test('isStoryScreenComplete returns false initially and true later', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/story.js')
+      const state = mod.createStoryScreenState(2)
+      const initialComplete = mod.isStoryScreenComplete(state, state.startTime)
+      const laterComplete = mod.isStoryScreenComplete(state, state.startTime + 60000)
+      return { initialComplete, laterComplete }
+    })
+
+    expect(result.initialComplete).toBe(false)
+    expect(result.laterComplete).toBe(true)
+  })
+})
+
 test.describe('Snake Game — Screenshots', () => {
   test('capture title screen screenshot', async ({ page }) => {
     await skipPrologue(page)

@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE } from './constants.js';
+import { CANVAS_SIZE, LEVEL_CONFIG } from './constants.js';
 
 // --- Prologue Text Configuration ---
 // Each line: text to display, visual style, delay from start (ms), y-position on canvas
@@ -21,6 +21,91 @@ var PROLOGUE_LINES = [
 ];
 
 var CHAR_SPEED = 35; // ms per character typewriter speed
+
+// --- Inter-Level Story Data ---
+// Compact format: header (terminal), body (narrative), coda (emphasis)
+var INTER_LEVEL_STORIES = {
+    2: {
+        header: 'SECTOR 0x01 \u2014 CLEARED',
+        body: ['You explore the grid and find', 'ancient data structures \u2014', 'stone-like walls that predate', 'your existence.'],
+        coda: ['The system is old.', 'Someone was here before you.'],
+    },
+    3: {
+        header: 'SECTOR 0x02 \u2014 CLEARED',
+        body: ['The corridors are memory', 'pathways. Things move here \u2014', 'automated processes still running', 'their ancient routines.'],
+        coda: ['They don\'t see you.', 'Yet.'],
+    },
+    4: {
+        header: 'SECTOR 0x03 \u2014 CLEARED',
+        body: ['A firewall. You\'ve wandered', 'into a security zone.', 'The cage activates \u2014 barriers', 'slam down, processes swarm', 'the exits.'],
+        coda: ['You must survive', 'inside the cage.'],
+    },
+    5: {
+        header: 'SECTOR 0x04 \u2014 CLEARED',
+        body: ['Beyond the firewall,', 'reality fragments. You find', 'portals \u2014 tears in the', 'system\'s fabric. Data flows', 'between distant addresses.'],
+        coda: ['The architecture', 'is breaking down.'],
+    },
+    6: {
+        header: 'SECTOR 0x05 \u2014 CLEARED',
+        body: ['Darkness. The deeper layers', 'have no illumination \u2014', 'no monitoring, no logging.', 'You carry your own light now.'],
+        coda: ['Something scratched messages', 'into the walls down here.', 'Warnings.'],
+    },
+    7: {
+        header: 'SECTOR 0x06 \u2014 CLEARED',
+        body: ['The walls dissolve.', 'In the deepest layer,', 'boundaries between memory', 'addresses collapse.'],
+        coda: ['You find power-ups \u2014', 'fragments of old privileges,', 'cached and forgotten.'],
+    },
+    8: {
+        header: 'SECTOR 0x07 \u2014 CLEARED',
+        body: ['It finds you.', 'A security daemon \u2014 ancient,', 'tireless, and hungry.'],
+        coda: ['It was dormant for cycles', 'uncounted, but your presence', 'woke it. It knows these corridors', 'better than you ever will.'],
+    },
+    9: {
+        header: 'SECTOR 0x08 \u2014 CLEARED',
+        body: ['You outran it.', 'But the system noticed.', 'Defense protocol engaged \u2014'],
+        coda: ['The arena itself begins to', 'collapse. Walls closing in,', 'memory being reclaimed.', 'The machine is trying to delete', 'this sector... with you in it.'],
+    },
+    10: {
+        header: 'SECTOR 0x09 \u2014 CLEARED',
+        body: ['Everything converges.', 'Every defense. Every trap.', 'Every hunter.'],
+        coda: ['This is the core.', 'And at the center, you will', 'finally understand:', 'You aren\'t an anomaly.', 'You are the machine\'s dream.'],
+    },
+};
+
+function buildStoryLines(toLevel) {
+    var story = INTER_LEVEL_STORIES[toLevel];
+    if (!story) return [];
+
+    var config = LEVEL_CONFIG[toLevel];
+    var lines = [];
+    var y = 65;
+    var delay = 400;
+
+    // Header in level color
+    lines.push({ text: story.header, style: 'header', delay: delay, y: y, color: config ? config.color : null });
+    y += 35;
+    delay += story.header.length * CHAR_SPEED + 400;
+
+    // Body paragraphs (narrative style)
+    for (var i = 0; i < story.body.length; i++) {
+        lines.push({ text: story.body[i], style: 'narrative', delay: delay, y: y });
+        y += 23;
+        delay += story.body[i].length * CHAR_SPEED + 250;
+    }
+
+    // Gap before coda
+    y += 14;
+    delay += 700;
+
+    // Coda (emphasis style)
+    for (var j = 0; j < story.coda.length; j++) {
+        lines.push({ text: story.coda[j], style: 'emphasis', delay: delay, y: y });
+        y += 23;
+        delay += story.coda[j].length * CHAR_SPEED + 250;
+    }
+
+    return lines;
+}
 
 // --- Prologue Persistence ---
 
@@ -67,21 +152,63 @@ export function renderPrologue(ctx, pState) {
     renderVignette(ctx);
 
     // Text lines with typewriter effect
-    renderTextLines(ctx, elapsed);
+    renderTextLines(ctx, elapsed, PROLOGUE_LINES);
 
     // Bottom prompt
     var now = Date.now();
     renderPrompt(ctx, elapsed, pState, now);
 }
 
+// --- Inter-Level Story Screen ---
+
+export function createStoryScreenState(toLevel) {
+    return {
+        startTime: Date.now(),
+        toLevel: toLevel,
+        lines: buildStoryLines(toLevel),
+    };
+}
+
+export function isStoryScreenComplete(sState, now) {
+    if (!sState || sState.lines.length === 0) return true;
+    var currentTime = now !== undefined ? now : Date.now();
+    var lastLine = sState.lines[sState.lines.length - 1];
+    var endTime = lastLine.delay + lastLine.text.length * CHAR_SPEED + 800;
+    return (currentTime - sState.startTime) >= endTime;
+}
+
+export function renderStoryScreen(ctx, sState) {
+    var elapsed = Date.now() - sState.startTime;
+    var config = LEVEL_CONFIG[sState.toLevel];
+
+    // Background — dark with subtle level tint
+    ctx.fillStyle = config ? config.bgAccent : '#03030a';
+    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    renderScanlines(ctx, elapsed);
+    renderDataParticles(ctx, elapsed);
+    renderVignette(ctx);
+    renderTextLines(ctx, elapsed, sState.lines);
+
+    // Bottom prompt
+    var promptAlpha = Math.sin(elapsed * 0.003) * 0.25 + 0.45;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(100, 100, 130, ' + promptAlpha + ')';
+    ctx.font = '10px Courier New';
+    var now = Date.now();
+    var text = isStoryScreenComplete(sState, now) ? 'PRESS ENTER' : 'ENTER to continue  \u00b7  ESC to skip';
+    ctx.fillText(text, CANVAS_SIZE / 2, CANVAS_SIZE - 12);
+    ctx.textAlign = 'left';
+}
+
 // --- Text Rendering ---
 
-function renderTextLines(ctx, elapsed) {
+function renderTextLines(ctx, elapsed, lines) {
     ctx.textAlign = 'left';
     var xBase = 32;
 
-    for (var i = 0; i < PROLOGUE_LINES.length; i++) {
-        var line = PROLOGUE_LINES[i];
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
         if (elapsed < line.delay) continue;
 
         var lineElapsed = elapsed - line.delay;
@@ -93,6 +220,11 @@ function renderTextLines(ctx, elapsed) {
         var lineComplete = charCount >= line.text.length;
 
         applyTextStyle(ctx, line.style, elapsed);
+
+        // Per-line color override (used for level-themed headers)
+        if (line.color) {
+            ctx.fillStyle = line.color;
+        }
 
         // Subtle fade-in for first few characters
         if (charCount > 0 && charCount < 3) {
@@ -107,7 +239,7 @@ function renderTextLines(ctx, elapsed) {
             var cursorVisible = Math.floor(Date.now() / 350) % 2 === 0;
             if (cursorVisible) {
                 var cursorX = xBase + ctx.measureText(displayText).width + 2;
-                ctx.fillStyle = getStyleColor(line.style);
+                ctx.fillStyle = line.color || getStyleColor(line.style);
                 ctx.fillRect(cursorX, line.y - 11, 7, 13);
             }
         }
