@@ -222,7 +222,7 @@ export function tick(prev) {
         newCombo = eatResult.comboState;
         // Golden apple: 3x base score before combo multiplier
         var foodScoreMultiplier = ateFoodType === 'golden' ? 3 : 1;
-        _scoreGained = COMBO_BASE_SCORE * foodScoreMultiplier * eatResult.comboState.multiplier;
+        _scoreGained = eatResult.scoreGained * foodScoreMultiplier;
         newScore = clean.score + _scoreGained;
         _comboMultiplier = eatResult.comboState.multiplier;
         _comboIncreased = eatResult.wasComboIncrease;
@@ -273,8 +273,10 @@ export function tick(prev) {
 
     // Food type effects: clock triggers time slow, speed triggers speed boost
     if (ate && ateFoodType === 'clock') {
+        newShieldActive = false;
         newActivePowerUp = { type: 'timeSlow', ticksLeft: FOOD_CLOCK_TICKS, fromFood: true };
     } else if (ate && ateFoodType === 'speed') {
+        newShieldActive = false;
         newActivePowerUp = { type: 'speedBoost', ticksLeft: FOOD_SPEED_TICKS, fromFood: true };
     }
 
