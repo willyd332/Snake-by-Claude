@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Snake Game — The Blue Computer</title>
+    <title>Snake, by Claude</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <meta property="og:title" content="Snake — The Blue Computer">
-    <meta property="og:description" content="An endless snake game built inside The Blue Computer.">
+    <meta property="og:title" content="Snake, by Claude">
+    <meta property="og:description" content="An endless snake game built by Claude.">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary">
     <style>
@@ -30,6 +30,17 @@
             -webkit-user-select: none;
             user-select: none;
             -webkit-touch-callout: none;
+            position: relative;
+        }
+
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
         }
 
         h1 {
@@ -37,6 +48,9 @@
             color: #4a9eff;
             margin-bottom: 8px;
             letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 0 10px rgba(74, 158, 255, 0.5), 0 0 20px rgba(74, 158, 255, 0.2);
         }
 
         #hud {
@@ -44,15 +58,19 @@
             gap: 32px;
             margin-bottom: 8px;
             font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
         }
 
         #hud span {
-            color: #888;
+            color: #999;
+            text-shadow: 0 0 4px rgba(150, 150, 170, 0.3);
         }
 
         #hud .value {
             color: #4a9eff;
             font-weight: bold;
+            text-shadow: 0 0 6px rgba(74, 158, 255, 0.4);
         }
 
         #powerUpHud {
@@ -86,7 +104,7 @@
             100% { opacity: 1; text-shadow: 0 0 8px #f59e0b; }
         }
 
-        canvas {
+        #game {
             border: 2px solid #1a3a5c;
             border-radius: 4px;
             background: #0d1117;
@@ -94,6 +112,9 @@
             max-width: calc(100vw - 24px);
             max-height: calc(100vh - 120px);
             aspect-ratio: 1 / 1;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.08), 0 0 40px rgba(74, 158, 255, 0.04);
         }
 
         #message {
@@ -101,6 +122,8 @@
             font-size: 0.85rem;
             color: #666;
             height: 20px;
+            position: relative;
+            z-index: 1;
         }
 
         #message.active {
@@ -159,6 +182,7 @@
     </style>
 </head>
 <body>
+    <canvas id="bgCanvas"></canvas>
     <h1 id="title">SNAKE</h1>
     <div id="hud">
         <div><span>Score:</span> <span class="value" id="score">0</span></div>

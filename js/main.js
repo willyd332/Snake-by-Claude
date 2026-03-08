@@ -51,12 +51,23 @@ import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
 import { getCurrentStreak, getStreakBonus, STREAK_VISUAL_THRESHOLD } from './streak.js';
 import { getTwoPowerUpChoices, spawnPowerUpOfType } from './powerups.js';
 import { showPowerUpChoice, dismissPowerUpChoice, isPowerUpChoiceActive } from './power-up-choice.js';
+import { createBackgroundState, updateBackground, renderBackground } from './background.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
 var ctx = canvas.getContext('2d');
 canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
+
+// --- Background canvas setup ---
+var bgCanvas = document.getElementById('bgCanvas');
+var bgCtx = bgCanvas.getContext('2d');
+function resizeBgCanvas() {
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+}
+resizeBgCanvas();
+window.addEventListener('resize', resizeBgCanvas);
 
 // Apply persisted invert filter on load
 applyInvertFilter(canvas);
@@ -124,6 +135,8 @@ var g = {
 };
 
 var matrixState = createMatrixState();
+var bgState = createBackgroundState();
+var lastBgTheme = getSettingsRef().backgroundTheme || 'neonGrid';
 var lastFrameTime = 0;
 var konamiRef = { value: localStorage.getItem('snake-konami') === 'true' };
 
@@ -180,6 +193,15 @@ function gameLoop(timestamp) {
     var dt = lastFrameTime > 0 ? (timestamp - lastFrameTime) / 1000 : 0.016;
     dt = Math.min(dt, 0.05); // cap delta to avoid huge jumps
     lastFrameTime = timestamp;
+
+    // Update and render background theme (behind game canvas)
+    var bgTheme = getSettingsRef().backgroundTheme || 'neonGrid';
+    if (bgTheme !== lastBgTheme) {
+        bgState = createBackgroundState();
+        lastBgTheme = bgTheme;
+    }
+    bgState = updateBackground(bgState, dt, bgTheme, bgCanvas.width, bgCanvas.height);
+    renderBackground(bgCtx, bgState, bgTheme, bgCanvas.width, bgCanvas.height);
 
     // Update particles, shake, head flash, matrix rain, and score popups every frame
     g.particleSystem = updateParticles(g.particleSystem, dt);

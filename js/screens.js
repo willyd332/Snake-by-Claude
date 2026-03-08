@@ -2,6 +2,7 @@
 
 import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE, LEVEL_CONFIG, MAX_LEVEL } from './constants.js';
 import { getSettings, getSettingsItems, getDifficultyLabel } from './settings.js';
+import { getThemeLabel } from './background.js';
 
 // --- Demo Snake for Title Screen ---
 function createDemoSnake() {
@@ -199,34 +200,48 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
     var titleGlow = Math.sin(Date.now() / 800) * 0.3 + 0.7;
     ctx.textAlign = 'center';
     ctx.shadowColor = '#4a9eff';
-    ctx.shadowBlur = 20 * titleGlow;
+    ctx.shadowBlur = 30 * titleGlow;
     ctx.fillStyle = '#4a9eff';
-    ctx.font = 'bold 52px Courier New';
-    ctx.fillText('SNAKE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 60);
+    ctx.font = 'bold 48px Courier New';
+    ctx.fillText('SNAKE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 68);
+    // Double-render for stronger glow
+    ctx.shadowBlur = 12 * titleGlow;
+    ctx.fillText('SNAKE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 68);
+    ctx.shadowBlur = 0;
+
+    // Byline
+    ctx.fillStyle = 'rgba(74, 158, 255, 0.45)';
+    ctx.shadowColor = '#4a9eff';
+    ctx.shadowBlur = 8;
+    ctx.font = '13px Courier New';
+    ctx.fillText('by Claude', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 48);
     ctx.shadowBlur = 0;
 
     // Subtitle
     ctx.fillStyle = '#334155';
     ctx.font = '11px Courier New';
-    ctx.fillText('INFINITE ENDLESS MODE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 35);
+    ctx.fillText('INFINITE ENDLESS MODE', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 32);
 
     // Divider line
     var lineW = 120;
-    ctx.strokeStyle = 'rgba(74, 158, 255, 0.2)';
+    ctx.strokeStyle = 'rgba(74, 158, 255, 0.25)';
+    ctx.shadowColor = '#4a9eff';
+    ctx.shadowBlur = 4;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(CANVAS_SIZE / 2 - lineW / 2, CANVAS_SIZE / 2 - 20);
-    ctx.lineTo(CANVAS_SIZE / 2 + lineW / 2, CANVAS_SIZE / 2 - 20);
+    ctx.moveTo(CANVAS_SIZE / 2 - lineW / 2, CANVAS_SIZE / 2 - 17);
+    ctx.lineTo(CANVAS_SIZE / 2 + lineW / 2, CANVAS_SIZE / 2 - 17);
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
     // Menu options (simplified — no level select, no archive, no codex)
     var menuItems = [
-        { text: 'Play', color: 'rgba(224, 224, 224, ', alpha: 0.7, font: '14px Courier New' },
-        { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.4, font: '13px Courier New' },
-        { text: 'Settings', color: 'rgba(120, 120, 140, ', alpha: 0.35, font: '12px Courier New' },
+        { text: 'Play', color: 'rgba(224, 224, 224, ', alpha: 0.85, font: '14px Courier New', glowColor: '#e0e0e0' },
+        { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.6, font: '13px Courier New', glowColor: '#fbbf24' },
+        { text: 'Settings', color: 'rgba(160, 160, 180, ', alpha: 0.5, font: '12px Courier New', glowColor: '#a0a0b4' },
     ];
     var menuKeys = ['ENTER', 'T', 'S'];
-    var menuYOffsets = [8, 28, 46];
+    var menuYOffsets = [8, 30, 50];
     var hasMenuIndex = menuIndex !== undefined && menuIndex !== null && menuIndex >= 0;
 
     for (var mi = 0; mi < menuItems.length; mi++) {
@@ -237,29 +252,41 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
         if (isMenuSelected) {
             // Highlight background
             roundRect(ctx, CANVAS_SIZE / 2 - 105, itemY - 13, 210, 18, 3);
-            ctx.fillStyle = 'rgba(74, 158, 255, 0.1)';
+            ctx.fillStyle = 'rgba(74, 158, 255, 0.12)';
             ctx.fill();
-            // Bright text with arrow
+            // Bright text with arrow and glow
             var selPulse = Math.sin(Date.now() / 400) * 0.15 + 0.85;
+            ctx.shadowColor = '#4a9eff';
+            ctx.shadowBlur = 12;
             ctx.fillStyle = 'rgba(255, 255, 255, ' + selPulse + ')';
             ctx.font = 'bold ' + item.font;
             ctx.fillText('\u25B8 ' + item.text, CANVAS_SIZE / 2, itemY);
+            ctx.shadowBlur = 0;
         } else if (mi === 0 && !hasMenuIndex) {
             var enterPulse = Math.sin(Date.now() / 600) * 0.3 + 0.7;
+            ctx.shadowColor = item.glowColor;
+            ctx.shadowBlur = 6 * enterPulse;
             ctx.fillStyle = item.color + enterPulse + ')';
             ctx.font = item.font;
             ctx.fillText(menuKeys[mi] + ' \u2014 ' + item.text, CANVAS_SIZE / 2, itemY);
+            ctx.shadowBlur = 0;
         } else {
+            ctx.shadowColor = item.glowColor;
+            ctx.shadowBlur = 4;
             ctx.fillStyle = item.color + item.alpha + ')';
             ctx.font = item.font;
             ctx.fillText(menuKeys[mi] + ' \u2014 ' + item.text, CANVAS_SIZE / 2, itemY);
+            ctx.shadowBlur = 0;
         }
     }
 
     // Footer
-    ctx.fillStyle = 'rgba(100, 100, 120, 0.3)';
+    ctx.shadowColor = 'rgba(100, 100, 120, 0.3)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = 'rgba(130, 130, 150, 0.4)';
     ctx.font = '10px Courier New';
     ctx.fillText('swipe or arrow keys', CANVAS_SIZE / 2, CANVAS_SIZE - 20);
+    ctx.shadowBlur = 0;
 
     ctx.textAlign = 'left';
 }
@@ -274,11 +301,14 @@ export function renderSettings(ctx, settingsState) {
     ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-    // Header
+    // Header with glow
     ctx.textAlign = 'center';
+    ctx.shadowColor = '#4a9eff';
+    ctx.shadowBlur = 16;
     ctx.fillStyle = '#4a9eff';
     ctx.font = 'bold 22px Courier New';
     ctx.fillText('SETTINGS', CANVAS_SIZE / 2, 40);
+    ctx.shadowBlur = 0;
 
     ctx.strokeStyle = 'rgba(74, 158, 255, 0.2)';
     ctx.lineWidth = 1;
@@ -288,8 +318,8 @@ export function renderSettings(ctx, settingsState) {
     ctx.stroke();
 
     // Settings rows
-    var rowH = 42;
-    var startY = 80;
+    var rowH = 36;
+    var startY = 70;
     var rowW = 280;
     var rowX = (CANVAS_SIZE - rowW) / 2;
 
@@ -311,10 +341,15 @@ export function renderSettings(ctx, settingsState) {
         // Label
         ctx.textAlign = 'left';
         var labelAlpha = isSelected ? 0.9 : 0.5;
+        if (isSelected) {
+            ctx.shadowColor = 'rgba(224, 224, 224, 0.3)';
+            ctx.shadowBlur = 6;
+        }
         ctx.fillStyle = 'rgba(224, 224, 224, ' + labelAlpha + ')';
         ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
         var labelX = rowX + 16;
         ctx.fillText(item.label, labelX, ry + 21);
+        ctx.shadowBlur = 0;
 
         // Value
         ctx.textAlign = 'right';
@@ -323,11 +358,18 @@ export function renderSettings(ctx, settingsState) {
 
         if (item.type === 'toggle') {
             var isOn = value;
+            var toggleColor = isOn ? '#22c55e' : '#ef4444';
+            var toggleAlpha = isSelected ? 0.9 : 0.6;
             ctx.fillStyle = isOn
-                ? 'rgba(34, 197, 94, ' + (isSelected ? 0.9 : 0.6) + ')'
+                ? 'rgba(34, 197, 94, ' + toggleAlpha + ')'
                 : 'rgba(239, 68, 68, ' + (isSelected ? 0.7 : 0.4) + ')';
+            if (isSelected) {
+                ctx.shadowColor = toggleColor;
+                ctx.shadowBlur = 8;
+            }
             ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
             ctx.fillText(isOn ? 'ON' : 'OFF', valueX, ry + 21);
+            ctx.shadowBlur = 0;
         } else if (item.type === 'cycle') {
             var cycleLabel;
             var cycleColor;
@@ -335,6 +377,16 @@ export function renderSettings(ctx, settingsState) {
                 cycleLabel = getDifficultyLabel(value);
                 var diffColors = { Easy: '#22c55e', Normal: '#eab308', Hard: '#ef4444' };
                 cycleColor = diffColors[cycleLabel] || '#e0e0e0';
+            } else if (item.key === 'backgroundTheme') {
+                cycleLabel = getThemeLabel(value);
+                var themeColors = {
+                    'Neon Grid': '#4a9eff',
+                    'Digital Rain': '#00ff41',
+                    'Dark Space': '#c0c8ff',
+                    'Geometry': '#a855f7',
+                    'Solid Dark': '#888',
+                };
+                cycleColor = themeColors[cycleLabel] || '#e0e0e0';
             } else {
                 // Generic cycle display: capitalize the value string
                 cycleLabel = String(value).charAt(0).toUpperCase() + String(value).slice(1);
@@ -343,8 +395,13 @@ export function renderSettings(ctx, settingsState) {
             }
             ctx.fillStyle = cycleColor;
             ctx.globalAlpha = isSelected ? 0.9 : 0.6;
+            if (isSelected) {
+                ctx.shadowColor = cycleColor;
+                ctx.shadowBlur = 8;
+            }
             ctx.font = isSelected ? 'bold 13px Courier New' : '13px Courier New';
             ctx.fillText('\u25C0 ' + cycleLabel + ' \u25B6', valueX, ry + 21);
+            ctx.shadowBlur = 0;
             ctx.globalAlpha = 1;
         }
     }
@@ -369,9 +426,12 @@ export function renderSettings(ctx, settingsState) {
     }
 
     // Footer
-    ctx.fillStyle = 'rgba(150, 150, 170, 0.5)';
+    ctx.shadowColor = 'rgba(150, 150, 170, 0.3)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = 'rgba(150, 150, 170, 0.55)';
     ctx.font = '11px Courier New';
     ctx.fillText('Swipe / \u2191\u2193 Navigate  \u00b7  Tap / ENTER Toggle  \u00b7  Hold / ESC Back', CANVAS_SIZE / 2, CANVAS_SIZE - 16);
+    ctx.shadowBlur = 0;
 
     ctx.textAlign = 'left';
 }

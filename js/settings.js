@@ -15,6 +15,7 @@ var DIFFICULTY_PRESETS = {
 
 var DIFFICULTY_ORDER = ['easy', 'normal', 'hard'];
 var MUSIC_VOLUME_ORDER = ['off', 'low', 'medium', 'high'];
+var BACKGROUND_THEME_ORDER = ['neonGrid', 'digitalRain', 'darkSpace', 'geometry', 'solid'];
 
 var MUSIC_VOLUME_VALUES = {
     off: 0,
@@ -24,17 +25,19 @@ var MUSIC_VOLUME_VALUES = {
 };
 
 var SETTINGS_ITEMS = [
-    { key: 'difficulty', label: 'Difficulty',    type: 'cycle', options: DIFFICULTY_ORDER },
-    { key: 'gridLines',  label: 'Grid Lines',   type: 'toggle' },
-    { key: 'particles',  label: 'Particles',    type: 'toggle' },
-    { key: 'screenShake',label: 'Screen Shake',  type: 'toggle' },
-    { key: 'sound',      label: 'Sound',         type: 'toggle' },
-    { key: 'musicLevel', label: 'Music',         type: 'cycle', options: MUSIC_VOLUME_ORDER },
-    { key: 'highContrast',label: 'High Contrast', type: 'toggle' },
+    { key: 'difficulty',      label: 'Difficulty',    type: 'cycle', options: DIFFICULTY_ORDER },
+    { key: 'backgroundTheme', label: 'Background',    type: 'cycle', options: BACKGROUND_THEME_ORDER },
+    { key: 'gridLines',       label: 'Grid Lines',    type: 'toggle' },
+    { key: 'particles',       label: 'Particles',     type: 'toggle' },
+    { key: 'screenShake',     label: 'Screen Shake',  type: 'toggle' },
+    { key: 'sound',           label: 'Sound',          type: 'toggle' },
+    { key: 'musicLevel',      label: 'Music',          type: 'cycle', options: MUSIC_VOLUME_ORDER },
+    { key: 'highContrast',    label: 'High Contrast',  type: 'toggle' },
 ];
 
 var DEFAULT_SETTINGS = {
     difficulty: 'normal',
+    backgroundTheme: 'neonGrid',
     gridLines: true,
     particles: true,
     screenShake: true,
