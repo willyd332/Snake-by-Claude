@@ -218,7 +218,7 @@ function updateSelection(overlay, index, choices) {
 
 function cleanup() {
     if (choiceKeyHandler) {
-        document.removeEventListener('keydown', choiceKeyHandler);
+        document.removeEventListener('keydown', choiceKeyHandler, true);
         choiceKeyHandler = null;
     }
     if (autoTimeoutId) {
@@ -241,7 +241,7 @@ function resolveChoice(index) {
     choiceResolve = null;
 
     if (choiceKeyHandler) {
-        document.removeEventListener('keydown', choiceKeyHandler);
+        document.removeEventListener('keydown', choiceKeyHandler, true);
         choiceKeyHandler = null;
     }
     if (autoTimeoutId) {

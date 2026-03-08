@@ -131,6 +131,11 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // While power-up choice overlay is active: block gameplay keys (choice handles input)
+        if (callbacks.isPowerUpChoiceActive && callbacks.isPowerUpChoiceActive()) {
+            return;
+        }
+
         // ESC to return to title (when not mid-game)
         if (e.key === 'Escape' && (!state.started || state.gameOver)) {
             e.preventDefault();

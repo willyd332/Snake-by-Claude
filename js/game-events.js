@@ -30,12 +30,15 @@ import { setGridSize } from './constants.js';
 import {
     recordFoodEaten, recordDeath, recordPortalUse,
     recordPowerUpCollected, recordBestScore, recordEndlessWave,
+    getStats,
 } from './stats.js';
+import { ACHIEVEMENTS, isAchievementUnlocked } from './achievements.js';
 import {
     startSpeedrunTimer, stopSpeedrunTimer,
 } from './speedrun.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { showWavePreview, dismissWavePreview } from './wave-preview.js';
+import { dismissPowerUpChoice } from './power-up-choice.js';
 
 // --- Helper: compute Manhattan distance to nearest hunter segment ---
 export function computeHunterDistance(state) {
@@ -139,10 +142,46 @@ export function processPostTickEvents(ctx) {
         if (ctx.state.score >= 1000) ctx.tryUnlock('megabyte');
         if (ctx.state.score >= 2000) ctx.tryUnlock('centurion');
         if (ctx.state.score >= 5000) ctx.tryUnlock('transcendent');
+        if (ctx.state.score >= 10000) ctx.tryUnlock('gigabyte');
+        if (ctx.state.score >= 25000) ctx.tryUnlock('terabyte');
 
         // Length achievements
         if (ctx.state.snake.length >= 20) ctx.tryUnlock('long_snake');
         if (ctx.state.snake.length >= 40) ctx.tryUnlock('serpent_king');
+        if (ctx.state.snake.length >= 60) ctx.tryUnlock('serpent_god');
+
+        // Combo achievements
+        if (ctx.state._comboMultiplier >= 5) ctx.tryUnlock('combo_king');
+        if (ctx.state.combo && ctx.state.combo.streak >= 20) ctx.tryUnlock('hypnotic');
+
+        // Lifetime food achievement
+        var statsOnEat = getStats();
+        if (statsOnEat.totalFoodEaten >= 1000) ctx.tryUnlock('foodie');
+
+        // Per-run food achievement
+        if (ctx.runFoodEaten >= 100) ctx.tryUnlock('big_eater');
+
+        // Ghost + zone: ate food while ghost active inside a score zone
+        if (ctx.state.activePowerUp && ctx.state.activePowerUp.type === 'ghost' && ctx.state._activeZone) {
+            ctx.tryUnlock('ghost_zone');
+        }
+
+        // Combo + zone: ate food in a score zone at x3 or higher combo
+        if (ctx.state._activeZone && ctx.state._comboMultiplier >= 3) {
+            ctx.tryUnlock('combo_zone');
+        }
+
+        // Track foods eaten in score zone per wave (for quick_draw) and zone_hunter
+        if (ctx.state._activeZone) {
+            ctx.zoneFoodsThisWave = (ctx.zoneFoodsThisWave || 0) + 1;
+            if (ctx.zoneFoodsThisWave >= 3) {
+                ctx.tryUnlock('quick_draw');
+            }
+            // Zone hunter: eat food in a x3 multiplier zone
+            if (ctx.state._activeZone.multiplier >= 3) {
+                ctx.tryUnlock('zone_hunter');
+            }
+        }
     }
 
     // Reactive music: update combo arpeggio layer on any combo change
@@ -170,6 +209,8 @@ export function processPostTickEvents(ctx) {
         if (ctx.state.endlessWave >= 15) ctx.tryUnlock('deep_runner');
         if (ctx.state.endlessWave >= 25) ctx.tryUnlock('marathoner');
         if (ctx.state.endlessWave >= 50) ctx.tryUnlock('legend');
+        if (ctx.state.endlessWave >= 75) ctx.tryUnlock('deep_space');
+        if (ctx.state.endlessWave >= 100) ctx.tryUnlock('century');
 
         // Speed demon: wave 21+ means speed is at minimum (40ms)
         if (ctx.state.endlessWave >= 21) ctx.tryUnlock('speed_demon');
@@ -182,6 +223,44 @@ export function processPostTickEvents(ctx) {
             var maxLives = getDifficultyPreset(getSettingsRef().difficulty).livesCount;
             if (ctx.state.lives >= maxLives) ctx.tryUnlock('iron_will');
         }
+
+        // Iron core: reach wave 10 without losing a life
+        if (ctx.state.endlessWave >= 10) {
+            var maxLivesCore = getDifficultyPreset(getSettingsRef().difficulty).livesCount;
+            if (ctx.state.lives >= maxLivesCore) ctx.tryUnlock('iron_core');
+        }
+
+        // Pacifist: completed a wave without collecting any power-ups
+        if (!ctx.runPowerUpCollectedThisWave) {
+            ctx.tryUnlock('pacifist');
+        }
+
+        // Purist: reached wave 15 without ever collecting a power-up
+        if (ctx.state.endlessWave >= 15 && !ctx.runEverCollectedPowerUp) {
+            ctx.tryUnlock('no_power_legend');
+        }
+
+        // Wrap survivor: count waves with wrap-around active
+        if (ctx.prevState.endlessConfig && ctx.prevState.endlessConfig.wrapAround) {
+            ctx.runWrapWaves = (ctx.runWrapWaves || 0) + 1;
+            if (ctx.runWrapWaves >= 5) ctx.tryUnlock('wrap_survivor');
+        }
+
+        // Alpha dodger: consecutive hunter waves survived
+        if (ctx.prevState.hunter) {
+            ctx.runConsecutiveHunterWaves = (ctx.runConsecutiveHunterWaves || 0) + 1;
+            if (ctx.runConsecutiveHunterWaves >= 3) ctx.tryUnlock('alpha_dodger');
+        } else {
+            ctx.runConsecutiveHunterWaves = 0;
+        }
+
+        // Long haul: check on wave transitions too (accumulated from past sessions)
+        var longHaulWaveStats = getStats();
+        if (longHaulWaveStats.totalTimePlayed >= 10 * 60 * 1000) ctx.tryUnlock('long_haul');
+
+        // Reset per-wave tracking
+        ctx.runPowerUpCollectedThisWave = false;
+        ctx.zoneFoodsThisWave = 0;
 
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
@@ -246,6 +325,18 @@ export function processPostTickEvents(ctx) {
     // Power-up collected: sparkle burst
     if (ctx.state._collectedPowerUp) {
         recordPowerUpCollected();
+        // Track per-wave and lifetime power-up collection for achievements
+        ctx.runPowerUpCollectedThisWave = true;
+        ctx.runEverCollectedPowerUp = true;
+        ctx.recordPowerUpTypeCollected(ctx.state._collectedPowerUp);
+        // Lifetime power-up count
+        var puStats = getStats();
+        if (puStats.powerUpsCollected >= 50) ctx.tryUnlock('power_addict');
+        // Type collector: all 5 types collected at least once
+        var types = ctx.getAllPowerUpTypesCollected();
+        if (types.timeSlow && types.ghost && types.shield && types.magnet && types.frenzy) {
+            ctx.tryUnlock('type_collector');
+        }
         if (ctx.state._collectedPowerUp === 'ghost') ctx.tryUnlock('ghost_rider');
         if (ctx.state._collectedPowerUp === 'timeSlow') ctx.tryUnlock('power_collector');
         var collectedDef = getPowerUpDef(ctx.state._collectedPowerUp);
@@ -328,6 +419,9 @@ export function processPostTickEvents(ctx) {
 
     // Shield broke: absorbed a lethal hit — dramatic flash + particles
     if (ctx.state._shieldBroke) {
+        ctx.recordShieldHit();
+        var shieldStats = getStats();
+        if (shieldStats.shieldHitsAbsorbed >= 5) ctx.tryUnlock('shield_hero');
         onMusicNearMiss();
         playShieldBreakSound();
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#22d3ee', 20, 70, 0.5);
@@ -422,6 +516,9 @@ export function processPostTickEvents(ctx) {
             recordPortalUse();
             playPortalSound();
             ctx.tryUnlock('portal_master');
+            // Portal hopper: 10 portals in one run
+            ctx.runPortalUses = (ctx.runPortalUses || 0) + 1;
+            if (ctx.runPortalUses >= 10) ctx.tryUnlock('portal_hopper');
             var portalColor = ctx.config.portalColor || '#8b5cf6';
             ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, ctx.prevState.snake[0].x, ctx.prevState.snake[0].y, portalColor);
             ctx.particleSystem = emitPortalSwirl(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, portalColor);
@@ -431,6 +528,7 @@ export function processPostTickEvents(ctx) {
     // Death detected: check lives for respawn or game over
     if (ctx.state.gameOver && !ctx.prevState.gameOver) {
         dismissWavePreview();
+        dismissPowerUpChoice();
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         ctx.hunterIntroState = null;
@@ -515,6 +613,7 @@ export function processPostTickEvents(ctx) {
 
         if (ctx.state._killedByHunter) {
             // ALPHA kill: distinctive sound, orange particles, heavier shake
+            ctx.tryUnlock('hunter_bait');
             playHunterKillSound();
             ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, ctx.config.hunterColor || '#f97316', '#ff2200');
             ctx.shakeState = triggerShake(SHAKE_HUNTER_KILL.intensity, SHAKE_HUNTER_KILL.duration);
@@ -523,5 +622,19 @@ export function processPostTickEvents(ctx) {
             ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, ctx.config.color, '#ef4444');
             ctx.shakeState = triggerShake(SHAKE_DEATH.intensity, SHAKE_DEATH.duration);
         }
+
+        // Long haul: check lifetime time played on death (past sessions only — current session
+        // time is added on restart, so this checks previously accumulated time)
+        var longHaulStats = getStats();
+        if (longHaulStats.totalTimePlayed >= 10 * 60 * 1000) ctx.tryUnlock('long_haul');
+
+        // Completionist: check if all other achievements are now unlocked
+        var unlocked = unlockAchievement === undefined ? [] : [];
+        // We check via isAchievementUnlocked imported from achievements.js
+        var allUnlocked = ACHIEVEMENTS.filter(function(a) { return a.id !== 'completionist'; }).every(function(a) {
+            return isAchievementUnlocked(a.id);
+        });
+        if (allUnlocked) ctx.tryUnlock('completionist');
     }
 }
+

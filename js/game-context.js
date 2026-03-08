@@ -19,6 +19,7 @@ import {
 } from './streak.js';
 import { createSpeedrunState, resetSpeedrun } from './speedrun.js';
 import { createWaveEventState } from './wave-events.js';
+import { dismissPowerUpChoice } from './power-up-choice.js';
 
 // --- Screen UI helpers ---
 
@@ -38,7 +39,9 @@ export function hideGameplayUI(hudEl, titleEl, messageEl) {
 
 export function switchToTitle(g, deps) {
     stopMusic();
+    dismissPowerUpChoice();
     g.waveTransitionActive = false;
+    g.powerUpChoiceActive = false;
     g.currentScreen = 'title';
     g.titleMenuIndex = null;
     setGridSize(20);
@@ -62,8 +65,10 @@ export function switchToSettings(g, deps) {
 }
 
 export function startEndlessMode(g, deps) {
+    dismissPowerUpChoice();
     g.currentScreen = 'gameplay';
     g.waveTransitionActive = false;
+    g.powerUpChoiceActive = false;
     setGridSize(ENDLESS_GRID_SIZE);
     deps.canvas.width = CANVAS_SIZE;
     deps.canvas.height = CANVAS_SIZE;
@@ -141,6 +146,17 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         messageEl: deps.messageEl, dom: deps.dom, ui: deps.ui,
         tryUnlock: deps.tryUnlock,
         hideGameplayUI: deps.hideGameplayUI,
+        // Per-run tracking for new achievements
+        runPortalUses: g.runPortalUses || 0,
+        runWrapWaves: g.runWrapWaves || 0,
+        runNoPowerUpWaves: g.runNoPowerUpWaves || 0,
+        runPowerUpCollectedThisWave: g.runPowerUpCollectedThisWave || false,
+        runConsecutiveHunterWaves: g.runConsecutiveHunterWaves || 0,
+        runEverCollectedPowerUp: g.runEverCollectedPowerUp || false,
+        runFoodEaten: g.runFoodEaten || 0,
+        recordPowerUpTypeCollected: recordPowerUpTypeCollected,
+        recordShieldHit: recordShieldHit,
+        getAllPowerUpTypesCollected: getAllPowerUpTypesCollected,
         // Wave transition: callbacks that directly update the mutable game context
         setWaveTransitionActive: function(active) { g.waveTransitionActive = active; },
         grantWaveStartInvulnerability: function(ticks) {
@@ -163,13 +179,22 @@ export function applyEventCtx(g, eventCtx) {
     g.currentScreen = eventCtx.currentScreen;
     g.speedrunState = eventCtx.speedrunState;
     g.scorePopups = eventCtx.scorePopups;
+    g.runPortalUses = eventCtx.runPortalUses;
+    g.runWrapWaves = eventCtx.runWrapWaves;
+    g.runNoPowerUpWaves = eventCtx.runNoPowerUpWaves;
+    g.runPowerUpCollectedThisWave = eventCtx.runPowerUpCollectedThisWave;
+    g.runConsecutiveHunterWaves = eventCtx.runConsecutiveHunterWaves;
+    g.runEverCollectedPowerUp = eventCtx.runEverCollectedPowerUp;
+    g.runFoodEaten = eventCtx.runFoodEaten;
 }
 
 // --- Gameplay action helpers ---
 
 export function restartGame(g, deps, newDir) {
     stopMusic();
+    dismissPowerUpChoice();
     g.waveTransitionActive = false;
+    g.powerUpChoiceActive = false;
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;
@@ -204,6 +229,12 @@ export function restartGame(g, deps, newDir) {
     g.runFoodEaten = 0;
     g.runPrevHighScore = g.highScore || 0;
     g.summaryVisible = false;
+    g.runPortalUses = 0;
+    g.runWrapWaves = 0;
+    g.runNoPowerUpWaves = 0;
+    g.runPowerUpCollectedThisWave = false;
+    g.runConsecutiveHunterWaves = 0;
+    g.runEverCollectedPowerUp = false;
 
     var restartDiff = getDifficultyPreset(getSettings().difficulty);
     setGridSize(ENDLESS_GRID_SIZE);

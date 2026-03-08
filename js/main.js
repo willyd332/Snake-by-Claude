@@ -351,8 +351,8 @@ function gameLoop(timestamp) {
 
     var elapsed = timestamp - g.state.lastTick;
 
-    // Pause game tick processing while wave transition overlay is showing
-    if (g.waveTransitionActive) {
+    // Pause game tick processing while wave transition or power-up choice overlay is showing
+    if (g.waveTransitionActive || g.powerUpChoiceActive) {
         // Keep lastTick current so the snake doesn't lurch forward on resume
         g.state = Object.assign({}, g.state, { lastTick: timestamp });
         elapsed = 0;
@@ -423,6 +423,32 @@ function gameLoop(timestamp) {
             var eventCtx = buildEventCtx(g, prevState, prevLevel, config, navDeps);
             processPostTickEvents(eventCtx);
             applyEventCtx(g, eventCtx);
+
+            // Power-up choice: if the tick flagged a pending choice, pause and show UI
+            if (g.state._powerUpChoicePending && !g.powerUpChoiceActive && g.state.started && !g.state.gameOver) {
+                g.powerUpChoiceActive = true;
+                var choiceWave = g.state.endlessWave;
+                var choices = getTwoPowerUpChoices(choiceWave);
+                showPowerUpChoice(choices).then(function(chosenIndex) {
+                    // -1 means dismissed (game over, restart, etc.)
+                    if (chosenIndex >= 0 && chosenIndex < choices.length && g.state.started && !g.state.gameOver) {
+                        var chosenDef = choices[chosenIndex];
+                        var spawned = spawnPowerUpOfType(
+                            chosenDef,
+                            g.state.snake,
+                            g.state.walls,
+                            g.state.obstacles,
+                            g.state.portals,
+                            g.state.food,
+                            g.state.hunter
+                        );
+                        if (spawned) {
+                            g.state = Object.assign({}, g.state, { powerUp: spawned });
+                        }
+                    }
+                    g.powerUpChoiceActive = false;
+                });
+            }
         }
 
         // --- Per-tick adaptive music update ---

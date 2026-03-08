@@ -39,6 +39,7 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
         getScreen: function() { return g.currentScreen; },
         isReplaying: function() { return g.replayState !== null; },
         isSummaryVisible: function() { return !!g.summaryVisible; },
+        isPowerUpChoiceActive: function() { return !!g.powerUpChoiceActive; },
         onReplaySkip: function() { g.replaySkipRequested = true; },
 
         // Title screen actions
