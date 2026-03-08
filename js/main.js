@@ -15,6 +15,10 @@ import {
     getHighestLevel, setHighestLevel,
 } from './screens.js';
 import {
+    hasPrologueSeen, markPrologueSeen,
+    createPrologueState, renderPrologue,
+} from './story.js';
+import {
     createParticleSystem, updateParticles, renderParticles,
     emitBurst, emitExplosion, emitSparkle, emitLevelUpShower,
     emitPortalSwirl,
@@ -48,8 +52,10 @@ var hudEl = document.getElementById('hud');
 var titleEl = document.getElementById('title');
 
 // --- Screen State ---
-// Screens: 'title', 'levelSelect', 'gameplay'
-var currentScreen = 'title';
+// Screens: 'prologue', 'title', 'levelSelect', 'gameplay'
+var showPrologue = !hasPrologueSeen();
+var currentScreen = showPrologue ? 'prologue' : 'title';
+var prologueState = showPrologue ? createPrologueState() : null;
 var titleState = createTitleState();
 var levelSelectState = createLevelSelectState();
 
@@ -121,6 +127,17 @@ setupInput({
     getState: function() { return state; },
     getScreen: function() { return currentScreen; },
     getLevelSelectState: function() { return levelSelectState; },
+
+    // Prologue actions
+    onPrologueAdvance: function() {
+        initAudio();
+        markPrologueSeen();
+        playMenuSelectSound();
+        prologueState = null;
+        currentScreen = 'title';
+        titleState = createTitleState();
+        hideGameplayUI();
+    },
 
     // Title screen actions
     onTitlePlay: function() {
@@ -229,7 +246,13 @@ function gameLoop(timestamp) {
     dt = Math.min(dt, 0.05); // cap delta to avoid huge jumps
     lastFrameTime = timestamp;
 
-    // Update particles and shake every frame (all screens)
+    if (currentScreen === 'prologue') {
+        renderPrologue(ctx, prologueState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    // Update particles and shake every frame (title, level select, gameplay)
     particleSystem = updateParticles(particleSystem, dt);
     shakeState = updateShake(shakeState, dt);
 

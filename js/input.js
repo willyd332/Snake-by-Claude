@@ -15,6 +15,15 @@ export function setupInput(callbacks) {
     document.addEventListener('keydown', function(e) {
         var screen = callbacks.getScreen();
 
+        // --- Prologue ---
+        if (screen === 'prologue') {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                callbacks.onPrologueAdvance();
+            }
+            return;
+        }
+
         // --- Title Screen ---
         if (screen === 'title') {
             if (e.key === 'Enter') {
