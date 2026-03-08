@@ -3,7 +3,7 @@
 import { CANVAS_SIZE } from './constants.js';
 import { createInitialState, getLevelConfig } from './state.js';
 import { tick } from './tick.js';
-import { render } from './renderer.js';
+import { render, renderScorePopups } from './renderer.js';
 import { createUI } from './ui.js';
 import { setupInput } from './input.js';
 import { setupTouch } from './touch.js';
@@ -101,6 +101,7 @@ var g = {
     prevSnake: null,
     prevHunterSegments: null,
     highScore: parseInt(localStorage.getItem('snake-endless-highscore') || '0', 10),
+    scorePopups: [],
 };
 
 var matrixState = createMatrixState();
@@ -161,10 +162,15 @@ function gameLoop(timestamp) {
     dt = Math.min(dt, 0.05); // cap delta to avoid huge jumps
     lastFrameTime = timestamp;
 
-    // Update particles, shake, and matrix rain every frame
+    // Update particles, shake, matrix rain, and score popups every frame
     g.particleSystem = updateParticles(g.particleSystem, dt);
     g.shakeState = updateShake(g.shakeState, dt);
     matrixState = updateMatrixState(matrixState, dt);
+    if (g.scorePopups && g.scorePopups.length > 0) {
+        g.scorePopups = g.scorePopups
+            .map(function(p) { return { x: p.x, y: p.y + p.vy, text: p.text, alpha: p.alpha - dt * 1.2, vy: p.vy, color: p.color }; })
+            .filter(function(p) { return p.alpha > 0; });
+    }
 
     if (g.currentScreen === 'title') {
         g.titleState = updateTitleState(g.titleState);
@@ -284,7 +290,7 @@ function gameLoop(timestamp) {
 
         // --- Record frame for death replay ---
         if (g.state.started && !g.state.gameOver) {
-            g.replayBuffer = recordFrame(g.replayBuffer, g.state);
+            g.replayBuffer = recordFrame(g.replayBuffer, g.state, g.state.direction);
         }
 
         // --- Hunter Trail Tracking ---
@@ -357,6 +363,9 @@ function gameLoop(timestamp) {
     renderMatrixRain(ctx, matrixState);
     if (frameSettings.particles) {
         renderParticles(ctx, g.particleSystem);
+    }
+    if (g.state.started && !g.replayState) {
+        renderScorePopups(ctx, g.scorePopups);
     }
 
     ctx.restore();

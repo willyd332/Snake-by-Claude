@@ -1,6 +1,6 @@
 'use strict';
 
-import { CANVAS_SIZE, GRID_SIZE, INVINCIBLE_TICKS } from './constants.js';
+import { CANVAS_SIZE, GRID_SIZE, CELL_SIZE, INVINCIBLE_TICKS } from './constants.js';
 import { getLevelConfig, randomPosition, randomPositionInBounds } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import {
@@ -37,6 +37,16 @@ export function processPostTickEvents(ctx) {
         playEatSound();
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state._ateFoodPos.x, ctx.state._ateFoodPos.y, ctx.config.foodColor, 12, 60, 0.5);
         ctx.shakeState = triggerShake(2, 0.1);
+
+        // Score popup at food position
+        ctx.scorePopups = (ctx.scorePopups || []).concat([{
+            x: ctx.state._ateFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
+            y: ctx.state._ateFoodPos.y * CELL_SIZE + CELL_SIZE / 2,
+            text: '+10',
+            alpha: 1,
+            vy: -0.8,
+            color: '#fbbf24',
+        }]);
 
         // Stats: food eaten + snake length
         recordFoodEaten(ctx.state.snake.length);
@@ -134,6 +144,16 @@ export function processPostTickEvents(ctx) {
             playPowerUpCollectSound();
             ctx.ui.showPowerUpCollected(collectedDef);
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, collectedDef.glowColor, 16, 50, 0.6);
+
+            // Popup label for power-up at snake head position
+            ctx.scorePopups = (ctx.scorePopups || []).concat([{
+                x: ctx.state.snake[0].x * CELL_SIZE + CELL_SIZE / 2,
+                y: ctx.state.snake[0].y * CELL_SIZE + CELL_SIZE / 2,
+                text: collectedDef.name + '!',
+                alpha: 1,
+                vy: -0.8,
+                color: collectedDef.color,
+            }]);
         }
     }
 

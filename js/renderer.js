@@ -743,6 +743,26 @@ export function renderReplayGhost(ctx, currentFrame, trailFrames, config, progre
     ctx.restore();
 }
 
+// --- Score Popup Rendering ---
+export function renderScorePopups(ctx, popups) {
+    if (!popups || popups.length === 0) return;
+    ctx.save();
+    ctx.textAlign = 'center';
+    for (var i = 0; i < popups.length; i++) {
+        var p = popups[i];
+        ctx.globalAlpha = p.alpha;
+        ctx.font = 'bold 11px Courier New';
+        ctx.fillStyle = p.color || '#fbbf24';
+        ctx.shadowColor = p.color || '#fbbf24';
+        ctx.shadowBlur = 6;
+        ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+    ctx.restore();
+}
+
 // --- Trail Rendering ---
 function renderTrailEffect(ctx, trailHistory, config, trailType) {
     ctx.save();

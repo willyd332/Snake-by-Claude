@@ -74,6 +74,7 @@ export function startEndlessMode(g, deps) {
     g.replaySkipRequested = false;
     g.replayDeathContext = null;
     g.deathAnimation = null;
+    g.scorePopups = [];
 
     var wave1Config = getEndlessConfig(1);
     var endlessDiffPreset = getDifficultyPreset(getSettings().difficulty);
@@ -114,6 +115,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         hunterIntroState: g.hunterIntroState,
         currentScreen: g.currentScreen, config: config,
         speedrunState: g.speedrunState,
+        scorePopups: g.scorePopups,
         messageEl: deps.messageEl, dom: deps.dom, ui: deps.ui,
         tryUnlock: deps.tryUnlock,
         hideGameplayUI: deps.hideGameplayUI,
@@ -131,6 +133,7 @@ export function applyEventCtx(g, eventCtx) {
     g.hunterIntroState = eventCtx.hunterIntroState;
     g.currentScreen = eventCtx.currentScreen;
     g.speedrunState = eventCtx.speedrunState;
+    g.scorePopups = eventCtx.scorePopups;
 }
 
 // --- Gameplay action helpers ---
@@ -164,6 +167,7 @@ export function restartGame(g, deps, newDir) {
     g.replaySkipRequested = false;
     g.replayDeathContext = null;
     g.deathAnimation = null;
+    g.scorePopups = [];
 
     var restartDiff = getDifficultyPreset(getSettings().difficulty);
     setGridSize(ENDLESS_GRID_SIZE);
