@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game — The Blue Computer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a1a;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            color: #4a9eff;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        #hud {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        #hud span {
+            color: #888;
+        }
+
+        #hud .value {
+            color: #4a9eff;
+            font-weight: bold;
+        }
+
+        canvas {
+            border: 2px solid #1a3a5c;
+            border-radius: 4px;
+            background: #0d1117;
+        }
+
+        #message {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #666;
+            height: 20px;
+        }
+
+        #message.active {
+            color: #4a9eff;
+        }
+    </style>
+</head>
+<body>
+    <h1>SNAKE</h1>
+    <div id="hud">
+        <div><span>Score:</span> <span class="value" id="score">0</span></div>
+        <div><span>Level:</span> <span class="value" id="level">1</span></div>
+        <div><span>High:</span> <span class="value" id="highScore">0</span></div>
+    </div>
+    <canvas id="game" width="400" height="400"></canvas>
+    <div id="message">Press any arrow key to start</div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // --- Constants ---
+        const GRID_SIZE = 20;
+        const CELL_SIZE = 20;
+        const CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
+        const FOOD_TO_LEVEL_UP = 5;
+
+        const LEVEL_CONFIG = {
+            1: { speed: 150, color: '#22c55e', foodColor: '#ef4444', bgAccent: '#0d1117' },
+            2: { speed: 120, color: '#3b82f6', foodColor: '#f59e0b', bgAccent: '#0d1320' },
+            3: { speed: 90,  color: '#a855f7', foodColor: '#ec4899', bgAccent: '#130d1a' },
+        };
+
+        const MAX_LEVEL = Object.keys(LEVEL_CONFIG).length;
+
+        // --- Canvas setup ---
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        canvas.width = CANVAS_SIZE;
+        canvas.height = CANVAS_SIZE;
+
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const highScoreEl = document.getElementById('highScore');
+        const messageEl = document.getElementById('message');
+
+        // --- State ---
+        function createInitialState() {
+            return {
+                snake: [{ x: 10, y: 10 }],
+                direction: { x: 0, y: 0 },
+                nextDirection: { x: 0, y: 0 },
+                food: null,
+                score: 0,
+                level: 1,
+                foodEaten: 0,
+                gameOver: false,
+                started: false,
+                lastTick: 0,
+            };
+        }
+
+        let state = createInitialState();
+        let highScore = parseInt(localStorage.getItem('snake-highscore') || '0', 10);
+        highScoreEl.textContent = highScore;
+
+        // --- Pure helpers ---
+        function randomPosition(snake) {
+            let pos;
+            do {
+                pos = {
+                    x: Math.floor(Math.random() * GRID_SIZE),
+                    y: Math.floor(Math.random() * GRID_SIZE),
+                };
+            } while (snake.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; }));
+            return pos;
+        }
+
+        function getLevelConfig(level) {
+            var clamped = Math.min(level, MAX_LEVEL);
+            return LEVEL_CONFIG[clamped];
+        }
+
+        function collides(pos, segments) {
+            return segments.some(function(seg) { return seg.x === pos.x && seg.y === pos.y; });
+        }
+
+        // --- State transitions (immutable) ---
+        function tick(prev) {
+            if (prev.gameOver || !prev.started) return prev;
+
+            var dir = prev.nextDirection;
+            if (dir.x === 0 && dir.y === 0) return prev;
+
+            var head = prev.snake[0];
+            var newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+            // Wall collision
+            if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
+                newHead.y < 0 || newHead.y >= GRID_SIZE) {
+                return Object.assign({}, prev, { gameOver: true, direction: dir });
+            }
+
+            // Self collision (check against current body, excluding tail if not eating)
+            if (collides(newHead, prev.snake)) {
+                return Object.assign({}, prev, { gameOver: true, direction: dir });
+            }
+
+            var ate = prev.food && newHead.x === prev.food.x && newHead.y === prev.food.y;
+            var newSnake = [newHead].concat(ate ? prev.snake : prev.snake.slice(0, -1));
+            var newScore = ate ? prev.score + 10 : prev.score;
+            var newFoodEaten = ate ? prev.foodEaten + 1 : prev.foodEaten;
+            var newLevel = prev.level;
+            var newFood = ate ? null : prev.food;
+
+            // Level up check
+            if (newFoodEaten >= FOOD_TO_LEVEL_UP && newLevel < MAX_LEVEL) {
+                newLevel = prev.level + 1;
+                newFoodEaten = 0;
+            }
+
+            // Spawn food if needed
+            if (!newFood) {
+                newFood = randomPosition(newSnake);
+            }
+
+            return {
+                snake: newSnake,
+                direction: dir,
+                nextDirection: dir,
+                food: newFood,
+                score: newScore,
+                level: newLevel,
+                foodEaten: newFoodEaten,
+                gameOver: false,
+                started: true,
+                lastTick: prev.lastTick,
+            };
+        }
+
+        // --- Rendering ---
+        function render(s) {
+            var config = getLevelConfig(s.level);
+
+            // Clear
+            ctx.fillStyle = config.bgAccent;
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+            // Grid lines (subtle)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 0.5;
+            for (var i = 0; i <= GRID_SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, CANVAS_SIZE);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_SIZE);
+                ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE);
+                ctx.stroke();
+            }
+
+            // Food
+            if (s.food) {
+                ctx.fillStyle = config.foodColor;
+                ctx.shadowColor = config.foodColor;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(
+                    s.food.x * CELL_SIZE + CELL_SIZE / 2,
+                    s.food.y * CELL_SIZE + CELL_SIZE / 2,
+                    CELL_SIZE / 2 - 2,
+                    0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Snake
+            s.snake.forEach(function(seg, i) {
+                var alpha = 1 - (i / s.snake.length) * 0.5;
+                ctx.fillStyle = config.color;
+                ctx.globalAlpha = alpha;
+                var padding = i === 0 ? 1 : 2;
+                ctx.fillRect(
+                    seg.x * CELL_SIZE + padding,
+                    seg.y * CELL_SIZE + padding,
+                    CELL_SIZE - padding * 2,
+                    CELL_SIZE - padding * 2
+                );
+            });
+            ctx.globalAlpha = 1;
+
+            // Game over overlay
+            if (s.gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 28px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
+
+                ctx.fillStyle = '#888';
+                ctx.font = '14px Courier New';
+                ctx.fillText('Score: ' + s.score, CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 10);
+                ctx.fillText('Press any arrow key to restart', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 35);
+                ctx.textAlign = 'left';
+            }
+
+            // HUD
+            scoreEl.textContent = s.score;
+            levelEl.textContent = s.level;
+        }
+
+        // --- Input ---
+        var DIRECTION_MAP = {
+            ArrowUp:    { x: 0, y: -1 },
+            ArrowDown:  { x: 0, y: 1 },
+            ArrowLeft:  { x: -1, y: 0 },
+            ArrowRight: { x: 1, y: 0 },
+        };
+
+        document.addEventListener('keydown', function(e) {
+            var newDir = DIRECTION_MAP[e.key];
+            if (!newDir) return;
+
+            e.preventDefault();
+
+            if (state.gameOver) {
+                // Update high score
+                if (state.score > highScore) {
+                    highScore = state.score;
+                    localStorage.setItem('snake-highscore', String(highScore));
+                    highScoreEl.textContent = highScore;
+                }
+                state = createInitialState();
+                state = Object.assign({}, state, {
+                    started: true,
+                    nextDirection: newDir,
+                    food: randomPosition(state.snake),
+                });
+                messageEl.textContent = '';
+                messageEl.className = '';
+                return;
+            }
+
+            if (!state.started) {
+                state = Object.assign({}, state, {
+                    started: true,
+                    nextDirection: newDir,
+                    food: randomPosition(state.snake),
+                });
+                messageEl.textContent = '';
+                messageEl.className = '';
+                return;
+            }
+
+            // Prevent 180-degree reversal
+            var isOpposite = (newDir.x + state.direction.x === 0 && newDir.y + state.direction.y === 0);
+            if (!isOpposite) {
+                state = Object.assign({}, state, { nextDirection: newDir });
+            }
+        });
+
+        // --- Game loop ---
+        function gameLoop(timestamp) {
+            var config = getLevelConfig(state.level);
+            var elapsed = timestamp - state.lastTick;
+
+            if (elapsed >= config.speed) {
+                state = tick(Object.assign({}, state, { lastTick: timestamp }));
+                state = Object.assign({}, state, { lastTick: timestamp });
+            }
+
+            render(state);
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Start ---
+        render(state);
+        requestAnimationFrame(gameLoop);
+    })();
+    </script>
+</body>
+</html>
