@@ -7,8 +7,7 @@
 
 import { render, renderReplayGhost } from './renderer.js';
 import { renderMatrixRain } from './secrets.js';
-import { renderParticles } from './particles.js';
-import { getShakeOffset } from './particles.js';
+import { renderParticles, getShakeOffset } from './particles.js';
 import {
     replayTick, isReplayComplete, getReplayFrame,
     getReplayProgress, getReplayTrail,
