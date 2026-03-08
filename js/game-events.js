@@ -343,6 +343,12 @@ export function processPostTickEvents(ctx) {
         ctx.hunterIntroState = null;
 
         if (ctx.state.lives > 1) {
+            // Life lost: cancel any in-progress wave transition so the game loop
+            // doesn't stay frozen (waveTransitionActive = true) permanently.
+            if (ctx.setWaveTransitionActive) {
+                ctx.setWaveTransitionActive(false);
+            }
+
             // Life lost: respawn with invincibility instead of game over
             playLifeLostSound();
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 16, 50, 0.4);

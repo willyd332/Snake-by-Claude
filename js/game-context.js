@@ -133,6 +133,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         // Wave transition: callbacks that directly update the mutable game context
         setWaveTransitionActive: function(active) { g.waveTransitionActive = active; },
         grantWaveStartInvulnerability: function(ticks) {
+            if (!g.waveTransitionActive) return; // transition was cancelled (death or restart)
             g.state = Object.assign({}, g.state, { invincibleTicks: ticks });
         },
     };
