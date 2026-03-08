@@ -11,6 +11,8 @@ import {
     playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playFragmentCollectSound, playHunterKillSound, playHunterIntroSound,
+    playBossFoodPulseSound, playBossShadowCloneSpawnSound, playBossShockwaveSound,
+    playBossPhaseTransitionSound, playBossDeathSound,
 } from './audio.js';
 import { getFragmentForLevel, collectFragment, getCollectedFragments } from './fragments.js';
 import { createBossState } from './boss.js';
@@ -59,7 +61,7 @@ export function processPostTickEvents(ctx) {
             localStorage.setItem('snake-highscore', String(ctx.highScore));
             ctx.dom.highScoreEl.textContent = ctx.highScore;
         }
-        playLevelUpSound();
+        playBossDeathSound();
         ctx.endingState = createEndingState('awakening');
         unlockEnding('awakening');
         ctx.tryUnlock('transcendence');
@@ -221,15 +223,26 @@ export function processPostTickEvents(ctx) {
     // Boss food pulse: visual burst from hunter
     if (ctx.state._bossPulseTriggered && ctx.state.hunter) {
         var pulseHead = ctx.state.hunter.segments[0];
+        playBossFoodPulseSound();
         ctx.particleSystem = emitBurst(ctx.particleSystem, pulseHead.x, pulseHead.y, '#ff6600', 20, 80, 0.6);
         ctx.shakeState = triggerShake(4, 0.2);
     }
 
-    // Boss phase transition: dramatic shake
+    // Boss phase transition: dramatic shake + escalating sound
     if (ctx.state._bossPhaseChanged && ctx.state.bossState) {
         var phaseShakeIntensity = ctx.state.bossState.phase === 3 ? 10 : 6;
+        playBossPhaseTransitionSound(ctx.state.bossState.phase);
         ctx.shakeState = triggerShake(phaseShakeIntensity, 0.4);
         ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ff4400', 24, 90, 0.7);
+        // Shadow clones materialize at phase 2 entry
+        if (ctx.state.bossState.phase === 2) {
+            playBossShadowCloneSpawnSound();
+        }
+    }
+
+    // Boss shockwave activation: alarming crunch as arena closes
+    if (ctx.state._bossShockwaveActivated) {
+        playBossShockwaveSound();
     }
 
     // Arena shrink: shake

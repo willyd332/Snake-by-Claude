@@ -361,3 +361,190 @@ export function playHunterIntroSound() {
     stab.gain.gain.setValueAtTime(0.08, now + 0.15);
     stab.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 }
+
+// --- Boss-Specific Sound Effects ---
+
+// Phase 1: Food pulse broadcast — ethereal pulsing wave from the boss
+export function playBossFoodPulseSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Sweeping sine wave: low to high, then decay — feels like a broadcast ping
+    var sweep = createTone(ctx, 'sine', now, now + 0.5);
+    sweep.osc.frequency.setValueAtTime(200, now);
+    sweep.osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+    sweep.osc.frequency.exponentialRampToValueAtTime(300, now + 0.5);
+    sweep.gain.gain.setValueAtTime(0, now);
+    sweep.gain.gain.linearRampToValueAtTime(0.18, now + 0.05);
+    sweep.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    // Ethereal shimmer: two high sine tones
+    var shimmer1 = createTone(ctx, 'sine', now + 0.1, now + 0.45);
+    shimmer1.osc.frequency.setValueAtTime(1400, now + 0.1);
+    shimmer1.osc.frequency.linearRampToValueAtTime(1600, now + 0.45);
+    shimmer1.gain.gain.setValueAtTime(0, now + 0.1);
+    shimmer1.gain.gain.linearRampToValueAtTime(0.07, now + 0.15);
+    shimmer1.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    var shimmer2 = createTone(ctx, 'sine', now + 0.18, now + 0.4);
+    shimmer2.osc.frequency.setValueAtTime(2000, now + 0.18);
+    shimmer2.osc.frequency.linearRampToValueAtTime(1800, now + 0.4);
+    shimmer2.gain.gain.setValueAtTime(0, now + 0.18);
+    shimmer2.gain.gain.linearRampToValueAtTime(0.05, now + 0.22);
+    shimmer2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+}
+
+// Phase 2: Shadow clone spawn — dark, menacing materialization
+export function playBossShadowCloneSpawnSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Deep descending growl: sawtooth drone materializing from nothing
+    var growl = createTone(ctx, 'sawtooth', now, now + 0.6);
+    growl.osc.frequency.setValueAtTime(180, now);
+    growl.osc.frequency.exponentialRampToValueAtTime(55, now + 0.6);
+    growl.gain.gain.setValueAtTime(0, now);
+    growl.gain.gain.linearRampToValueAtTime(0.22, now + 0.08);
+    growl.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    // Sinister high whine: brief square stab
+    var whine = createTone(ctx, 'square', now, now + 0.12);
+    whine.osc.frequency.setValueAtTime(900, now);
+    whine.osc.frequency.exponentialRampToValueAtTime(400, now + 0.12);
+    whine.gain.gain.setValueAtTime(0.1, now);
+    whine.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    // Noise burst: brief static crackle of dark energy
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now + 0.05, now + 0.25);
+    buf.gain.gain.setValueAtTime(0.12, now + 0.05);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+}
+
+// Phase 3: Shockwave activation — intense alarming pulse as arena closes in
+export function playBossShockwaveSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Heavy low impact: triangle thud
+    var thud = createTone(ctx, 'triangle', now, now + 0.35);
+    thud.osc.frequency.setValueAtTime(100, now);
+    thud.osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+    thud.gain.gain.setValueAtTime(0.28, now);
+    thud.gain.gain.linearRampToValueAtTime(0.3, now + 0.03);
+    thud.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    // Sharp alarm ping: descending square
+    var alarm = createTone(ctx, 'square', now, now + 0.18);
+    alarm.osc.frequency.setValueAtTime(1100, now);
+    alarm.osc.frequency.exponentialRampToValueAtTime(550, now + 0.18);
+    alarm.gain.gain.setValueAtTime(0.12, now);
+    alarm.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    // Second alarm ping: delayed
+    var alarm2 = createTone(ctx, 'square', now + 0.12, now + 0.28);
+    alarm2.osc.frequency.setValueAtTime(880, now + 0.12);
+    alarm2.osc.frequency.exponentialRampToValueAtTime(440, now + 0.28);
+    alarm2.gain.gain.setValueAtTime(0.08, now + 0.12);
+    alarm2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+    // Noise burst: shockwave impact
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.2);
+    buf.gain.gain.setValueAtTime(0.15, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+}
+
+// Phase transitions (1→2 and 2→3): escalating dramatic sting
+// phase: 2 = evolved (dark/menacing), 3 = berserk (intense/catastrophic)
+export function playBossPhaseTransitionSound(phase) {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    if (phase === 3) {
+        // Phase 3 (BERSERK): catastrophic — deep explosion + screaming descent
+        var blast = createTone(ctx, 'sawtooth', now, now + 0.8);
+        blast.osc.frequency.setValueAtTime(300, now);
+        blast.osc.frequency.exponentialRampToValueAtTime(30, now + 0.8);
+        blast.gain.gain.setValueAtTime(0.3, now);
+        blast.gain.gain.linearRampToValueAtTime(0.35, now + 0.05);
+        blast.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+        var scream = createTone(ctx, 'square', now, now + 0.5);
+        scream.osc.frequency.setValueAtTime(800, now);
+        scream.osc.frequency.exponentialRampToValueAtTime(80, now + 0.5);
+        scream.gain.gain.setValueAtTime(0.15, now);
+        scream.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+        var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.5);
+        buf.gain.gain.setValueAtTime(0.2, now);
+        buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+        // Ringing alarm after the blast
+        var ring = createTone(ctx, 'sine', now + 0.3, now + 1.0);
+        ring.osc.frequency.setValueAtTime(440, now + 0.3);
+        ring.osc.frequency.exponentialRampToValueAtTime(220, now + 1.0);
+        ring.gain.gain.setValueAtTime(0, now + 0.3);
+        ring.gain.gain.linearRampToValueAtTime(0.12, now + 0.4);
+        ring.gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    } else {
+        // Phase 2 (EVOLVED): ominous ascending swell + dark stab
+        var swell = createTone(ctx, 'triangle', now, now + 0.7);
+        swell.osc.frequency.setValueAtTime(80, now);
+        swell.osc.frequency.exponentialRampToValueAtTime(200, now + 0.4);
+        swell.osc.frequency.exponentialRampToValueAtTime(60, now + 0.7);
+        swell.gain.gain.setValueAtTime(0, now);
+        swell.gain.gain.linearRampToValueAtTime(0.25, now + 0.2);
+        swell.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+        var darkStab = createTone(ctx, 'sawtooth', now + 0.1, now + 0.4);
+        darkStab.osc.frequency.setValueAtTime(500, now + 0.1);
+        darkStab.osc.frequency.exponentialRampToValueAtTime(120, now + 0.4);
+        darkStab.gain.gain.setValueAtTime(0.18, now + 0.1);
+        darkStab.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        var darkBuf = createBufferSource(ctx, getNoiseBuffer(ctx), now + 0.05, now + 0.3);
+        darkBuf.gain.gain.setValueAtTime(0.1, now + 0.05);
+        darkBuf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    }
+}
+
+// Boss death: triumphant cosmic resolution — the ALPHA falls
+export function playBossDeathSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Descending cosmic impact: sawtooth crash
+    var crash = createTone(ctx, 'sawtooth', now, now + 0.6);
+    crash.osc.frequency.setValueAtTime(400, now);
+    crash.osc.frequency.exponentialRampToValueAtTime(40, now + 0.6);
+    crash.gain.gain.setValueAtTime(0.3, now);
+    crash.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    // Noise explosion
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.5);
+    buf.gain.gain.setValueAtTime(0.25, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    // Triumphant rising chord: ascending bright sine notes
+    var chord = [330, 440, 554, 660, 880, 1108];
+    chord.forEach(function(freq, i) {
+        var t = now + 0.3 + i * 0.1;
+        var tone = createTone(ctx, 'sine', t, t + 0.7);
+        tone.osc.frequency.setValueAtTime(freq, t);
+        tone.gain.gain.setValueAtTime(0, t);
+        tone.gain.gain.linearRampToValueAtTime(0.14, t + 0.04);
+        tone.gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+    });
+
+    // Final cosmic shimmer: high triangle sustain
+    var shimmer = createTone(ctx, 'triangle', now + 0.8, now + 2.0);
+    shimmer.osc.frequency.setValueAtTime(2200, now + 0.8);
+    shimmer.osc.frequency.linearRampToValueAtTime(1760, now + 2.0);
+    shimmer.gain.gain.setValueAtTime(0, now + 0.8);
+    shimmer.gain.gain.linearRampToValueAtTime(0.08, now + 0.95);
+    shimmer.gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+}

@@ -23,6 +23,7 @@ export function tick(prev) {
         _bossCloneHit: false,
         _bossPulseTriggered: false,
         _bossPhaseChanged: false,
+        _bossShockwaveActivated: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -333,6 +334,7 @@ export function tick(prev) {
     var bossCloneHit = false;
     var bossPulseTriggered = false;
     var bossPhaseChanged = false;
+    var bossShockwaveActivated = false;
 
     if (newLevel === MAX_LEVEL && clean.endlessWave === 0) {
         // Tick the boss state machine
@@ -364,6 +366,11 @@ export function tick(prev) {
                 bossCloneHit = true;
                 newScore = Math.max(0, newScore - getShadowCloneHitPenalty());
             }
+        }
+
+        // Detect shockwave activation (just became active this tick)
+        if (newBossState && newBossState.shockwaveActive && !(clean.bossState && clean.bossState.shockwaveActive)) {
+            bossShockwaveActivated = true;
         }
 
         // Shockwave: push snake inward when active
@@ -429,5 +436,6 @@ export function tick(prev) {
         _bossCloneHit: bossCloneHit,
         _bossPulseTriggered: bossPulseTriggered,
         _bossPhaseChanged: bossPhaseChanged,
+        _bossShockwaveActivated: bossShockwaveActivated,
     };
 }
