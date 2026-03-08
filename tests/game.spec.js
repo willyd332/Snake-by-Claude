@@ -965,3 +965,96 @@ test.describe('Snake Game — Endless Mode', () => {
     expect(errors.length).toBe(0)
   })
 })
+
+test.describe('Snake Game — Secrets & Easter Eggs', () => {
+  test('secrets module exports all required functions', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('./js/secrets.js')
+      return {
+        handleSecretKey: typeof mod.handleSecretKey,
+        isSecretActive: typeof mod.isSecretActive,
+        toggleDevConsole: typeof mod.toggleDevConsole,
+        isDevConsoleOpen: typeof mod.isDevConsoleOpen,
+        applyInvertFilter: typeof mod.applyInvertFilter,
+        createMatrixState: typeof mod.createMatrixState,
+        updateMatrixState: typeof mod.updateMatrixState,
+        renderMatrixRain: typeof mod.renderMatrixRain,
+        renderDevConsole: typeof mod.renderDevConsole,
+        markSecretFound: typeof mod.markSecretFound,
+        getSecretsDiscovered: typeof mod.getSecretsDiscovered,
+      }
+    })
+    for (const [name, type] of Object.entries(exports)) {
+      expect(type).toBe('function')
+    }
+  })
+
+  test('secret code detection works for MATRIX and INVERT', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const results = await page.evaluate(async () => {
+      const mod = await import('./js/secrets.js')
+      // Type MATRIX
+      const keys = 'MATRIX'.split('')
+      let result = null
+      for (const k of keys) {
+        result = mod.handleSecretKey(k)
+      }
+      const matrixResult = result
+      // Type INVERT
+      const keys2 = 'INVERT'.split('')
+      let result2 = null
+      for (const k of keys2) {
+        result2 = mod.handleSecretKey(k)
+      }
+      return {
+        matrix: matrixResult,
+        invert: result2,
+      }
+    })
+    expect(results.matrix).toBeTruthy()
+    expect(results.matrix.name).toBe('matrix')
+    expect(results.matrix.active).toBe(true)
+    expect(results.invert).toBeTruthy()
+    expect(results.invert.name).toBe('invert')
+    expect(results.invert.active).toBe(true)
+  })
+
+  test('dev console opens with backtick and renders without errors', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(300)
+    // Open dev console with backtick
+    await page.keyboard.press('`')
+    await page.waitForTimeout(500)
+    // Take a screenshot of the dev console
+    await page.screenshot({ path: 'tests/screenshots/05-dev-console.png', fullPage: true })
+    // Close with backtick
+    await page.keyboard.press('`')
+    await page.waitForTimeout(200)
+    expect(errors.length).toBe(0)
+  })
+
+  test('matrix rain renders without errors during gameplay', async ({ page }) => {
+    await skipPrologue(page)
+    // Enable matrix mode via localStorage
+    await page.addInitScript(() => {
+      localStorage.setItem('snake-secret-matrix', 'true')
+    })
+    await page.goto('/')
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    await page.waitForTimeout(300)
+    // Start a game (Enter then arrow)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(200)
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(1500)
+    await page.screenshot({ path: 'tests/screenshots/06-matrix-rain.png', fullPage: true })
+    expect(errors.length).toBe(0)
+  })
+})

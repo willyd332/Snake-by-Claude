@@ -281,6 +281,25 @@ export function playHunterKillSound() {
     buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 }
 
+export function playSecretSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Glitchy digital activation: descending square + ascending square
+    var tone1 = createTone(ctx, 'square', now, now + 0.08);
+    tone1.osc.frequency.setValueAtTime(1200, now);
+    tone1.osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+    tone1.gain.gain.setValueAtTime(0.08, now);
+    tone1.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    var tone2 = createTone(ctx, 'square', now + 0.1, now + 0.2);
+    tone2.osc.frequency.setValueAtTime(800, now + 0.1);
+    tone2.osc.frequency.exponentialRampToValueAtTime(1600, now + 0.2);
+    tone2.gain.gain.setValueAtTime(0.06, now + 0.1);
+    tone2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+}
+
 export function playHunterIntroSound() {
     var ctx = getContext();
     if (!ctx || !audioConfig.soundEnabled) return;

@@ -31,6 +31,7 @@ import {
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playMenuSelectSound, playMenuNavigateSound, playStartSound,
     playFragmentCollectSound, playHunterKillSound, playHunterIntroSound,
+    playSecretSound,
 } from './audio.js';
 import {
     FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected, collectFragment,
@@ -42,12 +43,21 @@ import {
     getEndlessHighScore, setEndlessHighScore,
     getEndlessHighWave, setEndlessHighWave,
 } from './endless.js';
+import {
+    handleSecretKey, isSecretActive, toggleDevConsole, isDevConsoleOpen,
+    applyInvertFilter, markSecretFound,
+    createMatrixState, updateMatrixState, renderMatrixRain,
+    renderDevConsole,
+} from './secrets.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
 var ctx = canvas.getContext('2d');
 canvas.width = CANVAS_SIZE;
 canvas.height = CANVAS_SIZE;
+
+// Apply persisted invert filter on load
+applyInvertFilter(canvas);
 
 // --- DOM references ---
 var dom = {
@@ -86,6 +96,7 @@ var startingLevel = 1;
 var endlessMode = false;
 var particleSystem = createParticleSystem();
 var shakeState = createShakeState();
+var matrixState = createMatrixState();
 var lastFrameTime = 0;
 var prevSnake = null;
 var prevHunterSegments = null;
@@ -343,6 +354,7 @@ setupInput({
     toggleKonami: function() {
         konamiActivated = !konamiActivated;
         localStorage.setItem('snake-konami', String(konamiActivated));
+        markSecretFound('konami');
         messageEl.textContent = konamiActivated ? 'RAINBOW MODE ACTIVATED' : 'RAINBOW MODE OFF';
         messageEl.className = konamiActivated ? 'rainbow' : 'active';
         setTimeout(function() {
@@ -351,6 +363,45 @@ setupInput({
                 messageEl.className = '';
             }
         }, 2500);
+    },
+
+    // Secret code detection
+    onSecretKey: function(key) {
+        var result = handleSecretKey(key);
+        if (result) {
+            initAudio();
+            playSecretSound();
+
+            if (result.name === 'invert') {
+                applyInvertFilter(canvas);
+            }
+
+            var messages = {
+                matrix: { on: 'DATA STREAM \u2014 ENABLED', off: 'DATA STREAM \u2014 DISABLED' },
+                invert: { on: 'DISPLAY POLARITY \u2014 REVERSED', off: 'DISPLAY POLARITY \u2014 RESTORED' },
+            };
+            var msg = messages[result.name];
+            if (msg) {
+                messageEl.textContent = result.active ? msg.on : msg.off;
+                messageEl.className = 'secret';
+                messageEl.style.color = result.name === 'matrix' ? '#00ff00' : '#e0e0e0';
+                setTimeout(function() {
+                    if (!state.started) {
+                        messageEl.textContent = 'Press any arrow key to start';
+                        messageEl.className = '';
+                        messageEl.style.color = '';
+                    }
+                }, 2500);
+            }
+        }
+    },
+
+    // Dev console
+    isDevConsoleOpen: function() { return isDevConsoleOpen(); },
+    onToggleDevConsole: function() {
+        initAudio();
+        playSecretSound();
+        toggleDevConsole();
     },
 
     restartGame: function(newDir) {
@@ -477,13 +528,15 @@ function gameLoop(timestamp) {
         return;
     }
 
-    // Update particles and shake every frame (title, level select, gameplay)
+    // Update particles, shake, and matrix rain every frame
     particleSystem = updateParticles(particleSystem, dt);
     shakeState = updateShake(shakeState, dt);
+    matrixState = updateMatrixState(matrixState, dt);
 
     if (currentScreen === 'title') {
         titleState = updateTitleState(titleState);
         renderTitleScreen(ctx, titleState);
+        renderDevConsole(ctx);
         requestAnimationFrame(gameLoop);
         return;
     }
@@ -753,6 +806,7 @@ function gameLoop(timestamp) {
     ctx.translate(offset.x, offset.y);
 
     render(ctx, state, konamiActivated, dom, interp);
+    renderMatrixRain(ctx, matrixState);
     renderParticles(ctx, particleSystem);
 
     ctx.restore();

@@ -96,6 +96,20 @@ export function setupInput(callbacks) {
 
         // --- Title Screen ---
         if (screen === 'title') {
+            // Dev console open — only accept close keys
+            if (callbacks.isDevConsoleOpen && callbacks.isDevConsoleOpen()) {
+                if (e.key === '`' || e.key === 'Escape') {
+                    e.preventDefault();
+                    callbacks.onToggleDevConsole();
+                }
+                return;
+            }
+            // Backtick opens dev console
+            if (e.key === '`') {
+                e.preventDefault();
+                callbacks.onToggleDevConsole();
+                return;
+            }
             if (e.key === 'Enter') {
                 e.preventDefault();
                 callbacks.onTitlePlay();
@@ -188,6 +202,13 @@ export function setupInput(callbacks) {
                 return;
             }
             konamiProgress = 0;
+
+            // Secret code detection (letter keys only)
+            if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+                e.preventDefault();
+                callbacks.onSecretKey(e.key);
+                return;
+            }
         }
 
         var newDir = DIRECTION_MAP[e.key];
