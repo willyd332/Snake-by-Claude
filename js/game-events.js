@@ -43,10 +43,10 @@ export function processPostTickEvents(ctx) {
         ctx.shakeState = triggerShake(SHAKE_FOOD.intensity, SHAKE_FOOD.duration);
         ctx.headFlashState = { remaining: 0.18, duration: 0.18, color: ctx.config.foodColor };
 
-        // Score popup at food position — show multiplied value and multiplier label
+        // Score popup at food position — show actual scored value and multiplier label
         var comboMult = ctx.state._comboMultiplier || 1;
-        var scoreGained = 10 * comboMult;
-        var popupText = comboMult > 1 ? '+' + scoreGained + ' x' + comboMult : '+10';
+        var scoreGained = ctx.state._scoreGained || 0;
+        var popupText = comboMult > 1 ? '+' + scoreGained + ' x' + comboMult : '+' + scoreGained;
         ctx.scorePopups = (ctx.scorePopups || []).concat([{
             x: ctx.state._ateFoodPos.x * CELL_SIZE + CELL_SIZE / 2,
             y: ctx.state._ateFoodPos.y * CELL_SIZE + CELL_SIZE / 2,

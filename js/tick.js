@@ -22,6 +22,7 @@ export function tick(prev) {
         _comboExpired: false,
         _comboMultiplier: 1,
         _comboIncreased: false,
+        _scoreGained: 0,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -33,18 +34,26 @@ export function tick(prev) {
     var isGhost = clean.activePowerUp && clean.activePowerUp.type === 'ghost';
     var isInvincible = clean.invincibleTicks > 0;
     var isShielded = clean.shieldActive;
+    var newShieldActive = clean.shieldActive;
     var head = clean.snake[0];
     var newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
-    // Boundary: wrap-around or collision (invincible/shield wraps instead of dying)
-    if (config.wrapAround || isGhost || isInvincible || isShielded) {
+    // Boundary: wrap-around or collision (invincible/ghost wraps instead of dying)
+    if (config.wrapAround || isGhost || isInvincible) {
         newHead = {
             x: (newHead.x + GRID_SIZE) % GRID_SIZE,
             y: (newHead.y + GRID_SIZE) % GRID_SIZE,
         };
     } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                newHead.y < 0 || newHead.y >= GRID_SIZE) {
-        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary', shieldActive: false });
+        if (isShielded) {
+            newHead = { x: head.x, y: head.y };
+            isShielded = false;
+            newShieldActive = false;
+            clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
+        } else {
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary', shieldActive: false });
+        }
     }
 
     // Shrinking arena boundary — cannot be bypassed even with ghost (invincible/shield can bypass)
@@ -54,6 +63,7 @@ export function tick(prev) {
             if (isShielded) {
                 newHead = { x: head.x, y: head.y };
                 isShielded = false;
+                newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena', shieldActive: false });
@@ -66,6 +76,7 @@ export function tick(prev) {
         if (isShielded) {
             newHead = { x: head.x, y: head.y };
             isShielded = false;
+            newShieldActive = false;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall', shieldActive: false });
@@ -77,6 +88,7 @@ export function tick(prev) {
         if (isShielded) {
             newHead = { x: head.x, y: head.y };
             isShielded = false;
+            newShieldActive = false;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self', shieldActive: false });
@@ -88,6 +100,7 @@ export function tick(prev) {
         if (isShielded) {
             newHead = { x: head.x, y: head.y };
             isShielded = false;
+            newShieldActive = false;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle', shieldActive: false });
@@ -102,6 +115,7 @@ export function tick(prev) {
             if (isShielded) {
                 newHead = { x: head.x, y: head.y };
                 isShielded = false;
+                newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
@@ -113,6 +127,7 @@ export function tick(prev) {
                 if (isShielded) {
                     newHead = { x: head.x, y: head.y };
                     isShielded = false;
+                    newShieldActive = false;
                     clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
                 } else {
                     return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
@@ -152,6 +167,7 @@ export function tick(prev) {
             if (isShielded) {
                 newHead = { x: head.x, y: head.y };
                 isShielded = false;
+                newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle', shieldActive: false });
@@ -174,11 +190,13 @@ export function tick(prev) {
     var _comboExpired = expiredCombo !== null && prevCombo.multiplier > 1;
     var _comboMultiplier = currentCombo.multiplier;
     var _comboIncreased = false;
+    var _scoreGained = 0;
 
     if (ate) {
         var eatResult = onFoodEaten(currentCombo, clean.lastTick);
         newCombo = eatResult.comboState;
-        newScore = clean.score + eatResult.scoreGained;
+        _scoreGained = eatResult.scoreGained;
+        newScore = clean.score + _scoreGained;
         _comboMultiplier = eatResult.comboState.multiplier;
         _comboIncreased = eatResult.wasComboIncrease;
     }
@@ -196,6 +214,7 @@ export function tick(prev) {
         if (newHunterHead.x === playerHead.x && newHunterHead.y === playerHead.y) {
             if (isShielded) {
                 isShielded = false;
+                newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
@@ -303,7 +322,10 @@ export function tick(prev) {
                 });
                 if (snakeCrushed && !isInvincible) {
                     if (isShielded) {
+                        newHead = { x: head.x, y: head.y };
+                        newSnake = [newHead].concat(clean.snake.slice(0, -1));
                         isShielded = false;
+                        newShieldActive = false;
                         clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
                     } else {
                         return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush', shieldActive: false });
@@ -331,7 +353,6 @@ export function tick(prev) {
 
     // Power-up spawning
     var collectedPowerUpType = null;
-    var newShieldActive = clean.shieldActive;
 
     // Check power-up collection
     if (newPowerUp && newHead.x === newPowerUp.x && newHead.y === newPowerUp.y) {
@@ -363,12 +384,6 @@ export function tick(prev) {
                 newShieldActive = false;
             }
         }
-    }
-
-    // If shield absorbed a hit this tick, ensure it's fully cleared
-    if (clean._shieldBroke) {
-        newShieldActive = false;
-        newActivePowerUp = null;
     }
 
     // Power-up spawning from config
@@ -430,5 +445,6 @@ export function tick(prev) {
         _comboExpired: _comboExpired,
         _comboMultiplier: _comboMultiplier,
         _comboIncreased: _comboIncreased,
+        _scoreGained: _scoreGained,
     };
 }

@@ -336,7 +336,6 @@ function gameLoop(timestamp) {
         var prevState = g.state;
         var prevLevel = g.state.level;
         g.state = tick(Object.assign({}, g.state, { lastTick: timestamp }));
-        g.state = Object.assign({}, g.state, { lastTick: timestamp });
 
         // --- Record frame for death replay ---
         if (g.state.started && !g.state.gameOver) {
