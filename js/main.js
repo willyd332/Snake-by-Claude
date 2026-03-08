@@ -222,6 +222,9 @@ function gameLoop(timestamp) {
     if (g.state.activePowerUp && g.state.activePowerUp.type === 'timeSlow') {
         speed = speed * 2;
     }
+    if (g.state.activePowerUp && g.state.activePowerUp.type === 'speedBoost') {
+        speed = Math.round(speed / 1.5);
+    }
 
     // --- Death Replay Mode ---
     if (g.replayState) {
@@ -294,6 +297,7 @@ function gameLoop(timestamp) {
                 var summaryKilledByHunter = deathCtxState._killedByHunter;
                 var summaryWave = deathCtxState.endlessWave || 1;
                 var summaryScore = deathCtxState.score || 0;
+                var summarySnakeLength = deathCtxState.snake ? deathCtxState.snake.length : 1;
                 var summaryFoodEaten = g.runFoodEaten;
                 var summaryPowerUps = g.runPowerUpsCollected;
                 var summaryTimeAliveMs = g.gameSessionStartTime > 0 ? (g.gameSessionEndTime || Date.now()) - g.gameSessionStartTime : 0;
@@ -308,6 +312,7 @@ function gameLoop(timestamp) {
                     {
                         wave: summaryWave,
                         score: summaryScore,
+                        snakeLength: summarySnakeLength,
                         timeAliveMs: summaryTimeAliveMs,
                         foodEaten: summaryFoodEaten,
                         deathCause: summaryDeathCause,

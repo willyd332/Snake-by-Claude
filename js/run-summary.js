@@ -17,6 +17,8 @@
 //   previousHighScore: number,
 // }
 
+import { addLeaderboardEntry, formatDate } from './leaderboard.js';
+
 var DEATH_CAUSE_LABELS = {
     boundary:  'Hit a wall',
     arena:     'Crushed by shrinking arena',
@@ -104,10 +106,104 @@ function createButton(text, primary, onClick) {
     return btn;
 }
 
+function createLeaderboardSection(board, currentRank) {
+    var section = document.createElement('div');
+    section.style.cssText = [
+        'margin-bottom: 20px',
+        'border-top: 1px solid rgba(255,255,255,0.08)',
+        'padding-top: 14px',
+    ].join(';');
+
+    var heading = document.createElement('div');
+    heading.textContent = 'TOP SCORES';
+    heading.style.cssText = [
+        'font-size: 10px',
+        'letter-spacing: 2px',
+        'color: rgba(160, 160, 180, 0.6)',
+        'margin-bottom: 8px',
+        'text-align: center',
+    ].join(';');
+    section.appendChild(heading);
+
+    for (var i = 0; i < board.length; i++) {
+        var entry = board[i];
+        var isCurrentRun = currentRank !== null && i + 1 === currentRank;
+
+        var row = document.createElement('div');
+        row.style.cssText = [
+            'display: flex',
+            'align-items: baseline',
+            'gap: 6px',
+            'padding: 3px 6px',
+            'border-radius: 3px',
+            'font-size: 11px',
+            isCurrentRun
+                ? 'background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.2);'
+                : 'border: 1px solid transparent;',
+        ].join(';');
+
+        var rankEl = document.createElement('span');
+        rankEl.textContent = '#' + (i + 1);
+        rankEl.style.cssText = [
+            'min-width: 22px',
+            'color: ' + (isCurrentRun ? '#fbbf24' : 'rgba(120, 120, 140, 0.7)'),
+            'font-weight: bold',
+        ].join(';');
+
+        var scoreEl = document.createElement('span');
+        scoreEl.textContent = String(entry.score);
+        scoreEl.style.cssText = [
+            'flex: 1',
+            'font-weight: bold',
+            'color: ' + (isCurrentRun ? '#fbbf24' : '#e0e0e0'),
+        ].join(';');
+
+        var waveEl = document.createElement('span');
+        waveEl.textContent = 'W' + entry.wave;
+        waveEl.style.cssText = 'color: rgba(239, 68, 68, 0.7); min-width: 28px; text-align: right;';
+
+        var dateEl = document.createElement('span');
+        dateEl.textContent = entry.date;
+        dateEl.style.cssText = 'color: rgba(120, 120, 140, 0.6); min-width: 38px; text-align: right;';
+
+        row.appendChild(rankEl);
+        row.appendChild(scoreEl);
+        row.appendChild(waveEl);
+        row.appendChild(dateEl);
+
+        if (isCurrentRun) {
+            var badge = document.createElement('span');
+            badge.textContent = 'NEW!';
+            badge.style.cssText = [
+                'font-size: 9px',
+                'font-weight: bold',
+                'color: #fbbf24',
+                'letter-spacing: 1px',
+            ].join(';');
+            row.appendChild(badge);
+        }
+
+        section.appendChild(row);
+    }
+
+    return section;
+}
+
 export function showRunSummary(data, onRestart, onMenu) {
     var isNewBest = data.score > data.previousHighScore && data.score > 0;
     var timeAlive = formatTimeAlive(data.timeAliveMs);
     var causeText = formatDeathCause(data.deathCause, data.killedByHunter);
+
+    // Save to leaderboard and get rank
+    var leaderboardResult = { board: [], rank: null };
+    if (data.score > 0) {
+        leaderboardResult = addLeaderboardEntry({
+            score: data.score,
+            wave: data.wave,
+            snakeLength: data.snakeLength || 1,
+            date: formatDate(new Date()),
+        });
+    }
 
     // Backdrop
     var backdrop = document.createElement('div');
@@ -199,6 +295,11 @@ export function showRunSummary(data, onRestart, onMenu) {
     statsEl.appendChild(createStatRow(highScoreLabel, String(data.highScore), highScoreColor));
 
     card.appendChild(statsEl);
+
+    // Leaderboard section
+    if (leaderboardResult.board.length > 0) {
+        card.appendChild(createLeaderboardSection(leaderboardResult.board, leaderboardResult.rank));
+    }
 
     // Buttons
     var btnRow = document.createElement('div');
