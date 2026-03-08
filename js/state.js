@@ -33,6 +33,7 @@ export function createInitialState() {
         endlessConfig: null,
         lives: INITIAL_LIVES,
         invincibleTicks: 0,
+        bossState: null,
     };
 }
 

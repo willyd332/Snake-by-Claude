@@ -7,6 +7,7 @@ import { renderEnvironment } from './environment.js';
 import { manhattanDistance } from './hunter.js';
 import { getActiveSkin, getActiveTrail } from './achievements.js';
 import { getSettingsRef } from './settings.js';
+import { renderShadowClones, renderShockwaveBorder, renderPhaseTransition, renderPulseBurst, renderBossPhaseIndicator } from './boss.js';
 
 function getDeathMessage(deathCause, level, config) {
     if (deathCause === 'hunter') {
@@ -201,6 +202,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.lineWidth = 0.5;
     }
 
+    // Boss shockwave border (Level 10 boss Phase 3)
+    if (state.bossState && state.started && !state.gameOver) {
+        renderShockwaveBorder(ctx, state.bossState);
+    }
+
     // Walls
     if (state.walls.length > 0 && config.wallColor) {
         ctx.shadowColor = config.wallColor;
@@ -353,6 +359,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
         ctx.lineWidth = 0.5;
+    }
+
+    // Boss shadow clones (Level 10 boss Phase 2+)
+    if (state.bossState && state.bossState.shadowClones.length > 0 && state.started && !state.gameOver) {
+        renderShadowClones(ctx, state.bossState.shadowClones, config.hunterColor || '#ff6600');
     }
 
     // Teleport portals
@@ -554,6 +565,15 @@ export function render(ctx, state, konamiActivated, dom, interp) {
 
         ctx.fillStyle = fogGrad;
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    }
+
+    // Boss phase transition flash and pulse burst (Level 10)
+    if (state.bossState && state.started) {
+        renderPhaseTransition(ctx, state.bossState);
+        if (state.hunter) {
+            renderPulseBurst(ctx, state.bossState, state.hunter.segments[0]);
+        }
+        renderBossPhaseIndicator(ctx, state.bossState);
     }
 
     // Game over overlay

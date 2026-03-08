@@ -7,6 +7,7 @@ import { generateHunter, moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
 import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
+import { tickBoss, applyFoodPulse, checkShadowCloneCollision, getShadowCloneHitPenalty, getShockwaveBounds, pushSnakeInward, getBerserkTickInterval } from './boss.js';
 
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
@@ -19,6 +20,9 @@ export function tick(prev) {
         _collectedFragmentLevel: null,
         _killedByHunter: false,
         _deathCause: null,
+        _bossCloneHit: false,
+        _bossPulseTriggered: false,
+        _bossPhaseChanged: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -113,8 +117,14 @@ export function tick(prev) {
         }
     }
 
-    // Move hunter AI
-    var newHunter = clean.hunter ? moveHunter(clean.hunter, newHead, clean.walls, newObstacles, config) : null;
+    // Move hunter AI (with berserk speed override on Level 10)
+    var bossConfig = config;
+    if (clean.bossState && clean.bossState.berserkActive && config.hunterTickInterval) {
+        bossConfig = Object.assign({}, config, {
+            hunterTickInterval: getBerserkTickInterval(config.hunterTickInterval),
+        });
+    }
+    var newHunter = clean.hunter ? moveHunter(clean.hunter, newHead, clean.walls, newObstacles, bossConfig) : null;
 
     var ate = clean.food && newHead.x === clean.food.x && newHead.y === clean.food.y;
     var newSnake = [newHead].concat(ate ? clean.snake : clean.snake.slice(0, -1));
@@ -318,6 +328,62 @@ export function tick(prev) {
         newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, newPowerUp, newHunter);
     }
 
+    // --- Boss Fight Logic (Level 10 only) ---
+    var newBossState = clean.bossState;
+    var bossCloneHit = false;
+    var bossPulseTriggered = false;
+    var bossPhaseChanged = false;
+
+    if (newLevel === MAX_LEVEL && clean.endlessWave === 0) {
+        // Tick the boss state machine
+        var prevBossPhase = newBossState ? newBossState.phase : 1;
+        var bossGameState = {
+            foodEaten: newFoodEaten,
+            snake: newSnake,
+            walls: newWalls,
+            obstacles: newObstacles,
+            portals: newPortals,
+            powerUp: newPowerUp,
+            hunter: newHunter,
+        };
+        newBossState = tickBoss(newBossState || (function() {
+            // Initialize on first tick of Level 10
+            var bs = { phase: 1, pulseCooldown: 100, pulseTriggered: false, shadowClones: [],
+                shockwaveCooldown: 67, shockwaveActive: false, shockwaveTicksRemaining: 0,
+                shockwaveShrinkApplied: false, phaseTransition: null, berserkActive: false };
+            return bs;
+        })(), bossGameState, config);
+
+        if (newBossState && newBossState.phase > prevBossPhase) {
+            bossPhaseChanged = true;
+        }
+
+        // Food pulse: scatter food when pulse triggers
+        if (newBossState && newBossState.pulseTriggered && newFood) {
+            bossPulseTriggered = true;
+            newFood = randomPosition(newSnake, newWalls, newObstacles, newPortals, newPowerUp, newHunter);
+        }
+
+        // Shadow clone collision: penalty but no death
+        if (newBossState && newBossState.shadowClones.length > 0) {
+            if (checkShadowCloneCollision(newHead, newBossState.shadowClones)) {
+                bossCloneHit = true;
+                newScore = Math.max(0, newScore - getShadowCloneHitPenalty());
+            }
+        }
+
+        // Shockwave: push snake inward when active
+        if (newBossState && newBossState.shockwaveActive) {
+            var swBounds = getShockwaveBounds(newBossState);
+            if (swBounds) {
+                newSnake = pushSnakeInward(newSnake, swBounds);
+            }
+        }
+    } else if (newLevel !== MAX_LEVEL || clean.endlessWave > 0) {
+        // Reset boss state when not on Level 10
+        newBossState = null;
+    }
+
     // Power-up spawning
     var newConfig = getLevelConfig(newLevel, endlessConfig);
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType) {
@@ -357,6 +423,7 @@ export function tick(prev) {
         endlessConfig: endlessConfig,
         lives: clean.lives,
         invincibleTicks: (newLevel !== clean.level) ? LEVEL_UP_INVINCIBLE_TICKS : (isInvincible ? clean.invincibleTicks - 1 : 0),
+        bossState: newBossState,
         _collectedPowerUp: collectedPowerUpType,
         _collectedFragment: collectedFragment,
         _collectedFragmentLevel: collectedFragmentLevel,
@@ -365,5 +432,8 @@ export function tick(prev) {
         _ateFoodPos: ate ? clean.food : null,
         _killedByHunter: false,
         _deathCause: null,
+        _bossCloneHit: bossCloneHit,
+        _bossPulseTriggered: bossPulseTriggered,
+        _bossPhaseChanged: bossPhaseChanged,
     };
 }

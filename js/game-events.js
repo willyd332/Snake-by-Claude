@@ -203,6 +203,34 @@ export function processPostTickEvents(ctx) {
         }
     }
 
+    // Boss clone hit: score penalty + visual feedback
+    if (ctx.state._bossCloneHit) {
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ff6600', 8, 40, 0.3);
+        ctx.shakeState = triggerShake(3, 0.15);
+        ctx.messageEl.textContent = 'SHADOW CLONE \u2014 -5 POINTS';
+        ctx.messageEl.className = 'active';
+        ctx.messageEl.style.color = '#ff6600';
+        setTimeout(function() {
+            ctx.messageEl.textContent = '';
+            ctx.messageEl.className = '';
+            ctx.messageEl.style.color = '';
+        }, 1200);
+    }
+
+    // Boss food pulse: visual burst from hunter
+    if (ctx.state._bossPulseTriggered && ctx.state.hunter) {
+        var pulseHead = ctx.state.hunter.segments[0];
+        ctx.particleSystem = emitBurst(ctx.particleSystem, pulseHead.x, pulseHead.y, '#ff6600', 20, 80, 0.6);
+        ctx.shakeState = triggerShake(4, 0.2);
+    }
+
+    // Boss phase transition: dramatic shake
+    if (ctx.state._bossPhaseChanged && ctx.state.bossState) {
+        var phaseShakeIntensity = ctx.state.bossState.phase === 3 ? 10 : 6;
+        ctx.shakeState = triggerShake(phaseShakeIntensity, 0.4);
+        ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ff4400', 24, 90, 0.7);
+    }
+
     // Arena shrink: shake
     if (ctx.state._shrinkOccurred) {
         playShrinkSound();
