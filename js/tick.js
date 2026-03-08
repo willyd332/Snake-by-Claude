@@ -15,6 +15,7 @@ export function tick(prev) {
         _shrinkOccurred: false,
         _collectedFragment: false,
         _collectedFragmentLevel: null,
+        _killedByHunter: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;
@@ -66,12 +67,12 @@ export function tick(prev) {
         var hunterHead = clean.hunter.segments[0];
         var hitHunterHead = newHead.x === hunterHead.x && newHead.y === hunterHead.y;
         if (hitHunterHead) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
         }
         if (!isGhost && clean.hunter.segments.length > 1) {
             var hunterBody = clean.hunter.segments.slice(1);
             if (collides(newHead, hunterBody)) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
             }
         }
     }
@@ -125,11 +126,11 @@ export function tick(prev) {
         var newHunterHead = newHunter.segments[0];
         var playerHead = newSnake[0];
         if (newHunterHead.x === playerHead.x && newHunterHead.y === playerHead.y) {
-            return Object.assign({}, clean, { gameOver: true, direction: dir });
+            return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
         }
         if (!isGhost && newSnake.length > 1) {
             if (collides(newHunterHead, newSnake.slice(1))) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir });
+                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true });
             }
         }
     }
@@ -329,5 +330,6 @@ export function tick(prev) {
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
         _ateFoodPos: ate ? clean.food : null,
+        _killedByHunter: false,
     };
 }

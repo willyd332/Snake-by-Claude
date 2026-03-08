@@ -254,3 +254,51 @@ export function playStartSound() {
         tone.gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
     });
 }
+
+export function playHunterKillSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Aggressive growl: descending sawtooth
+    var growl = createTone(ctx, 'sawtooth', now, now + 0.6);
+    growl.osc.frequency.setValueAtTime(250, now);
+    growl.osc.frequency.exponentialRampToValueAtTime(60, now + 0.6);
+    growl.gain.gain.setValueAtTime(0.25, now);
+    growl.gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+    growl.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+    // Sharp attack bite: short high square wave
+    var bite = createTone(ctx, 'square', now, now + 0.08);
+    bite.osc.frequency.setValueAtTime(800, now);
+    bite.osc.frequency.exponentialRampToValueAtTime(200, now + 0.08);
+    bite.gain.gain.setValueAtTime(0.12, now);
+    bite.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    // Noise burst
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.4);
+    buf.gain.gain.setValueAtTime(0.18, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+}
+
+export function playHunterIntroSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Ominous low drone + warning ping
+    var drone = createTone(ctx, 'triangle', now, now + 0.8);
+    drone.osc.frequency.setValueAtTime(60, now);
+    drone.osc.frequency.linearRampToValueAtTime(80, now + 0.4);
+    drone.osc.frequency.linearRampToValueAtTime(55, now + 0.8);
+    drone.gain.gain.setValueAtTime(0.15, now);
+    drone.gain.gain.linearRampToValueAtTime(0.2, now + 0.2);
+    drone.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+    // Warning stab
+    var stab = createTone(ctx, 'square', now + 0.15, now + 0.35);
+    stab.osc.frequency.setValueAtTime(440, now + 0.15);
+    stab.osc.frequency.exponentialRampToValueAtTime(220, now + 0.35);
+    stab.gain.gain.setValueAtTime(0.08, now + 0.15);
+    stab.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+}

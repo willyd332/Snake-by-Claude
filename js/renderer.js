@@ -4,6 +4,7 @@ import { GRID_SIZE, CELL_SIZE, CANVAS_SIZE } from './constants.js';
 import { getLevelConfig } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import { renderEnvironment } from './environment.js';
+import { manhattanDistance } from './hunter.js';
 
 function lerpPos(prev, curr, t, wrapGrid) {
     var dx = curr.x - prev.x;
@@ -111,9 +112,34 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         });
     }
 
-    // Hunter snake
+    // Hunter snake (ALPHA)
     if (state.hunter && config.hunterColor) {
         var hunterPulse = Math.sin(Date.now() / 250) * 0.15 + 0.85;
+        var hunterTrail = interp ? interp.hunterTrail : null;
+
+        // Proximity calculation for eye glow
+        var proximityDist = manhattanDistance(state.hunter.segments[0], state.snake[0], config.wrapAround);
+        var proximityFactor = Math.max(0, 1 - proximityDist / (GRID_SIZE * 0.75)); // 1=close, 0=far
+
+        // Afterimage trail (render before main body)
+        if (hunterTrail && hunterTrail.length > 0) {
+            for (var ti = hunterTrail.length - 1; ti >= 0; ti--) {
+                var trailPos = hunterTrail[ti];
+                var trailAlpha = 0.12 - ti * 0.04;
+                if (trailAlpha <= 0) continue;
+                ctx.globalAlpha = trailAlpha;
+                ctx.fillStyle = config.hunterColor;
+                ctx.fillRect(
+                    trailPos.x * CELL_SIZE + 2,
+                    trailPos.y * CELL_SIZE + 2,
+                    CELL_SIZE - 4,
+                    CELL_SIZE - 4
+                );
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // Main hunter body
         state.hunter.segments.forEach(function(seg, i) {
             var hDrawX = seg.x;
             var hDrawY = seg.y;
@@ -134,11 +160,38 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 CELL_SIZE - hPad * 2,
                 CELL_SIZE - hPad * 2
             );
+
+            // Energy lines between segments
+            if (i > 0) {
+                var prevSeg = state.hunter.segments[i - 1];
+                var pDrawX = prevSeg.x;
+                var pDrawY = prevSeg.y;
+                if (iPrevHunter && iPrevHunter[i - 1] && interpProgress < 1) {
+                    var pl = lerpPos(iPrevHunter[i - 1], prevSeg, interpProgress, wrapGrid);
+                    pDrawX = pl.x;
+                    pDrawY = pl.y;
+                }
+                var eDist = Math.abs(hDrawX - pDrawX) + Math.abs(hDrawY - pDrawY);
+                if (eDist <= 1.5) {
+                    var linePulse = Math.sin(Date.now() / 150 + i * 1.2) * 0.2 + 0.3;
+                    ctx.globalAlpha = linePulse;
+                    ctx.strokeStyle = '#ff4400';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(pDrawX * CELL_SIZE + CELL_SIZE / 2, pDrawY * CELL_SIZE + CELL_SIZE / 2);
+                    ctx.lineTo(hDrawX * CELL_SIZE + CELL_SIZE / 2, hDrawY * CELL_SIZE + CELL_SIZE / 2);
+                    ctx.stroke();
+                }
+            }
+
+            // Head: eyes with proximity-based glow
             if (i === 0) {
+                var eyeGlow = 4 + proximityFactor * 10;
+                var eyeRadius = 2 + proximityFactor * 0.8;
                 ctx.globalAlpha = 1;
                 ctx.fillStyle = '#ff0000';
                 ctx.shadowColor = '#ff0000';
-                ctx.shadowBlur = 4;
+                ctx.shadowBlur = eyeGlow;
                 var hcx = hDrawX * CELL_SIZE + CELL_SIZE / 2;
                 var hcy = hDrawY * CELL_SIZE + CELL_SIZE / 2;
                 var hDir = state.hunter.direction;
@@ -149,15 +202,16 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 var ex2 = hcx + hDir.x * eyeFwd + hDir.y * eyeSpread;
                 var ey2 = hcy + hDir.y * eyeFwd + (-hDir.x) * eyeSpread;
                 ctx.beginPath();
-                ctx.arc(ex1, ey1, 2, 0, Math.PI * 2);
+                ctx.arc(ex1, ey1, eyeRadius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(ex2, ey2, 2, 0, Math.PI * 2);
+                ctx.arc(ex2, ey2, eyeRadius, 0, Math.PI * 2);
                 ctx.fill();
             }
         });
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
+        ctx.lineWidth = 0.5;
     }
 
     // Teleport portals
@@ -353,10 +407,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-        ctx.fillStyle = '#ef4444';
+        var killedByHunter = state._killedByHunter;
+        ctx.fillStyle = killedByHunter ? '#f97316' : '#ef4444';
         ctx.font = 'bold 28px Courier New';
         ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
+        ctx.fillText(killedByHunter ? 'ALPHA CAUGHT YOU' : 'GAME OVER', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
 
         ctx.fillStyle = '#888';
         ctx.font = '14px Courier New';

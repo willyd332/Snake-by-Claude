@@ -534,6 +534,88 @@ test.describe('Snake Game — Fragments', () => {
   })
 })
 
+test.describe('Snake Game — Hunter ALPHA', () => {
+  test('hunter module exports manhattanDistance and generateHunter', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/hunter.js')
+      return {
+        hasManhattan: typeof mod.manhattanDistance === 'function',
+        hasGenerate: typeof mod.generateHunter === 'function',
+        hasMoveHunter: typeof mod.moveHunter === 'function',
+      }
+    })
+    expect(exports.hasManhattan).toBe(true)
+    expect(exports.hasGenerate).toBe(true)
+    expect(exports.hasMoveHunter).toBe(true)
+  })
+
+  test('hunter levels render with ALPHA intro without errors', async ({ page }) => {
+    // Start at Level 8 (hunter level) — should show ALPHA intro text
+    await page.addInitScript(() => {
+      localStorage.setItem('snake-prologue-seen', 'true')
+      localStorage.setItem('snake-highest-level', '10')
+    })
+
+    const errors = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
+    await page.goto('/')
+    await page.waitForTimeout(200)
+
+    // Navigate to level select, pick level 8
+    await page.keyboard.press('l')
+    await page.waitForTimeout(200)
+    // Highest is 10, press down twice to get to 8
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(50)
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(50)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(500)
+
+    // Start playing and let it run (hunter + ALPHA intro active)
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(4000)
+
+    expect(errors).toEqual([])
+  })
+
+  test('_killedByHunter flag exists in tick event flags', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const hasFlag = await page.evaluate(async () => {
+      const { tick } = await import('/js/tick.js')
+      const { createInitialState } = await import('/js/state.js')
+      const state = createInitialState()
+      const result = tick(state)
+      return '_killedByHunter' in result
+    })
+    expect(hasFlag).toBe(true)
+  })
+
+  test('audio module exports hunter sounds', async ({ page }) => {
+    await skipPrologue(page)
+    await page.goto('/')
+    await page.waitForTimeout(300)
+
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/audio.js')
+      return {
+        hasHunterKill: typeof mod.playHunterKillSound === 'function',
+        hasHunterIntro: typeof mod.playHunterIntroSound === 'function',
+      }
+    })
+    expect(exports.hasHunterKill).toBe(true)
+    expect(exports.hasHunterIntro).toBe(true)
+  })
+})
+
 test.describe('Snake Game — Environment', () => {
   test('environment module exports renderEnvironment function', async ({ page }) => {
     await skipPrologue(page)

@@ -30,7 +30,7 @@ import {
     initAudio, playEatSound, playLevelUpSound, playDeathSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playMenuSelectSound, playMenuNavigateSound, playStartSound,
-    playFragmentCollectSound,
+    playFragmentCollectSound, playHunterKillSound, playHunterIntroSound,
 } from './audio.js';
 import {
     FRAGMENT_DATA, getFragmentForLevel, isFragmentCollected, collectFragment,
@@ -69,6 +69,8 @@ var titleState = createTitleState();
 var levelSelectState = createLevelSelectState();
 var codexState = { scrollOffset: 0 };
 var fragmentTextState = null;
+var hunterIntroState = null;
+var hunterTrailHistory = [];
 
 // --- Game State ---
 var state = createInitialState();
@@ -136,6 +138,7 @@ function startGameAtLevel(level) {
     shakeState = createShakeState();
     prevSnake = null;
     prevHunterSegments = null;
+    hunterTrailHistory = [];
 
     state = createInitialState();
     // Set up for the chosen level
@@ -149,6 +152,17 @@ function startGameAtLevel(level) {
     });
 
     fragmentTextState = null;
+    hunterIntroState = null;
+
+    // ALPHA introduction when starting on hunter levels
+    if (state.hunter) {
+        var introText = level === 10
+            ? 'ALPHA REMEMBERS YOU.'
+            : 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON';
+        hunterIntroState = { text: introText, startTime: Date.now() };
+        playHunterIntroSound();
+    }
+
     messageEl.textContent = 'Press any arrow key to start';
     messageEl.className = '';
     messageEl.style.color = '';
@@ -271,6 +285,8 @@ setupInput({
         prevSnake = null;
         prevHunterSegments = null;
         fragmentTextState = null;
+        hunterIntroState = null;
+        hunterTrailHistory = [];
         state = createInitialState();
         state = Object.assign({}, state, {
             level: startingLevel,
@@ -392,6 +408,11 @@ function gameLoop(timestamp) {
         state = tick(Object.assign({}, state, { lastTick: timestamp }));
         state = Object.assign({}, state, { lastTick: timestamp });
 
+        // --- Hunter Trail Tracking ---
+        if (state.hunter && !state.gameOver) {
+            hunterTrailHistory = [state.hunter.segments[0]].concat(hunterTrailHistory.slice(0, 2));
+        }
+
         // --- Particle Events ---
 
         // Food eaten: burst at food position, skip interpolation (snake grew)
@@ -431,6 +452,17 @@ function gameLoop(timestamp) {
             var newLevelFrag = spawnFragmentForLevel(state.level, 0);
             if (newLevelFrag) {
                 state = Object.assign({}, state, { fragment: newLevelFrag });
+            }
+
+            // Reset hunter trail for new level
+            hunterTrailHistory = [];
+
+            // ALPHA intro when leveling up to a hunter level
+            if (state.hunter) {
+                var hunterLevelText = state.level === 10
+                    ? 'ALPHA REMEMBERS YOU.'
+                    : 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON';
+                hunterIntroState = { text: hunterLevelText, startTime: Date.now() + 1500 };
             }
 
             // Show inter-level story screen
@@ -499,9 +531,18 @@ function gameLoop(timestamp) {
         if (state.gameOver && !prevState.gameOver) {
             prevSnake = null;
             prevHunterSegments = null;
-            playDeathSound();
-            particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
-            shakeState = triggerShake(8, 0.4);
+            hunterIntroState = null;
+
+            if (state._killedByHunter) {
+                // ALPHA kill: distinctive sound, orange particles, heavier shake
+                playHunterKillSound();
+                particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.hunterColor || '#f97316', '#ff2200');
+                shakeState = triggerShake(12, 0.5);
+            } else {
+                playDeathSound();
+                particleSystem = emitExplosion(particleSystem, state.snake[0].x, state.snake[0].y, config.color, '#ef4444');
+                shakeState = triggerShake(8, 0.4);
+            }
 
             // Ending sequence for Level 10 deaths (skip if awakening already triggered)
             if (state.level === MAX_LEVEL && currentScreen !== 'ending') {
@@ -537,6 +578,7 @@ function gameLoop(timestamp) {
         progress: tickProgress,
         prevSnake: prevSnake,
         prevHunter: prevHunterSegments,
+        hunterTrail: hunterTrailHistory,
     };
 
     // Apply screen shake
@@ -556,6 +598,31 @@ function gameLoop(timestamp) {
             fragmentTextState = null;
         }
     }
+
+    // ALPHA intro text overlay (rendered outside shake transform)
+    // Fade in: 0-500ms, hold: 500-2800ms, fade out: 2800-3500ms
+    if (hunterIntroState) {
+        var introElapsed = Date.now() - hunterIntroState.startTime;
+        if (introElapsed >= 0 && introElapsed < 3500) {
+            var introFade = introElapsed < 500
+                ? introElapsed / 500
+                : introElapsed > 2800
+                    ? 1 - (introElapsed - 2800) / 700
+                    : 1;
+            ctx.save();
+            ctx.globalAlpha = introFade * 0.9;
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 11px Courier New';
+            ctx.fillStyle = '#f97316';
+            ctx.fillText(hunterIntroState.text, CANVAS_SIZE / 2, 30);
+            ctx.globalAlpha = 1;
+            ctx.textAlign = 'left';
+            ctx.restore();
+        } else if (introElapsed >= 3500) {
+            hunterIntroState = null;
+        }
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
