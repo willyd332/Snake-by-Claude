@@ -5,12 +5,12 @@ export var CELL_SIZE = 20;
 export var CANVAS_SIZE = GRID_SIZE * CELL_SIZE;
 export var FOOD_TO_LEVEL_UP = 5;
 
-// Per-level grid sizes (design base is 20)
+// Per-level grid sizes — grows aggressively each level to fill screen by later levels
 export var LEVEL_GRID_SIZE = {
-    1: 20, 2: 20, 3: 20, 4: 20, 5: 20,
-    6: 22, 7: 22,
-    8: 24, 9: 24,
-    10: 28,
+    1: 20, 2: 22, 3: 24, 4: 26, 5: 28,
+    6: 30, 7: 33,
+    8: 36, 9: 39,
+    10: 42,
 };
 export var ENDLESS_GRID_SIZE = 24;
 export var LEVEL_UP_INVINCIBLE_TICKS = 10;
