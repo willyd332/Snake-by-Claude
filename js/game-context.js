@@ -12,6 +12,7 @@ import { getSettings, getDifficultyPreset, createSettingsState } from './setting
 import { getEndlessConfig, setEndlessHighScore, setEndlessHighWave } from './endless.js';
 import { createReplayBuffer } from './replay.js';
 import { playHunterIntroSound } from './audio.js';
+import { stopMusic } from './music.js';
 import { recordGameStart, recordGameTime } from './stats.js';
 import { createSpeedrunState, resetSpeedrun } from './speedrun.js';
 
@@ -32,6 +33,7 @@ export function hideGameplayUI(hudEl, titleEl, messageEl) {
 // --- Screen navigation ---
 
 export function switchToTitle(g, deps) {
+    stopMusic();
     g.currentScreen = 'title';
     g.titleMenuIndex = null;
     setGridSize(20);
@@ -95,6 +97,9 @@ export function startEndlessMode(g, deps) {
     deps.messageEl.textContent = 'Swipe or press arrow to begin';
     deps.messageEl.className = '';
     deps.messageEl.style.color = '';
+
+    // Start ambient music (will init on first user gesture)
+    stopMusic();
 }
 
 // --- Event context helpers ---
@@ -131,6 +136,7 @@ export function applyEventCtx(g, eventCtx) {
 // --- Gameplay action helpers ---
 
 export function restartGame(g, deps, newDir) {
+    stopMusic();
     if (g.gameSessionStartTime > 0) {
         recordGameTime(Date.now() - g.gameSessionStartTime);
         g.gameSessionStartTime = 0;

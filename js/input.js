@@ -176,6 +176,15 @@ export function setupInput(callbacks) {
             return;
         }
 
+        // M key: toggle music mute (during gameplay)
+        if ((e.key === 'm' || e.key === 'M') && state.started && !state.gameOver) {
+            e.preventDefault();
+            if (callbacks.onToggleMusic) {
+                callbacks.onToggleMusic();
+            }
+            return;
+        }
+
         // Prevent 180-degree reversal
         var isOpposite = (newDir.x + state.direction.x === 0 && newDir.y + state.direction.y === 0);
         if (!isOpposite) {

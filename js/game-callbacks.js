@@ -6,8 +6,12 @@
 import { randomPosition } from './state.js';
 import {
     initAudio, playMenuSelectSound, playMenuNavigateSound, playStartSound,
-    playSecretSound, setSoundEnabled,
+    playSecretSound, setSoundEnabled, isSoundEnabled,
+    getAudioContext, getMasterGain,
 } from './audio.js';
+import {
+    startMusic, toggleMusicMute,
+} from './music.js';
 import { createTitleState } from './screens.js';
 import {
     getSettingsItems, toggleSetting, cycleSetting,
@@ -188,10 +192,14 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             tryUnlock('root_access');
         },
 
-        restartGame: function(newDir) { restartGame(g, navDeps, newDir); },
+        restartGame: function(newDir) {
+            restartGame(g, navDeps, newDir);
+            startMusic(getAudioContext(), getMasterGain());
+        },
 
         startGame: function(newDir) {
             playStartSound();
+            startMusic(getAudioContext(), getMasterGain());
             g.prevSnake = null;
             g.prevHunterSegments = null;
             g.state = Object.assign({}, g.state, {
@@ -210,6 +218,20 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
         goToTitle: function() { goToTitle(g, navDeps); },
 
         onRestartLevel: function() { onRestartLevel(g, navDeps); },
+
+        onToggleMusic: function() {
+            var muted = toggleMusicMute();
+            if (g.state.started && !g.state.gameOver) {
+                messageEl.textContent = muted ? 'Music OFF' : 'Music ON';
+                messageEl.className = 'active';
+                setTimeout(function() {
+                    if (g.state.started && !g.state.gameOver) {
+                        messageEl.textContent = '';
+                        messageEl.className = '';
+                    }
+                }, 1200);
+            }
+        },
 
         // Touch-specific callbacks
         getTitleMenuIndex: function() { return g.titleMenuIndex; },

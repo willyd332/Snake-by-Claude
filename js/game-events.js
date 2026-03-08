@@ -11,7 +11,9 @@ import {
     playEatSound, playLevelUpSound, playDeathSound, playLifeLostSound,
     playPowerUpCollectSound, playPortalSound, playShrinkSound,
     playHunterKillSound, playHunterIntroSound,
+    getAudioContext, getMasterGain,
 } from './audio.js';
+import { setMusicIntensity, playWaveFanfare, stopMusic } from './music.js';
 import { setEndlessHighScore, setEndlessHighWave, getWaveTitle } from './endless.js';
 import {
     recordFoodEaten, recordDeath, recordPortalUse,
@@ -82,6 +84,8 @@ export function processPostTickEvents(ctx) {
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         playLevelUpSound();
+        playWaveFanfare(getAudioContext(), getMasterGain(), ctx.state.endlessWave);
+        setMusicIntensity(ctx.state.endlessWave, ctx.state.wallInset || 0);
         var waveConfig = ctx.state.endlessConfig;
         ctx.particleSystem = emitLevelUpShower(ctx.particleSystem, CANVAS_SIZE, waveConfig.color);
         ctx.shakeState = triggerShake(4, 0.3);
@@ -129,11 +133,12 @@ export function processPostTickEvents(ctx) {
         }
     }
 
-    // Arena shrink: shake
+    // Arena shrink: shake + update music intensity for wall urgency
     if (ctx.state._shrinkOccurred) {
         playShrinkSound();
         ctx.ui.showShrinkMessage();
         ctx.shakeState = triggerShake(5, 0.25);
+        setMusicIntensity(ctx.state.endlessWave || 1, ctx.state.wallInset || 0);
         var arenaW = ctx.state.arenaMaxX - ctx.state.arenaMinX + 1;
         var arenaH = ctx.state.arenaMaxY - ctx.state.arenaMinY + 1;
         if (arenaW <= 8 && arenaH <= 8) ctx.tryUnlock('survivor');
@@ -208,6 +213,7 @@ export function processPostTickEvents(ctx) {
         }
 
         // Final death — true game over
+        stopMusic();
         recordDeath(ctx.state.level);
         recordBestScore(ctx.state.level, ctx.state.score);
 

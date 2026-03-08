@@ -79,6 +79,14 @@ export function initAudio() {
     getContext();
 }
 
+export function getAudioContext() {
+    return getContext();
+}
+
+export function getMasterGain() {
+    return masterGain;
+}
+
 export function setSoundEnabled(enabled) {
     audioConfig = Object.assign({}, audioConfig, { soundEnabled: enabled });
 }
