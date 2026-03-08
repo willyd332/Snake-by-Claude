@@ -1,7 +1,7 @@
 'use strict';
 
 import { CANVAS_SIZE, GRID_SIZE, INVINCIBLE_TICKS } from './constants.js';
-import { getLevelConfig, randomPosition } from './state.js';
+import { getLevelConfig, randomPosition, randomPositionInBounds } from './state.js';
 import { getPowerUpDef } from './powerups.js';
 import {
     emitBurst, emitExplosion, emitLevelUpShower, emitPortalSwirl,
@@ -167,7 +167,12 @@ export function processPostTickEvents(ctx) {
             ctx.shakeState = triggerShake(5, 0.2);
 
             // Respawn snake at a safe position
-            var spawnPos = randomPosition([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter);
+            var wallInset = ctx.state.wallInset || 0;
+            var spawnMinX = wallInset;
+            var spawnMinY = wallInset;
+            var spawnMaxX = GRID_SIZE - 1 - wallInset;
+            var spawnMaxY = GRID_SIZE - 1 - wallInset;
+            var spawnPos = randomPositionInBounds([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, spawnMinX, spawnMinY, spawnMaxX, spawnMaxY);
             var spawnSnake = [spawnPos];
             var newLives = ctx.state.lives - 1;
             var respawnState = Object.assign({}, ctx.state, {
@@ -186,7 +191,7 @@ export function processPostTickEvents(ctx) {
             });
             // Respawn food at safe location
             respawnState = Object.assign({}, respawnState, {
-                food: randomPosition(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter),
+                food: randomPositionInBounds(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, spawnMinX, spawnMinY, spawnMaxX, spawnMaxY),
             });
             ctx.state = respawnState;
             ctx.hunterTrailHistory = [];
