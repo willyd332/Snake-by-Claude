@@ -1,6 +1,7 @@
 'use strict';
 
 import { ENDLESS_GRID_SIZE, LEVEL_CONFIG } from './constants.js';
+import { createBoss, isBossWave } from './boss.js';
 
 // Food eaten per wave before advancing
 export var ENDLESS_FOOD_PER_WAVE = 3;
@@ -23,14 +24,13 @@ var WAVE_TITLES = {
     6: 'The arena expands.',
     7: 'Portals tear open.',
     9: 'Darkness descends.',
-    10: 'Traps emerge.',
     11: 'Borders dissolve.',
     13: 'ALPHA awakens.',
     16: 'The grid stretches.',
-    20: 'Everything converges.',
 };
 
 export function getWaveTitle(wave) {
+    if (isBossWave(wave)) return 'BOSS WAVE \u2014 ALPHA APPROACHES.';
     return WAVE_TITLES[wave] || null;
 }
 
@@ -247,6 +247,12 @@ export function generateEndlessHunter(wave) {
         moveCounter: 0,
         growPending: 0,
     };
+}
+
+// Boss generation for endless mode
+export function generateEndlessBoss(wave) {
+    if (!isBossWave(wave)) return null;
+    return createBoss(wave);
 }
 
 // Endless high score persistence

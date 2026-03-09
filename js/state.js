@@ -44,6 +44,8 @@ export function createInitialState() {
         iceSliding: false,
         iceSlideTicks: 0,
         tickCount: 0,
+        boss: null,
+        bossWavesSurvived: 0,
     };
 }
 

@@ -10,7 +10,8 @@ import { moveObstacles, getObstaclePositions, checkPortalTeleport } from './leve
 import { moveHunter } from './hunter.js';
 import { spawnPowerUp, getPowerUpDef } from './powerups.js';
 import { getLevelConfig, collides, randomPosition } from './state.js';
-import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter } from './endless.js';
+import { ENDLESS_FOOD_PER_WAVE, getEndlessConfig, generateEndlessWalls, generateEndlessObstacles, generateEndlessPortals, generateEndlessHunter, generateEndlessBoss } from './endless.js';
+import { moveBoss, onPlayerAteFood as onBossFoodEaten, isBossWave } from './boss.js';
 import { isModifierActive } from './modifiers.js';
 import { onFoodEaten, checkComboExpiry, createComboState, COMBO_BASE_SCORE } from './combo.js';
 import {
@@ -194,6 +195,8 @@ export function tick(prev) {
         _activeZone: null,
         _hungryLost: false,
         _hazardDeath: null,
+        _killedByBoss: false,
+        _bossWaveSurvived: false,
     });
 
     if (clean.gameOver || !clean.started) return clean;

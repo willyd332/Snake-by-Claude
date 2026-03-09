@@ -266,11 +266,11 @@ export function processPostTickEvents(ctx) {
         ctx.prevHunterSegments = null;
         playLevelUpSound();
         playWaveFanfare(getAudioContext(), getMasterGain(), ctx.state.endlessWave);
+        transitionToWave(ctx.state.endlessWave, ctx.state.wallInset || 0);
+        var waveConfig = ctx.state.endlessConfig;
         if (isMilestoneWave(ctx.state.endlessWave)) {
             showMilestone(ctx.state.endlessWave, ctx.state.score, ctx.state.snake.length, waveConfig.color);
         }
-        transitionToWave(ctx.state.endlessWave, ctx.state.wallInset || 0);
-        var waveConfig = ctx.state.endlessConfig;
         ctx.particleSystem = emitLevelUpShower(ctx.particleSystem, CANVAS_SIZE, waveConfig.color);
         ctx.shakeState = triggerShake(SHAKE_WAVE_UP.intensity, SHAKE_WAVE_UP.duration);
         ctx.hunterTrailHistory = [];
