@@ -250,10 +250,11 @@ export function renderTitleScreen(ctx, titleState, menuIndex) {
         { text: 'Play', color: 'rgba(224, 224, 224, ', alpha: 0.85, font: '14px Courier New', glowColor: '#e0e0e0' },
         { text: 'Modifiers', color: 'rgba(239, 68, 68, ', alpha: 0.6, font: '13px Courier New', glowColor: '#ef4444' },
         { text: 'Trophies', color: 'rgba(251, 191, 36, ', alpha: 0.6, font: '13px Courier New', glowColor: '#fbbf24' },
+        { text: 'Shop', color: 'rgba(74, 158, 255, ', alpha: 0.6, font: '13px Courier New', glowColor: '#4a9eff' },
         { text: 'Settings', color: 'rgba(160, 160, 180, ', alpha: 0.5, font: '12px Courier New', glowColor: '#a0a0b4' },
     ];
-    var menuKeys = ['ENTER', 'M', 'T', 'S'];
-    var menuYOffsets = [8, 28, 46, 64];
+    var menuKeys = ['ENTER', 'M', 'T', 'B', 'S'];
+    var menuYOffsets = [8, 26, 42, 58, 74];
     var hasMenuIndex = menuIndex !== undefined && menuIndex !== null && menuIndex >= 0;
 
     for (var mi = 0; mi < menuItems.length; mi++) {
@@ -397,6 +398,9 @@ export function renderSettings(ctx, settingsState) {
                     'Dark Space': '#c0c8ff',
                     'Geometry': '#a855f7',
                     'Solid Dark': '#888',
+                    'Void Pulse': '#8b5cf6',
+                    'Matrix Cascade': '#00ff41',
+                    'Chromatic Drift': '#ec4899',
                 };
                 cycleColor = themeColors[cycleLabel] || '#e0e0e0';
             } else {

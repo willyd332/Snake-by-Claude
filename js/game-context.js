@@ -23,6 +23,7 @@ import {
     createModifierScreenState, getActiveModifierIds, getModifierStatePatch,
     computeModifierMultiplier,
 } from './modifiers.js';
+import { createShopState } from './shop.js';
 
 // --- Screen UI helpers ---
 
@@ -68,6 +69,12 @@ export function switchToModifiers(g, deps) {
 export function switchToSettings(g, deps) {
     g.currentScreen = 'settings';
     g.settingsState = createSettingsState();
+    hideGameplayUI(deps.hudEl, deps.titleEl, deps.messageEl);
+}
+
+export function switchToShop(g, deps) {
+    g.currentScreen = 'shop';
+    g.shopState = createShopState();
     hideGameplayUI(deps.hudEl, deps.titleEl, deps.messageEl);
 }
 

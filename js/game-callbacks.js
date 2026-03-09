@@ -28,7 +28,7 @@ import {
 import {
     hideGameplayUI,
     switchToTitle, switchToGallery,
-    switchToSettings, switchToModifiers,
+    switchToSettings, switchToModifiers, switchToShop,
     startEndlessMode,
     restartGame, goToTitle, onRestartLevel,
 } from './game-context.js';
@@ -36,6 +36,7 @@ import {
     MODIFIERS, toggleModifier, saveActiveModifierIds,
     isModifierUnlocked, getActiveModifierIds,
 } from './modifiers.js';
+import { getShopItemCount, handleShopPurchase } from './shop.js';
 
 export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canvas, konamiRef, tryUnlock) {
     return {
@@ -61,6 +62,11 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             initAudio();
             playMenuSelectSound();
             switchToGallery(g, navDeps);
+        },
+        onTitleShop: function() {
+            initAudio();
+            playMenuSelectSound();
+            switchToShop(g, navDeps);
         },
         onTitleSettings: function() {
             initAudio();
@@ -174,6 +180,44 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
                     playMenuSelectSound();
                     setActiveTrail(trail.id);
                 }
+            }
+        },
+
+        // Shop actions
+        onShopBack: function() {
+            playMenuNavigateSound();
+            switchToTitle(g, navDeps);
+        },
+        onShopNavigate: function(delta) {
+            var shopState = g.shopState || { category: 0, selectedIndex: 0, scrollOffset: 0, purchaseFlash: 0 };
+            var count = getShopItemCount(shopState.category);
+            var newIdx = shopState.selectedIndex + delta;
+            if (newIdx >= 0 && newIdx < count) {
+                playMenuNavigateSound();
+                var maxVisible = 6;
+                var scrollOffset = shopState.scrollOffset;
+                if (newIdx >= scrollOffset + maxVisible) {
+                    scrollOffset = newIdx - maxVisible + 1;
+                } else if (newIdx < scrollOffset) {
+                    scrollOffset = newIdx;
+                }
+                g.shopState = Object.assign({}, shopState, { selectedIndex: newIdx, scrollOffset: scrollOffset });
+            }
+        },
+        onShopCategoryChange: function(delta) {
+            var shopState = g.shopState || { category: 0, selectedIndex: 0, scrollOffset: 0, purchaseFlash: 0 };
+            var newCat = shopState.category + delta;
+            if (newCat >= 0 && newCat <= 1) {
+                playMenuNavigateSound();
+                g.shopState = Object.assign({}, shopState, { category: newCat, selectedIndex: 0, scrollOffset: 0 });
+            }
+        },
+        onShopPurchase: function() {
+            var shopState = g.shopState || { category: 0, selectedIndex: 0, scrollOffset: 0, purchaseFlash: 0 };
+            var result = handleShopPurchase(shopState);
+            if (result.success) {
+                playMenuSelectSound();
+                g.shopState = Object.assign({}, shopState, { purchaseFlash: Date.now() });
             }
         },
 

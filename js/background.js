@@ -11,6 +11,17 @@ export var BACKGROUND_THEMES = [
     { id: 'darkSpace',   label: 'Dark Space' },
     { id: 'geometry',    label: 'Geometry' },
     { id: 'solid',       label: 'Solid Dark' },
+    // Premium themes (require Data Fragment purchase)
+    { id: 'voidPulse',       label: 'Void Pulse',       premium: true },
+    { id: 'matrixCascade',   label: 'Matrix Cascade',   premium: true },
+    { id: 'chromaticDrift',  label: 'Chromatic Drift',  premium: true },
+];
+
+// Premium theme definitions for the shop
+export var PREMIUM_THEMES = [
+    { id: 'voidPulse',      label: 'Void Pulse',      name: 'Void Pulse',      desc: 'Deep black with pulsing violet rings',          price: 250, icon: '\u25C9', color: '#8b5cf6' },
+    { id: 'matrixCascade',   label: 'Matrix Cascade',  name: 'Matrix Cascade',  desc: 'Green character rain, faster and denser',        price: 350, icon: '\u25A5', color: '#00ff41' },
+    { id: 'chromaticDrift',  label: 'Chromatic Drift', name: 'Chromatic Drift', desc: 'Slow-shifting aurora borealis color gradients',  price: 500, icon: '\u25C8', color: '#ec4899' },
 ];
 
 export var THEME_ORDER = BACKGROUND_THEMES.map(function(t) { return t.id; });
@@ -20,6 +31,15 @@ export function getThemeLabel(id) {
         if (BACKGROUND_THEMES[i].id === id) return BACKGROUND_THEMES[i].label;
     }
     return 'Neon Grid';
+}
+
+/**
+ * Check if a theme is a premium theme.
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isPremiumTheme(id) {
+    return PREMIUM_THEMES.some(function(t) { return t.id === id; });
 }
 
 // --- Theme State ---
@@ -41,6 +61,17 @@ export function createBackgroundState() {
 
         // Neon grid scroll offset
         gridOffset: 0,
+
+        // Void Pulse rings
+        voidRings: [],
+        voidTimer: 0,
+
+        // Matrix Cascade columns (faster/denser version of digital rain)
+        cascadeDrops: [],
+        cascadeInited: false,
+
+        // Chromatic Drift aurora state
+        auroraPhase: 0,
 
         // Last frame time for dt
         lastTime: 0,
@@ -397,6 +428,214 @@ function renderSolid(ctx, width, height) {
     ctx.fillRect(0, 0, width, height);
 }
 
+// --- Void Pulse ---
+// Deep black with pulsing violet rings expanding from center
+
+var VOID_RING_SPAWN_INTERVAL = 1.8;
+var VOID_MAX_RINGS = 6;
+
+function updateVoidPulse(bgState, dt) {
+    var newTimer = bgState.voidTimer + dt;
+    var newRings = bgState.voidRings.map(function(r) {
+        return Object.assign({}, r, {
+            radius: r.radius + r.speed * dt * 60,
+            alpha: Math.max(0, r.alpha - 0.004 * dt * 60),
+        });
+    }).filter(function(r) { return r.alpha > 0; });
+
+    if (newTimer >= VOID_RING_SPAWN_INTERVAL && newRings.length < VOID_MAX_RINGS) {
+        newRings.push({
+            radius: 10 + Math.random() * 20,
+            speed: 0.8 + Math.random() * 0.6,
+            alpha: 0.4 + Math.random() * 0.2,
+            hue: 260 + Math.random() * 30,
+        });
+        newTimer = 0;
+    }
+
+    return Object.assign({}, bgState, { voidRings: newRings, voidTimer: newTimer });
+}
+
+function renderVoidPulse(ctx, bgState, width, height, now) {
+    ctx.fillStyle = '#020208';
+    ctx.fillRect(0, 0, width, height);
+
+    var cx = width / 2;
+    var cy = height / 2;
+
+    // Subtle center glow
+    var centerPulse = Math.sin(now / 1500) * 0.02 + 0.03;
+    var centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 150);
+    centerGrad.addColorStop(0, 'rgba(139, 92, 246, ' + centerPulse + ')');
+    centerGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = centerGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Pulsing rings
+    for (var i = 0; i < bgState.voidRings.length; i++) {
+        var ring = bgState.voidRings[i];
+        ctx.beginPath();
+        ctx.arc(cx, cy, ring.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'hsla(' + ring.hue + ', 70%, 55%, ' + (ring.alpha * 0.6) + ')';
+        ctx.shadowColor = 'hsla(' + ring.hue + ', 80%, 60%, 0.4)';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+
+    // Ambient edge violet glow
+    var edgeAlpha = Math.sin(now / 4000) * 0.015 + 0.025;
+    var edgeGrad = ctx.createRadialGradient(cx, cy, Math.min(width, height) * 0.3, cx, cy, Math.max(width, height) * 0.7);
+    edgeGrad.addColorStop(0, 'transparent');
+    edgeGrad.addColorStop(1, 'rgba(139, 92, 246, ' + edgeAlpha + ')');
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, width, height);
+}
+
+// --- Matrix Cascade ---
+// Faster, denser version of Digital Rain with brighter heads
+
+var CASCADE_FONT_SIZE = 10;
+var CASCADE_CHARS = '01!@#$%&*=+<>[]{}|/~';
+var CASCADE_FADE_SPEED = 0.018;
+
+function initCascade(bgState, width) {
+    var cols = Math.floor(width / CASCADE_FONT_SIZE);
+    var drops = [];
+    for (var i = 0; i < cols; i++) {
+        drops.push({
+            x: i,
+            y: Math.random() * -30,
+            speed: 0.6 + Math.random() * 1.2,
+            chars: [],
+            charTimer: 0,
+        });
+    }
+    return Object.assign({}, bgState, { cascadeDrops: drops, cascadeInited: true });
+}
+
+function updateCascade(bgState, dt, height) {
+    var drops = bgState.cascadeDrops.map(function(drop) {
+        var newY = drop.y + drop.speed * dt * 80;
+        var maxY = height / CASCADE_FONT_SIZE;
+
+        if (newY > maxY + 5) {
+            return Object.assign({}, drop, {
+                y: Math.random() * -8,
+                speed: 0.6 + Math.random() * 1.2,
+                chars: [],
+            });
+        }
+
+        var newTimer = drop.charTimer + dt;
+        var newChars = drop.chars;
+        if (newTimer > 0.03) {
+            var ch = CASCADE_CHARS[Math.floor(Math.random() * CASCADE_CHARS.length)];
+            newChars = [{ ch: ch, alpha: 1.0 }].concat(
+                drop.chars.map(function(c) {
+                    return { ch: c.ch, alpha: Math.max(0, c.alpha - CASCADE_FADE_SPEED) };
+                }).filter(function(c) { return c.alpha > 0; })
+            );
+            newTimer = 0;
+        }
+
+        return Object.assign({}, drop, { y: newY, chars: newChars, charTimer: newTimer });
+    });
+    return Object.assign({}, bgState, { cascadeDrops: drops });
+}
+
+function renderCascade(ctx, bgState, width, height) {
+    ctx.fillStyle = '#030808';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.font = CASCADE_FONT_SIZE + 'px Courier New';
+    ctx.textAlign = 'left';
+
+    for (var i = 0; i < bgState.cascadeDrops.length; i++) {
+        var drop = bgState.cascadeDrops[i];
+        var px = drop.x * CASCADE_FONT_SIZE;
+
+        for (var j = 0; j < drop.chars.length; j++) {
+            var c = drop.chars[j];
+            var py = (drop.y - j) * CASCADE_FONT_SIZE;
+            if (py < 0 || py > height) continue;
+
+            if (j === 0) {
+                ctx.fillStyle = 'rgba(200, 255, 200, ' + (c.alpha * 0.95) + ')';
+                ctx.shadowColor = '#00ff41';
+                ctx.shadowBlur = 10;
+            } else if (j < 3) {
+                ctx.fillStyle = 'rgba(0, 255, 65, ' + (c.alpha * 0.7) + ')';
+                ctx.shadowColor = '#00ff41';
+                ctx.shadowBlur = 4;
+            } else {
+                ctx.fillStyle = 'rgba(0, 200, 50, ' + (c.alpha * 0.4) + ')';
+                ctx.shadowBlur = 0;
+            }
+            ctx.fillText(c.ch, px, py);
+        }
+    }
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+}
+
+// --- Chromatic Drift ---
+// Slow-shifting aurora borealis color gradients
+
+function updateChromaticDrift(bgState, dt) {
+    return Object.assign({}, bgState, {
+        auroraPhase: bgState.auroraPhase + dt * 0.15,
+    });
+}
+
+function renderChromaticDrift(ctx, bgState, width, height, now) {
+    ctx.fillStyle = '#050510';
+    ctx.fillRect(0, 0, width, height);
+
+    var phase = bgState.auroraPhase;
+
+    // Multiple overlapping aurora bands
+    var bands = [
+        { yOffset: 0.25, hueBase: 160,  speed: 0.7,  amplitude: 0.12, alpha: 0.06 },
+        { yOffset: 0.40, hueBase: 280,  speed: 1.1,  amplitude: 0.08, alpha: 0.05 },
+        { yOffset: 0.55, hueBase: 330,  speed: 0.5,  amplitude: 0.15, alpha: 0.04 },
+        { yOffset: 0.35, hueBase: 200,  speed: 0.9,  amplitude: 0.10, alpha: 0.035 },
+    ];
+
+    for (var b = 0; b < bands.length; b++) {
+        var band = bands[b];
+        var hue = (band.hueBase + phase * 20 * band.speed) % 360;
+        var waveY = height * band.yOffset + Math.sin(phase * band.speed) * height * band.amplitude;
+
+        var bandGrad = ctx.createLinearGradient(0, waveY - 80, 0, waveY + 80);
+        bandGrad.addColorStop(0, 'transparent');
+        bandGrad.addColorStop(0.3, 'hsla(' + hue + ', 70%, 50%, ' + band.alpha + ')');
+        bandGrad.addColorStop(0.5, 'hsla(' + ((hue + 30) % 360) + ', 80%, 55%, ' + (band.alpha * 1.3) + ')');
+        bandGrad.addColorStop(0.7, 'hsla(' + ((hue + 60) % 360) + ', 70%, 50%, ' + band.alpha + ')');
+        bandGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = bandGrad;
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    // Subtle horizontal shimmer lines
+    var shimmerCount = 5;
+    for (var s = 0; s < shimmerCount; s++) {
+        var sy = height * (0.2 + s * 0.15) + Math.sin(now / 3000 + s * 1.5) * 15;
+        var shimmerHue = (phase * 25 + s * 60) % 360;
+        var shimmerAlpha = (Math.sin(now / 2000 + s) * 0.015 + 0.02);
+        ctx.strokeStyle = 'hsla(' + shimmerHue + ', 60%, 50%, ' + shimmerAlpha + ')';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, sy);
+        for (var sx = 0; sx <= width; sx += 20) {
+            var swy = sy + Math.sin(sx / 80 + phase * 2 + s) * 3;
+            ctx.lineTo(sx, swy);
+        }
+        ctx.stroke();
+    }
+}
+
 // --- Main Update & Render ---
 
 export function updateBackground(bgState, dt, theme, width, height) {
@@ -418,6 +657,16 @@ export function updateBackground(bgState, dt, theme, width, height) {
             break;
         case 'neonGrid':
             state = Object.assign({}, state, { gridOffset: (state.gridOffset + NEON_SCROLL_SPEED * dt) % NEON_GRID_SPACING });
+            break;
+        case 'voidPulse':
+            state = updateVoidPulse(state, dt);
+            break;
+        case 'matrixCascade':
+            if (!state.cascadeInited) state = initCascade(state, width);
+            state = updateCascade(state, dt, height);
+            break;
+        case 'chromaticDrift':
+            state = updateChromaticDrift(state, dt);
             break;
         case 'solid':
         default:
@@ -442,6 +691,15 @@ export function renderBackground(ctx, bgState, theme, width, height) {
             break;
         case 'neonGrid':
             renderNeonGrid(ctx, bgState, width, height, now);
+            break;
+        case 'voidPulse':
+            renderVoidPulse(ctx, bgState, width, height, now);
+            break;
+        case 'matrixCascade':
+            renderCascade(ctx, bgState, width, height);
+            break;
+        case 'chromaticDrift':
+            renderChromaticDrift(ctx, bgState, width, height, now);
             break;
         case 'solid':
         default:

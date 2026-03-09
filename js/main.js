@@ -51,6 +51,7 @@ import { isSpeedBurstActive, SPEED_BURST_MULTIPLIER } from './wave-events.js';
 import { getCurrentStreak, getStreakBonus, STREAK_VISUAL_THRESHOLD } from './streak.js';
 import { createBackgroundState, updateBackground, renderBackground } from './background.js';
 import { createModifierScreenState, renderModifierScreen, isModifierActive } from './modifiers.js';
+import { createShopState, renderShopScreen } from './shop.js';
 
 // --- Canvas setup ---
 var canvas = document.getElementById('game');
@@ -122,6 +123,7 @@ var g = {
     waveTransitionActive: false,
     streakRingEmitted: false,
     modifierScreenState: createModifierScreenState(),
+    shopState: createShopState(),
 
     // Game state
     state: createInitialState(),
@@ -235,6 +237,19 @@ function gameLoop(timestamp) {
 
     if (g.currentScreen === 'modifiers') {
         renderModifierScreen(ctx, g.modifierScreenState);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    if (g.currentScreen === 'shop') {
+        // Decay purchase flash
+        if (g.shopState && g.shopState.purchaseFlash > 0) {
+            var flashAge = Date.now() - g.shopState.purchaseFlash;
+            if (flashAge > 1500) {
+                g.shopState = Object.assign({}, g.shopState, { purchaseFlash: 0 });
+            }
+        }
+        renderShopScreen(ctx, g.shopState || createShopState());
         requestAnimationFrame(gameLoop);
         return;
     }

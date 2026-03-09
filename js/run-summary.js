@@ -20,6 +20,7 @@
 import { addLeaderboardEntry, formatDate } from './leaderboard.js';
 import { getStreakBonus, STREAK_DISPLAY_MIN } from './streak.js';
 import { getActiveModifiers, computeModifierMultiplier, getActiveModifierIds, getModifierDef } from './modifiers.js';
+import { calculateFragments, earnFragments, getProgression } from './progression.js';
 
 var DEATH_CAUSE_LABELS = {
     boundary:  'Hit a wall',
@@ -318,6 +319,57 @@ export function showRunSummary(data, onRestart, onMenu, runModifierIds) {
     statsEl.appendChild(createStatRow(highScoreLabel, String(data.highScore), highScoreColor));
 
     card.appendChild(statsEl);
+
+    // Fragment earnings section
+    var baseFragments = calculateFragments(data.score, data.wave);
+    var fragmentResult = { earned: 0, total: 0 };
+    if (baseFragments > 0) {
+        fragmentResult = earnFragments(baseFragments);
+    }
+
+    if (fragmentResult.earned > 0) {
+        var fragSection = document.createElement('div');
+        fragSection.style.cssText = [
+            'text-align: center',
+            'padding: 10px 12px',
+            'margin-bottom: 16px',
+            'background: rgba(74, 158, 255, 0.08)',
+            'border: 1px solid rgba(74, 158, 255, 0.2)',
+            'border-radius: 4px',
+        ].join(';');
+
+        var fragLabel = document.createElement('div');
+        fragLabel.textContent = 'DATA FRAGMENTS EARNED';
+        fragLabel.style.cssText = [
+            'font-size: 9px',
+            'letter-spacing: 2px',
+            'color: rgba(74, 158, 255, 0.6)',
+            'margin-bottom: 4px',
+        ].join(';');
+
+        var fragValue = document.createElement('div');
+        fragValue.textContent = '+' + fragmentResult.earned + ' \u25C6';
+        fragValue.style.cssText = [
+            'font-size: 18px',
+            'font-weight: bold',
+            'color: #4a9eff',
+            'letter-spacing: 1px',
+            'text-shadow: 0 0 10px rgba(74, 158, 255, 0.5)',
+        ].join(';');
+
+        var fragTotal = document.createElement('div');
+        fragTotal.textContent = 'Balance: ' + fragmentResult.total + ' \u25C6';
+        fragTotal.style.cssText = [
+            'font-size: 10px',
+            'color: rgba(160, 160, 180, 0.5)',
+            'margin-top: 2px',
+        ].join(';');
+
+        fragSection.appendChild(fragLabel);
+        fragSection.appendChild(fragValue);
+        fragSection.appendChild(fragTotal);
+        card.appendChild(fragSection);
+    }
 
     // Leaderboard section
     if (leaderboardResult.board.length > 0) {

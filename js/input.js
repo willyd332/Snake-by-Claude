@@ -50,6 +50,11 @@ export function setupInput(callbacks) {
                 callbacks.onTitleGallery();
                 return;
             }
+            if (e.key === 'b' || e.key === 'B') {
+                e.preventDefault();
+                callbacks.onTitleShop();
+                return;
+            }
             if (e.key === 's' || e.key === 'S') {
                 e.preventDefault();
                 callbacks.onTitleSettings();
@@ -143,6 +148,41 @@ export function setupInput(callbacks) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 callbacks.onGallerySelect();
+                return;
+            }
+            return;
+        }
+
+        // --- Shop Screen ---
+        if (screen === 'shop') {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                callbacks.onShopBack();
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                callbacks.onShopNavigate(-1);
+                return;
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                callbacks.onShopNavigate(1);
+                return;
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                callbacks.onShopCategoryChange(-1);
+                return;
+            }
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                callbacks.onShopCategoryChange(1);
+                return;
+            }
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                callbacks.onShopPurchase();
                 return;
             }
             return;

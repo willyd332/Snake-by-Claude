@@ -17,6 +17,7 @@ var TITLE_MENU_ACTIONS = [
     'onTitlePlay',
     'onTitleModifiers',
     'onTitleGallery',
+    'onTitleShop',
     'onTitleSettings',
 ];
 

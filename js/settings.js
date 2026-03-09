@@ -5,6 +5,9 @@
 // getSettings() returns immutable copy (safe for mutation). getSettingsRef() returns
 // the cached reference (no allocation, use in hot paths like game loop/renderer).
 
+import { isPremiumTheme } from './background.js';
+import { isThemeUnlocked } from './progression.js';
+
 var STORAGE_KEY = 'snake-settings';
 
 var DIFFICULTY_PRESETS = {
@@ -15,7 +18,7 @@ var DIFFICULTY_PRESETS = {
 
 var DIFFICULTY_ORDER = ['easy', 'normal', 'hard'];
 var MUSIC_VOLUME_ORDER = ['off', 'low', 'medium', 'high'];
-var BACKGROUND_THEME_ORDER = ['neonGrid', 'digitalRain', 'darkSpace', 'geometry', 'solid'];
+var BACKGROUND_THEME_ORDER = ['neonGrid', 'digitalRain', 'darkSpace', 'geometry', 'solid', 'voidPulse', 'matrixCascade', 'chromaticDrift'];
 
 var MUSIC_VOLUME_VALUES = {
     off: 0,
@@ -105,6 +108,20 @@ export function cycleSetting(key, options, direction) {
     var idx = options.indexOf(current[key]);
     var delta = (direction && direction < 0) ? -1 : 1;
     var next = (idx + delta + options.length) % options.length;
+
+    // For background themes, skip locked premium themes
+    if (key === 'backgroundTheme') {
+        var attempts = 0;
+        while (attempts < options.length) {
+            var candidate = options[next];
+            if (!isPremiumTheme(candidate) || isThemeUnlocked(candidate)) {
+                break;
+            }
+            next = (next + delta + options.length) % options.length;
+            attempts++;
+        }
+    }
+
     var result = updateSetting(key, options[next]);
 
     // When musicLevel changes, sync the numeric musicVolume value
