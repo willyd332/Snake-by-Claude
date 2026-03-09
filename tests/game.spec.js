@@ -875,3 +875,555 @@ test.describe('Snake Game — Environmental Hazards', () => {
     expect(result.spikePeriod).toBe(30)
   })
 })
+
+// === META-PROGRESSION & SHOP ===
+test.describe('Snake Game — Meta-Progression System', () => {
+  test('progression module exports all required functions', async ({ page }) => {
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/progression.js')
+      return {
+        hasGetProgression: typeof mod.getProgression === 'function',
+        hasCalculateFragments: typeof mod.calculateFragments === 'function',
+        hasEarnFragments: typeof mod.earnFragments === 'function',
+        hasSpendFragments: typeof mod.spendFragments === 'function',
+        hasUnlockTheme: typeof mod.unlockTheme === 'function',
+        hasIsThemeUnlocked: typeof mod.isThemeUnlocked === 'function',
+        hasPurchaseRunBonus: typeof mod.purchaseRunBonus === 'function',
+        hasIsBonusPurchased: typeof mod.isBonusPurchased === 'function',
+        hasSetRunBonus: typeof mod.setRunBonus === 'function',
+        hasGetRunBonus: typeof mod.getRunBonus === 'function',
+        hasCanUseResilience: typeof mod.canUseResilience === 'function',
+        hasRunBonuses: Array.isArray(mod.RUN_BONUSES) && mod.RUN_BONUSES.length === 4,
+      }
+    })
+    expect(exports.hasGetProgression).toBe(true)
+    expect(exports.hasCalculateFragments).toBe(true)
+    expect(exports.hasEarnFragments).toBe(true)
+    expect(exports.hasSpendFragments).toBe(true)
+    expect(exports.hasUnlockTheme).toBe(true)
+    expect(exports.hasIsThemeUnlocked).toBe(true)
+    expect(exports.hasPurchaseRunBonus).toBe(true)
+    expect(exports.hasIsBonusPurchased).toBe(true)
+    expect(exports.hasSetRunBonus).toBe(true)
+    expect(exports.hasGetRunBonus).toBe(true)
+    expect(exports.hasCanUseResilience).toBe(true)
+    expect(exports.hasRunBonuses).toBe(true)
+  })
+
+  test('fragment calculation scales with score and wave', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { calculateFragments } = await import('/js/progression.js')
+      return {
+        zeroScore: calculateFragments(0, 1),
+        lowScore: calculateFragments(100, 1),
+        midScore: calculateFragments(500, 5),
+        highScore: calculateFragments(2000, 20),
+        waveOnlyMatters: calculateFragments(0, 10),
+      }
+    })
+    // formula: floor(score / 50) + (wave * 3)
+    expect(result.zeroScore).toBe(3)       // 0 + 1*3
+    expect(result.lowScore).toBe(5)        // 2 + 1*3
+    expect(result.midScore).toBe(25)       // 10 + 5*3
+    expect(result.highScore).toBe(100)     // 40 + 20*3
+    expect(result.waveOnlyMatters).toBe(30) // 0 + 10*3
+  })
+
+  test('earning and spending fragments persists in localStorage', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { getProgression, earnFragments, spendFragments } = await import('/js/progression.js')
+      // Clear any existing progression
+      localStorage.removeItem('tbc_progression')
+      var initial = getProgression()
+      // Earn some fragments
+      var earned = earnFragments(50)
+      var afterEarn = getProgression()
+      // Spend some
+      var spendOk = spendFragments(20)
+      var afterSpend = getProgression()
+      // Try to overspend
+      var spendFail = spendFragments(9999)
+      var afterFail = getProgression()
+      return {
+        initialFragments: initial.fragments,
+        earnedAmount: earned.earned,
+        earnedTotal: earned.total,
+        afterEarnFragments: afterEarn.fragments,
+        afterEarnLifetime: afterEarn.lifetime_earned,
+        spendOk: spendOk,
+        afterSpendFragments: afterSpend.fragments,
+        spendFail: spendFail,
+        afterFailFragments: afterFail.fragments,
+      }
+    })
+    expect(result.initialFragments).toBe(0)
+    expect(result.earnedAmount).toBe(50)
+    expect(result.earnedTotal).toBe(50)
+    expect(result.afterEarnFragments).toBe(50)
+    expect(result.afterEarnLifetime).toBe(50)
+    expect(result.spendOk).toBe(true)
+    expect(result.afterSpendFragments).toBe(30)
+    expect(result.spendFail).toBe(false)
+    expect(result.afterFailFragments).toBe(30)
+  })
+
+  test('shop module exports and createShopState works', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/shop.js')
+      var state = mod.createShopState()
+      return {
+        hasCreateShopState: typeof mod.createShopState === 'function',
+        hasGetShopItemCount: typeof mod.getShopItemCount === 'function',
+        hasHandleShopPurchase: typeof mod.handleShopPurchase === 'function',
+        hasRenderShopScreen: typeof mod.renderShopScreen === 'function',
+        stateCategory: state.category,
+        stateSelectedIndex: state.selectedIndex,
+        stateScrollOffset: state.scrollOffset,
+        statePurchaseFlash: state.purchaseFlash,
+        themesCount: mod.getShopItemCount(0),
+        bonusesCount: mod.getShopItemCount(1),
+      }
+    })
+    expect(result.hasCreateShopState).toBe(true)
+    expect(result.hasGetShopItemCount).toBe(true)
+    expect(result.hasHandleShopPurchase).toBe(true)
+    expect(result.hasRenderShopScreen).toBe(true)
+    expect(result.stateCategory).toBe(0)
+    expect(result.stateSelectedIndex).toBe(0)
+    expect(result.stateScrollOffset).toBe(0)
+    expect(result.statePurchaseFlash).toBe(0)
+    expect(result.themesCount).toBe(3)
+    expect(result.bonusesCount).toBe(4)
+  })
+
+  test('shop purchase fails without enough fragments and succeeds with enough', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { handleShopPurchase } = await import('/js/shop.js')
+      const { earnFragments, getProgression } = await import('/js/progression.js')
+      // Clear progression
+      localStorage.removeItem('tbc_progression')
+      // Try to buy a run bonus (head_start costs 150) with no fragments
+      var failResult = handleShopPurchase({ category: 1, selectedIndex: 0 })
+      // Earn enough fragments
+      earnFragments(200)
+      var balanceBefore = getProgression().fragments
+      // Buy the run bonus
+      var successResult = handleShopPurchase({ category: 1, selectedIndex: 0 })
+      var balanceAfter = getProgression().fragments
+      // Try to buy it again (already owned — should toggle instead)
+      var toggleResult = handleShopPurchase({ category: 1, selectedIndex: 0 })
+      return {
+        failSuccess: failResult.success,
+        failMessage: failResult.message,
+        balanceBefore: balanceBefore,
+        buySuccess: successResult.success,
+        balanceAfter: balanceAfter,
+        toggleSuccess: toggleResult.success,
+        toggleMessage: toggleResult.message,
+      }
+    })
+    expect(result.failSuccess).toBe(false)
+    expect(result.failMessage).toBe('Not enough fragments')
+    expect(result.balanceBefore).toBe(200)
+    expect(result.buySuccess).toBe(true)
+    expect(result.balanceAfter).toBe(50) // 200 - 150
+    expect(result.toggleSuccess).toBe(true)
+    expect(result.toggleMessage).toContain('deactivated')
+  })
+})
+
+// === BOSS ENCOUNTERS ===
+test.describe('Snake Game — Boss Encounters', () => {
+  test('boss module exports all required functions and constants', async ({ page }) => {
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/boss.js')
+      return {
+        hasIsBossWave: typeof mod.isBossWave === 'function',
+        hasCreateBoss: typeof mod.createBoss === 'function',
+        hasMoveBoss: typeof mod.moveBoss === 'function',
+        hasOnPlayerAteFood: typeof mod.onPlayerAteFood === 'function',
+        hasPatternChase: mod.PATTERN_CHASE === 'chase',
+        hasPatternCircle: mod.PATTERN_CIRCLE === 'circle',
+        hasPatternAmbush: mod.PATTERN_AMBUSH === 'ambush',
+        hasBossInitialLength: mod.BOSS_INITIAL_LENGTH === 5,
+      }
+    })
+    expect(exports.hasIsBossWave).toBe(true)
+    expect(exports.hasCreateBoss).toBe(true)
+    expect(exports.hasMoveBoss).toBe(true)
+    expect(exports.hasOnPlayerAteFood).toBe(true)
+    expect(exports.hasPatternChase).toBe(true)
+    expect(exports.hasPatternCircle).toBe(true)
+    expect(exports.hasPatternAmbush).toBe(true)
+    expect(exports.hasBossInitialLength).toBe(true)
+  })
+
+  test('isBossWave triggers correctly at every 10th wave', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { isBossWave } = await import('/js/boss.js')
+      return {
+        wave0: isBossWave(0),
+        wave1: isBossWave(1),
+        wave5: isBossWave(5),
+        wave10: isBossWave(10),
+        wave15: isBossWave(15),
+        wave20: isBossWave(20),
+        wave30: isBossWave(30),
+        wave50: isBossWave(50),
+        wave99: isBossWave(99),
+        wave100: isBossWave(100),
+      }
+    })
+    expect(result.wave0).toBe(false)
+    expect(result.wave1).toBe(false)
+    expect(result.wave5).toBe(false)
+    expect(result.wave10).toBe(true)
+    expect(result.wave15).toBe(false)
+    expect(result.wave20).toBe(true)
+    expect(result.wave30).toBe(true)
+    expect(result.wave50).toBe(true)
+    expect(result.wave99).toBe(false)
+    expect(result.wave100).toBe(true)
+  })
+
+  test('createBoss produces correct initial state', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { createBoss, BOSS_INITIAL_LENGTH } = await import('/js/boss.js')
+      var boss = createBoss(10)
+      return {
+        segmentCount: boss.segments.length,
+        initialLength: BOSS_INITIAL_LENGTH,
+        hasDirection: boss.direction.x !== undefined && boss.direction.y !== undefined,
+        moveCounter: boss.moveCounter,
+        growPending: boss.growPending,
+        foodCounter: boss.foodCounter,
+        entranceTicks: boss.entranceTicks,
+        wave: boss.wave,
+        hasPattern: typeof boss.pattern === 'string',
+      }
+    })
+    expect(result.segmentCount).toBe(5)
+    expect(result.initialLength).toBe(5)
+    expect(result.hasDirection).toBe(true)
+    expect(result.moveCounter).toBe(0)
+    expect(result.growPending).toBe(0)
+    expect(result.foodCounter).toBe(0)
+    expect(result.entranceTicks).toBe(15)
+    expect(result.wave).toBe(10)
+    expect(result.hasPattern).toBe(true)
+  })
+
+  test('boss grows after player eats 3 food items', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { createBoss, onPlayerAteFood } = await import('/js/boss.js')
+      var boss = createBoss(10)
+      // Feed 1: no growth yet
+      var after1 = onPlayerAteFood(boss)
+      // Feed 2: no growth yet
+      var after2 = onPlayerAteFood(after1)
+      // Feed 3: should trigger growth
+      var after3 = onPlayerAteFood(after2)
+      // Feed 4: counter resets, no growth
+      var after4 = onPlayerAteFood(after3)
+      return {
+        after1FoodCounter: after1.foodCounter,
+        after1Grow: after1.growPending,
+        after2FoodCounter: after2.foodCounter,
+        after2Grow: after2.growPending,
+        after3FoodCounter: after3.foodCounter,
+        after3Grow: after3.growPending,
+        after4FoodCounter: after4.foodCounter,
+        after4Grow: after4.growPending,
+      }
+    })
+    expect(result.after1FoodCounter).toBe(1)
+    expect(result.after1Grow).toBe(0)
+    expect(result.after2FoodCounter).toBe(2)
+    expect(result.after2Grow).toBe(0)
+    expect(result.after3FoodCounter).toBe(0)  // resets after growth
+    expect(result.after3Grow).toBe(1)
+    expect(result.after4FoodCounter).toBe(1)
+    expect(result.after4Grow).toBe(1)         // still has pending from before
+  })
+})
+
+// === WAVE MILESTONE CEREMONIES ===
+test.describe('Snake Game — Milestone Ceremonies', () => {
+  test('milestone module exports all required functions', async ({ page }) => {
+    await page.goto('/')
+    const exports = await page.evaluate(async () => {
+      const mod = await import('/js/milestone.js')
+      return {
+        hasIsMilestoneWave: typeof mod.isMilestoneWave === 'function',
+        hasGetMilestoneTitle: typeof mod.getMilestoneTitle === 'function',
+        hasIsMilestoneActive: typeof mod.isMilestoneActive === 'function',
+        hasShowMilestone: typeof mod.showMilestone === 'function',
+        hasDismissMilestone: typeof mod.dismissMilestone === 'function',
+      }
+    })
+    expect(exports.hasIsMilestoneWave).toBe(true)
+    expect(exports.hasGetMilestoneTitle).toBe(true)
+    expect(exports.hasIsMilestoneActive).toBe(true)
+    expect(exports.hasShowMilestone).toBe(true)
+    expect(exports.hasDismissMilestone).toBe(true)
+  })
+
+  test('milestone waves detected correctly at 10, 25, 50, and every 50 after 100', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { isMilestoneWave, getMilestoneTitle } = await import('/js/milestone.js')
+      return {
+        wave1: isMilestoneWave(1),
+        wave5: isMilestoneWave(5),
+        wave9: isMilestoneWave(9),
+        wave10: isMilestoneWave(10),
+        wave11: isMilestoneWave(11),
+        wave25: isMilestoneWave(25),
+        wave50: isMilestoneWave(50),
+        wave75: isMilestoneWave(75),
+        wave99: isMilestoneWave(99),
+        wave100: isMilestoneWave(100),
+        wave150: isMilestoneWave(150),
+        wave200: isMilestoneWave(200),
+        title10: getMilestoneTitle(10),
+        title25: getMilestoneTitle(25),
+        title50: getMilestoneTitle(50),
+        title100: getMilestoneTitle(100),
+        title200: getMilestoneTitle(200),
+      }
+    })
+    expect(result.wave1).toBe(false)
+    expect(result.wave5).toBe(false)
+    expect(result.wave9).toBe(false)
+    expect(result.wave10).toBe(true)
+    expect(result.wave11).toBe(false)
+    expect(result.wave25).toBe(true)
+    expect(result.wave50).toBe(true)
+    expect(result.wave75).toBe(false)   // not a milestone (not in list, < 100)
+    expect(result.wave99).toBe(false)
+    expect(result.wave100).toBe(true)   // 100 % 50 === 0
+    expect(result.wave150).toBe(true)   // 150 % 50 === 0
+    expect(result.wave200).toBe(true)   // 200 % 50 === 0
+    expect(result.title10).toBe('SURVIVOR')
+    expect(result.title25).toBe('VETERAN')
+    expect(result.title50).toBe('LEGEND')
+    expect(result.title100).toBe('IMMORTAL')
+    expect(result.title200).toBe('IMMORTAL')
+  })
+
+  test('showMilestone creates DOM overlay and dismissMilestone removes it', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForTimeout(300)
+    const result = await page.evaluate(async () => {
+      const { showMilestone, isMilestoneActive, dismissMilestone } = await import('/js/milestone.js')
+      // Show a milestone
+      showMilestone(10, 500, 15, '#fbbf24')
+      var isActiveAfterShow = isMilestoneActive()
+      var overlayExists = document.querySelector('.milestone-overlay') !== null
+      var waveText = document.querySelector('.milestone-wave-num')
+      var waveContent = waveText ? waveText.textContent : null
+      var badgeText = document.querySelector('.milestone-badge')
+      var badgeContent = badgeText ? badgeText.textContent : null
+      // Dismiss it
+      dismissMilestone()
+      // Wait for fade-out (400ms)
+      await new Promise(function(r) { setTimeout(r, 500) })
+      var isActiveAfterDismiss = isMilestoneActive()
+      return {
+        isActiveAfterShow: isActiveAfterShow,
+        overlayExists: overlayExists,
+        waveContent: waveContent,
+        badgeContent: badgeContent,
+        isActiveAfterDismiss: isActiveAfterDismiss,
+      }
+    })
+    expect(result.isActiveAfterShow).toBe(true)
+    expect(result.overlayExists).toBe(true)
+    expect(result.waveContent).toBe('WAVE 10')
+    expect(result.badgeContent).toBe('SURVIVOR')
+    expect(result.isActiveAfterDismiss).toBe(false)
+  })
+})
+
+// === WAVE EVENTS ===
+test.describe('Snake Game — Wave Events', () => {
+  test('wave events module exports and state creation works', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/wave-events.js')
+      var state = mod.createWaveEventState()
+      return {
+        hasCreateState: typeof mod.createWaveEventState === 'function',
+        hasTickWaveEvent: typeof mod.tickWaveEvent === 'function',
+        hasCheckBonusFood: typeof mod.checkBonusFoodCollection === 'function',
+        hasResetForNewWave: typeof mod.resetWaveEventForNewWave === 'function',
+        hasGetActiveDisplay: typeof mod.getActiveEventDisplay === 'function',
+        hasIsSpeedBurst: typeof mod.isSpeedBurstActive === 'function',
+        hasIsGoldRush: typeof mod.isGoldRushActive === 'function',
+        hasGetStormPortals: typeof mod.getStormPortals === 'function',
+        hasGetBonusFood: typeof mod.getBonusFood === 'function',
+        hasEventTypes: typeof mod.EVENT_TYPES === 'object',
+        stateTicksSince: state.ticksSinceLastEvent,
+        stateActiveEvent: state.activeEvent,
+        stateBannerTicks: state.bannerTicksLeft,
+        stateBonusFoodEmpty: state.bonusFood.length === 0,
+        stateGoldRush: state.goldRushActive,
+      }
+    })
+    expect(result.hasCreateState).toBe(true)
+    expect(result.hasTickWaveEvent).toBe(true)
+    expect(result.hasCheckBonusFood).toBe(true)
+    expect(result.hasResetForNewWave).toBe(true)
+    expect(result.hasGetActiveDisplay).toBe(true)
+    expect(result.hasIsSpeedBurst).toBe(true)
+    expect(result.hasIsGoldRush).toBe(true)
+    expect(result.hasGetStormPortals).toBe(true)
+    expect(result.hasGetBonusFood).toBe(true)
+    expect(result.hasEventTypes).toBe(true)
+    expect(result.stateTicksSince).toBe(0)
+    expect(result.stateActiveEvent).toBeNull()
+    expect(result.stateBannerTicks).toBe(0)
+    expect(result.stateBonusFoodEmpty).toBe(true)
+    expect(result.stateGoldRush).toBe(false)
+  })
+
+  test('wave events do not fire before wave 3', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { createWaveEventState, tickWaveEvent } = await import('/js/wave-events.js')
+      const { createInitialState } = await import('/js/state.js')
+      var waveEvent = createWaveEventState()
+      // Force the nextEventAt to 1 so it would fire immediately if allowed
+      waveEvent.nextEventAt = 1
+      waveEvent.ticksSinceLastEvent = 5
+      var gameState = createInitialState()
+      gameState.endlessWave = 1  // wave 1 — should NOT fire
+      var result1 = tickWaveEvent(waveEvent, gameState)
+      gameState.endlessWave = 2  // wave 2 — should NOT fire
+      var result2 = tickWaveEvent(waveEvent, gameState)
+      return {
+        wave1NoEvent: result1.effects === null,
+        wave2NoEvent: result2.effects === null,
+      }
+    })
+    expect(result.wave1NoEvent).toBe(true)
+    expect(result.wave2NoEvent).toBe(true)
+  })
+})
+
+// === GAME STATE PERSISTENCE ===
+test.describe('Snake Game — Game State Persistence', () => {
+  test('high score persists in localStorage across page loads', async ({ page }) => {
+    // Set a high score in localStorage before loading
+    await page.addInitScript(() => {
+      localStorage.setItem('snakeHighScore', '999')
+    })
+    await page.goto('/')
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(300)
+    const highScoreText = await page.locator('#highScore').textContent()
+    expect(parseInt(highScoreText, 10)).toBe(999)
+  })
+
+  test('progression data survives corrupted localStorage gracefully', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { getProgression } = await import('/js/progression.js')
+      // Set corrupted data
+      localStorage.setItem('tbc_progression', 'not-valid-json{{{')
+      var prog = getProgression()
+      return {
+        fragments: prog.fragments,
+        lifetime: prog.lifetime_earned,
+        themes: prog.unlocked_themes.length,
+        bonuses: prog.purchased_bonuses.length,
+        activeBonus: prog.active_run_bonus,
+      }
+    })
+    // Should return safe defaults, not crash
+    expect(result.fragments).toBe(0)
+    expect(result.lifetime).toBe(0)
+    expect(result.themes).toBe(0)
+    expect(result.bonuses).toBe(0)
+    expect(result.activeBonus).toBeNull()
+  })
+})
+
+// === ADDITIONAL ACHIEVEMENT TESTS ===
+test.describe('Snake Game — Achievement Definitions', () => {
+  test('all achievement categories have correct color mappings', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { ACHIEVEMENTS } = await import('/js/achievements.js')
+      var categories = {}
+      for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+        var cat = ACHIEVEMENTS[i].category
+        if (!categories[cat]) categories[cat] = 0
+        categories[cat]++
+      }
+      var allHaveId = ACHIEVEMENTS.every(function(a) { return typeof a.id === 'string' && a.id.length > 0 })
+      var allHaveName = ACHIEVEMENTS.every(function(a) { return typeof a.name === 'string' && a.name.length > 0 })
+      var allHaveDesc = ACHIEVEMENTS.every(function(a) { return typeof a.desc === 'string' && a.desc.length > 0 })
+      var allHaveCategory = ACHIEVEMENTS.every(function(a) {
+        return ['score', 'endless', 'skill', 'secret'].indexOf(a.category) !== -1
+      })
+      var uniqueIds = new Set(ACHIEVEMENTS.map(function(a) { return a.id }))
+      return {
+        totalCount: ACHIEVEMENTS.length,
+        categoryBreakdown: categories,
+        allHaveId: allHaveId,
+        allHaveName: allHaveName,
+        allHaveDesc: allHaveDesc,
+        allHaveCategory: allHaveCategory,
+        allIdsUnique: uniqueIds.size === ACHIEVEMENTS.length,
+      }
+    })
+    expect(result.totalCount).toBeGreaterThanOrEqual(48)
+    expect(result.allHaveId).toBe(true)
+    expect(result.allHaveName).toBe(true)
+    expect(result.allHaveDesc).toBe(true)
+    expect(result.allHaveCategory).toBe(true)
+    expect(result.allIdsUnique).toBe(true)
+    expect(result.categoryBreakdown.score).toBeGreaterThanOrEqual(5)
+    expect(result.categoryBreakdown.endless).toBeGreaterThanOrEqual(4)
+    expect(result.categoryBreakdown.skill).toBeGreaterThanOrEqual(20)
+    expect(result.categoryBreakdown.secret).toBeGreaterThanOrEqual(4)
+  })
+
+  test('trail unlock requires matching achievement', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/achievements.js')
+      // Clear achievements
+      localStorage.removeItem('snake-achievements')
+      // 'fade' trail requires 'data_hoarder' achievement
+      var fadeLocked = !mod.isTrailUnlocked('fade')
+      // 'none' trail has no requirement — always unlocked
+      var noneUnlocked = mod.isTrailUnlocked('none')
+      // Unlock the required achievement
+      mod.unlockAchievement('data_hoarder')
+      var fadeNowUnlocked = mod.isTrailUnlocked('fade')
+      // Non-existent trail should be locked
+      var fakeLocked = !mod.isTrailUnlocked('nonexistent_trail_xyz')
+      return {
+        fadeLocked: fadeLocked,
+        noneUnlocked: noneUnlocked,
+        fadeNowUnlocked: fadeNowUnlocked,
+        fakeLocked: fakeLocked,
+      }
+    })
+    expect(result.fadeLocked).toBe(true)
+    expect(result.noneUnlocked).toBe(true)
+    expect(result.fadeNowUnlocked).toBe(true)
+    expect(result.fakeLocked).toBe(true)
+  })
+})
