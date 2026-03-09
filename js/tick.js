@@ -21,6 +21,7 @@ import {
 import {
     createHazards, updateHazards, getHazardAt, isHazardDeadly, isIceAt, getHazardPositions,
 } from './hazards.js';
+import { getRunBonus, canUseResilience, markResilienceUsed } from './progression.js';
 
 // Food type spawn rates (must sum to 1.0)
 var FOOD_TYPE_CHANCES = [
@@ -169,6 +170,22 @@ function trySpawnZone(zones, walls, portals, snake) {
     return null;
 }
 
+// Resilience invincibility duration (about 3 seconds at base speed)
+var RESILIENCE_INVINCIBLE_TICKS = 45;
+
+// Attempt a resilience save instead of dying.
+// Returns a patched state with invincibility if resilience is available, otherwise null.
+function tryResilienceSave(clean, dir) {
+    if (!canUseResilience()) return null;
+    markResilienceUsed();
+    return Object.assign({}, clean, {
+        direction: dir,
+        nextDirection: dir,
+        invincibleTicks: RESILIENCE_INVINCIBLE_TICKS,
+        gameOver: false,
+    });
+}
+
 export function tick(prev) {
     // Clear one-frame event flags from previous tick
     var clean = Object.assign({}, prev, {
@@ -217,7 +234,7 @@ export function tick(prev) {
     if (isModifierActive(clean, 'glass_snake') && (clean.direction.x !== 0 || clean.direction.y !== 0)) {
         var isReversal = (dir.x + clean.direction.x === 0 && dir.y + clean.direction.y === 0);
         if (isReversal) {
-            return Object.assign({}, clean, {
+            return tryResilienceSave(clean, dir) || Object.assign({}, clean, {
                 gameOver: true, direction: dir, _deathCause: 'self',
                 modifiers: clean.modifiers, modifierMultiplier: clean.modifierMultiplier,
             });
@@ -256,7 +273,7 @@ export function tick(prev) {
             newIceSlideTicks = 0;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary', shieldActive: false });
+            return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary', shieldActive: false });
         }
     }
 
@@ -273,7 +290,7 @@ export function tick(prev) {
                 newIceSlideTicks = 0;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena', shieldActive: false });
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena', shieldActive: false });
             }
         }
     }
@@ -289,7 +306,7 @@ export function tick(prev) {
             newIceSlideTicks = 0;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall', shieldActive: false });
+            return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall', shieldActive: false });
         }
     }
 
@@ -301,7 +318,7 @@ export function tick(prev) {
             newShieldActive = false;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self', shieldActive: false });
+            return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'self', shieldActive: false });
         }
     }
 
@@ -313,7 +330,7 @@ export function tick(prev) {
             newShieldActive = false;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
-            return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle', shieldActive: false });
+            return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle', shieldActive: false });
         }
     }
 
@@ -328,7 +345,7 @@ export function tick(prev) {
                 newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
             }
         }
         if (!isGhost && clean.hunter.segments.length > 1) {
@@ -340,7 +357,7 @@ export function tick(prev) {
                     newShieldActive = false;
                     clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
                 } else {
-                    return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
+                    return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
                 }
             }
         }
@@ -356,7 +373,7 @@ export function tick(prev) {
                 newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
-                return Object.assign({}, clean, {
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, {
                     gameOver: true, direction: dir,
                     _killedByBoss: true, _deathCause: 'boss',
                     shieldActive: false,
@@ -379,7 +396,7 @@ export function tick(prev) {
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
                 var hazardDeathCause = headHazard.type === 'lava' ? 'lava' : 'spike';
-                return Object.assign({}, clean, {
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, {
                     gameOver: true, direction: dir,
                     _deathCause: hazardDeathCause,
                     _hazardDeath: hazardDeathCause,
@@ -409,10 +426,10 @@ export function tick(prev) {
                 };
             } else if (newHead.x < 0 || newHead.x >= GRID_SIZE ||
                        newHead.y < 0 || newHead.y >= GRID_SIZE) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary' });
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary' });
             }
             if (!isGhost && !isInvincible && collides(newHead, clean.walls)) {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall' });
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall' });
             }
         }
     }
@@ -431,7 +448,7 @@ export function tick(prev) {
                 newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle', shieldActive: false });
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'obstacle', shieldActive: false });
             }
         }
     }
@@ -500,7 +517,7 @@ export function tick(prev) {
                 newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
-                return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
             }
         }
     }
@@ -515,7 +532,7 @@ export function tick(prev) {
                 newShieldActive = false;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
-                return Object.assign({}, clean, {
+                return tryResilienceSave(clean, dir) || Object.assign({}, clean, {
                     gameOver: true, direction: dir,
                     _killedByBoss: true, _deathCause: 'boss',
                     shieldActive: false,
@@ -681,7 +698,7 @@ export function tick(prev) {
                         newShieldActive = false;
                         clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
                     } else {
-                        return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush', shieldActive: false });
+                        return tryResilienceSave(clean, dir) || Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'crush', shieldActive: false });
                     }
                 }
                 if (newFood && collides(newFood, shrinkCells)) {
@@ -835,7 +852,9 @@ export function tick(prev) {
     if (newConfig.powerUpsEnabled && !newPowerUp && !collectedPowerUpType && !hardcoreActive) {
         newPowerUpSpawnCounter = newPowerUpSpawnCounter + 1;
         var puInterval = getDifficultyPreset(getSettingsRef().difficulty).powerUpFreq;
-        if (newPowerUpSpawnCounter >= puInterval) {
+        // Power Surge bonus: first power-up of each wave is guaranteed on first counter tick
+        var powerSurgeForce = getRunBonus() === 'power_surge' && newPowerUpSpawnCounter === 1 && clean.foodEaten === 0;
+        if (newPowerUpSpawnCounter >= puInterval || powerSurgeForce) {
             newPowerUp = spawnPowerUp(newSnake, newWalls, newObstacles, newPortals, newFood, null, newHunter, endlessWave);
             newPowerUpSpawnCounter = 0;
         }

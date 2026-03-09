@@ -24,6 +24,7 @@ import {
     computeModifierMultiplier,
 } from './modifiers.js';
 import { createShopState } from './shop.js';
+import { getRunBonus, resetResilienceUsed } from './progression.js';
 
 // --- Screen UI helpers ---
 
@@ -117,6 +118,23 @@ export function startEndlessMode(g, deps) {
     if (modPatch.lives !== undefined) {
         g.state = Object.assign({}, g.state, { lives: modPatch.lives });
     }
+
+    // Head Start bonus: expand snake to length 5
+    if (getRunBonus() === 'head_start') {
+        var hsHead = g.state.snake[0];
+        g.state = Object.assign({}, g.state, {
+            snake: [
+                hsHead,
+                { x: hsHead.x - 1, y: hsHead.y },
+                { x: hsHead.x - 2, y: hsHead.y },
+                { x: hsHead.x - 3, y: hsHead.y },
+                { x: hsHead.x - 4, y: hsHead.y },
+            ],
+        });
+    }
+
+    // Resilience: reset used flag at start of each session
+    resetResilienceUsed();
 
     g.hunterIntroState = null;
     g.bossIntroState = null;
@@ -297,6 +315,24 @@ export function restartGame(g, deps, newDir) {
     if (restartModPatch.lives !== undefined) {
         g.state = Object.assign({}, g.state, { lives: restartModPatch.lives });
     }
+
+    // Head Start bonus: expand snake to length 5
+    if (getRunBonus() === 'head_start') {
+        var restartHsHead = g.state.snake[0];
+        g.state = Object.assign({}, g.state, {
+            snake: [
+                restartHsHead,
+                { x: restartHsHead.x - 1, y: restartHsHead.y },
+                { x: restartHsHead.x - 2, y: restartHsHead.y },
+                { x: restartHsHead.x - 3, y: restartHsHead.y },
+                { x: restartHsHead.x - 4, y: restartHsHead.y },
+            ],
+        });
+    }
+
+    // Resilience: reset used flag at start of each session
+    resetResilienceUsed();
+
     g.state = Object.assign({}, g.state, {
         food: randomPosition(g.state.snake, g.state.walls, g.state.obstacles, g.state.portals, g.state.powerUp, g.state.hunter),
     });

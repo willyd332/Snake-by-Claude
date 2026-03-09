@@ -194,7 +194,7 @@ export function createGameCallbacks(g, navDeps, hudEl, titleEl, messageEl, canva
             var newIdx = shopState.selectedIndex + delta;
             if (newIdx >= 0 && newIdx < count) {
                 playMenuNavigateSound();
-                var maxVisible = 6;
+                var maxVisible = 7;
                 var scrollOffset = shopState.scrollOffset;
                 if (newIdx >= scrollOffset + maxVisible) {
                     scrollOffset = newIdx - maxVisible + 1;

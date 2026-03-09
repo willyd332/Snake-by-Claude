@@ -303,14 +303,18 @@ export function renderShopScreen(ctx, shopState) {
 
     // Purchase flash message
     if (shopState.purchaseFlash > 0) {
-        var flashAlpha = Math.min(1, shopState.purchaseFlash / 500);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(34, 197, 94, ' + flashAlpha + ')';
-        ctx.shadowColor = '#22c55e';
-        ctx.shadowBlur = 8;
-        ctx.font = 'bold 12px Courier New';
-        ctx.fillText('Purchase successful!', CANVAS_SIZE / 2, CANVAS_SIZE - 55);
-        ctx.shadowBlur = 0;
+        var FLASH_DURATION = 1500;
+        var elapsed = Date.now() - shopState.purchaseFlash;
+        var flashAlpha = Math.max(0, 1 - elapsed / FLASH_DURATION);
+        if (flashAlpha > 0) {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(34, 197, 94, ' + flashAlpha + ')';
+            ctx.shadowColor = '#22c55e';
+            ctx.shadowBlur = 8;
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillText('Purchase successful!', CANVAS_SIZE / 2, CANVAS_SIZE - 55);
+            ctx.shadowBlur = 0;
+        }
     }
 
     // Footer
