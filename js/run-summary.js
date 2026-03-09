@@ -28,7 +28,9 @@ var DEATH_CAUSE_LABELS = {
     self:      'Bit your own tail',
     obstacle:  'Struck a moving obstacle',
     hunter:    'Devoured by ALPHA',
-    boss:      'Crushed by ALPHA PRIME',
+    boss:      'Destroyed by ALPHA PRIME',
+    lava:      'Incinerated by lava',
+    spike:     'Impaled by spike trap',
     crush:     'Crushed by shrinking arena',
 };
 

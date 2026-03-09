@@ -18,6 +18,7 @@ import {
     playWaveEventFoodSurgeSound, playWaveEventSpeedWarningSound,
     playWaveEventSpeedBurstSound, playWaveEventGravityFlipSound,
     playWaveEventPortalStormSound, playWaveEventGoldRushSound,
+    playLavaDeathSound, playSpikeDeathSound, playIceSlideSound,
     getAudioContext, getMasterGain,
 } from './audio.js';
 import {
@@ -39,7 +40,6 @@ import {
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { showWavePreview, dismissWavePreview } from './wave-preview.js';
 import { isMilestoneWave, showMilestone, dismissMilestone } from './milestone.js';
-import { isBossWave } from './boss.js';
 
 // --- Helper: compute Manhattan distance to nearest hunter segment ---
 export function computeHunterDistance(state) {
@@ -550,6 +550,11 @@ export function processPostTickEvents(ctx) {
         }
     }
 
+    // Ice slide: play shimmer when snake first enters ice (not already sliding)
+    if (ctx.state.iceSliding && !ctx.prevState.iceSliding) {
+        playIceSlideSound();
+    }
+
     // Death detected: check lives for respawn or game over
     if (ctx.state.gameOver && !ctx.prevState.gameOver) {
         dismissWavePreview();
@@ -592,7 +597,7 @@ export function processPostTickEvents(ctx) {
             });
             // Respawn food at safe location
             respawnState = Object.assign({}, respawnState, {
-                food: randomPositionInBounds(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1),
+                food: randomPositionInBounds(spawnSnake, ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1, ctx.state.hazards),
             });
             ctx.state = respawnState;
             ctx.hunterTrailHistory = [];
@@ -648,6 +653,16 @@ export function processPostTickEvents(ctx) {
             playHunterKillSound();
             ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, ctx.config.hunterColor || '#f97316', '#ff2200');
             ctx.shakeState = triggerShake(SHAKE_HUNTER_KILL.intensity, SHAKE_HUNTER_KILL.duration);
+        } else if (ctx.state._deathCause === 'lava') {
+            // Lava death: deep rumble + sizzle, red/orange explosion
+            playLavaDeathSound();
+            ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ff4400', '#ff6600');
+            ctx.shakeState = triggerShake(SHAKE_DEATH.intensity + 1, SHAKE_DEATH.duration);
+        } else if (ctx.state._deathCause === 'spike') {
+            // Spike death: sharp metallic snap, gray/red explosion
+            playSpikeDeathSound();
+            ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#333344', '#ff2244');
+            ctx.shakeState = triggerShake(SHAKE_DEATH.intensity, SHAKE_DEATH.duration);
         } else {
             playDeathSound();
             ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, ctx.config.color, '#ef4444');

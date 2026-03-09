@@ -735,6 +735,75 @@ export function playWaveEventPortalStormSound() {
     tone2.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 }
 
+// --- Hazard Sound Effects ---
+
+// Lava death: deep rumbling bass + sharp hiss/sizzle
+export function playLavaDeathSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Deep rumble: sawtooth descending from 80Hz to 20Hz
+    var rumble = createTone(ctx, 'sawtooth', now, now + 0.5);
+    rumble.osc.frequency.setValueAtTime(80, now);
+    rumble.osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+    rumble.gain.gain.setValueAtTime(0.25, now);
+    rumble.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    // Sizzle: high-pass filtered noise burst
+    var buf = createBufferSource(ctx, getNoiseBuffer(ctx), now, now + 0.5);
+    var sizzleFilter = ctx.createBiquadFilter();
+    sizzleFilter.type = 'highpass';
+    sizzleFilter.frequency.setValueAtTime(2000, now);
+    buf.gain.disconnect();
+    buf.source.disconnect();
+    buf.source.connect(sizzleFilter);
+    sizzleFilter.connect(buf.gain);
+    buf.gain.connect(masterGain);
+    buf.gain.gain.setValueAtTime(0.15, now);
+    buf.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    buf.source.onended = function() {
+        buf.source.disconnect();
+        sizzleFilter.disconnect();
+        buf.gain.disconnect();
+    };
+}
+
+// Spike death: sharp metallic snap/clang, short and percussive
+export function playSpikeDeathSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Metallic clang: square wave with rapid decay
+    var clang = createTone(ctx, 'square', now, now + 0.2);
+    clang.osc.frequency.setValueAtTime(600, now);
+    clang.osc.frequency.exponentialRampToValueAtTime(1, now + 0.15);
+    clang.gain.gain.setValueAtTime(0.22, now);
+    clang.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    // High-frequency ping
+    var ping = createTone(ctx, 'sine', now, now + 0.1);
+    ping.osc.frequency.setValueAtTime(2000, now);
+    ping.osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+    ping.gain.gain.setValueAtTime(0.12, now);
+    ping.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+}
+
+// Ice slide: soft shimmering glide (non-lethal, player is slowed)
+export function playIceSlideSound() {
+    var ctx = getContext();
+    if (!ctx || !audioConfig.soundEnabled) return;
+    var now = ctx.currentTime;
+
+    // Gentle sine sweep from 800Hz down to 400Hz
+    var glide = createTone(ctx, 'sine', now, now + 0.3);
+    glide.osc.frequency.setValueAtTime(800, now);
+    glide.osc.frequency.exponentialRampToValueAtTime(400, now + 0.3);
+    glide.gain.gain.setValueAtTime(0.1, now);
+    glide.gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+}
+
 // Gold Rush: triumphant coin-like chime
 export function playWaveEventGoldRushSound() {
     var ctx = getContext();

@@ -21,7 +21,6 @@ var STORAGE_KEY = 'snake-active-modifiers';
 //   icon          - text icon for compact display
 //   unlockCheck   - function returning true if unlocked (null = always available)
 //   unlockHint    - text shown when locked
-//   conflicts     - array of modifier ids that cannot be active at the same time
 
 export var MODIFIERS = [
     {
@@ -33,7 +32,6 @@ export var MODIFIERS = [
         icon: '\u2620',
         unlockCheck: function() { return isAchievementUnlocked('endurance'); },
         unlockHint: 'Unlock: Reach wave 10',
-        conflicts: [],
     },
     {
         id: 'glass_snake',
@@ -44,7 +42,6 @@ export var MODIFIERS = [
         icon: '\u26A0',
         unlockCheck: function() { return isAchievementUnlocked('first_wave'); },
         unlockHint: 'Unlock: Complete wave 1',
-        conflicts: [],
     },
     {
         id: 'shrinking_world',
@@ -55,7 +52,6 @@ export var MODIFIERS = [
         icon: '\u25A3',
         unlockCheck: function() { return isAchievementUnlocked('survivor'); },
         unlockHint: 'Unlock: Arena shrinks to 8x8',
-        conflicts: [],
     },
     {
         id: 'hungry',
@@ -66,7 +62,6 @@ export var MODIFIERS = [
         icon: '\u2615',
         unlockCheck: function() { return isAchievementUnlocked('long_snake'); },
         unlockHint: 'Unlock: Reach length 20',
-        conflicts: [],
     },
     {
         id: 'foggy',
@@ -77,7 +72,6 @@ export var MODIFIERS = [
         icon: '\u2601',
         unlockCheck: function() { return isAchievementUnlocked('wave_rider'); },
         unlockHint: 'Unlock: Reach wave 5',
-        conflicts: [],
     },
     {
         id: 'speed_demon',
@@ -88,7 +82,6 @@ export var MODIFIERS = [
         icon: '\u26A1',
         unlockCheck: null,
         unlockHint: null,
-        conflicts: [],
     },
     {
         id: 'one_life',
@@ -102,7 +95,6 @@ export var MODIFIERS = [
             return stats.totalDeaths >= 100;
         },
         unlockHint: 'Unlock: Die 100 times total',
-        conflicts: [],
     },
     {
         id: 'blindspot',
@@ -113,7 +105,6 @@ export var MODIFIERS = [
         icon: '\u25CC',
         unlockCheck: function() { return isAchievementUnlocked('serpent_king'); },
         unlockHint: 'Unlock: Reach length 40',
-        conflicts: [],
     },
 ];
 
