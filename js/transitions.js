@@ -19,6 +19,7 @@ var CAUSE_PALETTES = {
     self:     { flash: '#a855f7', accent: '#e879f9', screen: '#a855f7' },
     obstacle: { flash: '#f97316', accent: '#fbbf24', screen: '#f97316' },
     hunter:   { flash: '#f97316', accent: '#ff2200', screen: '#ff4400' },
+    boss:     { flash: '#ef4444', accent: '#fbbf24', screen: '#dc2626' },
 };
 
 var DEFAULT_PALETTE = { flash: '#ef4444', accent: '#ffffff', screen: '#ef4444' };

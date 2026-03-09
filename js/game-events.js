@@ -39,6 +39,7 @@ import {
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { showWavePreview, dismissWavePreview } from './wave-preview.js';
 import { isMilestoneWave, showMilestone, dismissMilestone } from './milestone.js';
+import { isBossWave } from './boss.js';
 
 // --- Helper: compute Manhattan distance to nearest hunter segment ---
 export function computeHunterDistance(state) {
@@ -289,9 +290,30 @@ export function processPostTickEvents(ctx) {
             }
         });
 
+        // Boss wave survived: score popup + achievement
+        if (ctx.state._bossWaveSurvived) {
+            ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#fbbf24', 24, 70, 0.6);
+            ctx.scorePopups = (ctx.scorePopups || []).concat([{
+                x: ctx.state.snake[0].x * CELL_SIZE + CELL_SIZE / 2,
+                y: ctx.state.snake[0].y * CELL_SIZE + CELL_SIZE / 2,
+                text: 'BOSS DEFEATED! +500',
+                alpha: 1,
+                vy: -0.6,
+                color: '#fbbf24',
+            }]);
+            // Boss Slayer: survive 5 boss waves
+            if (ctx.state.bossWavesSurvived >= 5) ctx.tryUnlock('boss_slayer');
+        }
+
         // ALPHA intro on first hunter wave
         if (ctx.state.hunter && !(ctx.prevState.hunter)) {
             ctx.hunterIntroState = { text: 'DESIGNATION: ALPHA \u2014 SECURITY DAEMON', startTime: Date.now() };
+            playHunterIntroSound();
+        }
+
+        // Boss intro on boss wave
+        if (ctx.state.boss && !(ctx.prevState.boss)) {
+            ctx.bossIntroState = { text: 'BOSS: ALPHA PRIME \u2014 APEX PREDATOR', startTime: Date.now() };
             playHunterIntroSound();
         }
 
@@ -535,6 +557,7 @@ export function processPostTickEvents(ctx) {
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         ctx.hunterIntroState = null;
+        ctx.bossIntroState = null;
 
         if (ctx.state.lives > 1) {
             // Life lost: cancel any in-progress wave transition so the game loop
@@ -614,7 +637,12 @@ export function processPostTickEvents(ctx) {
             }
         }
 
-        if (ctx.state._killedByHunter) {
+        if (ctx.state._killedByBoss) {
+            // Boss kill: dramatic red/gold explosion
+            playHunterKillSound();
+            ctx.particleSystem = emitExplosion(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ef4444', '#fbbf24');
+            ctx.shakeState = triggerShake(SHAKE_HUNTER_KILL.intensity + 2, SHAKE_HUNTER_KILL.duration + 0.1);
+        } else if (ctx.state._killedByHunter) {
             // ALPHA kill: distinctive sound, orange particles, heavier shake
             ctx.tryUnlock('hunter_bait');
             playHunterKillSound();

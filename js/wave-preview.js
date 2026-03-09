@@ -6,6 +6,7 @@
 
 import { getEndlessConfig, getGridSizeForWave } from './endless.js';
 import { ENDLESS_GRID_SIZE } from './constants.js';
+import { isBossWave } from './boss.js';
 
 // Duration the preview overlay is shown (ms)
 var PREVIEW_DISPLAY_MS = 2500;
@@ -114,6 +115,16 @@ function detectActiveMechanics(wave) {
         isNew: gridSize !== getGridSizeForWave(wave - 1),
     } : null;
 
+    // Boss wave: add boss mechanic as newly introduced
+    if (isBossWave(wave)) {
+        newlyIntroduced.push({
+            icon: '\uD83D\uDC80',
+            label: 'BOSS: ALPHA PRIME',
+            color: '#ef4444',
+            isNew: true,
+        });
+    }
+
     // Build the final list: newly introduced first, then speed, grid, then active.
     // Cap at 3 items to keep the overlay concise.
     var result = [];
@@ -159,6 +170,16 @@ function createOverlayElement(wave, mechanics, waveColor) {
 
     var container = document.createElement('div');
     container.className = 'wave-preview-container';
+
+    // Boss wave announcement
+    if (isBossWave(wave)) {
+        var bossLabel = document.createElement('div');
+        bossLabel.className = 'wave-preview-boss';
+        bossLabel.textContent = 'BOSS WAVE!';
+        bossLabel.style.color = '#ef4444';
+        bossLabel.style.textShadow = '0 0 20px #ef4444, 0 0 40px #dc262680';
+        container.appendChild(bossLabel);
+    }
 
     // Wave number
     var waveNum = document.createElement('div');
@@ -241,6 +262,13 @@ function injectStyles() {
         '  text-align: center;',
         '  padding: 24px 40px;',
         '}',
+        '.wave-preview-boss {',
+        '  font-size: 1.6rem;',
+        '  font-weight: bold;',
+        '  letter-spacing: 8px;',
+        '  margin-bottom: 8px;',
+        '  animation: wavePreviewBossPulse 0.4s ease-in-out infinite alternate;',
+        '}',
         '.wave-preview-number {',
         '  font-size: 2.2rem;',
         '  font-weight: bold;',
@@ -291,6 +319,10 @@ function injectStyles() {
         '@keyframes wavePreviewPulse {',
         '  0% { opacity: 0.85; transform: scale(1); }',
         '  100% { opacity: 1; transform: scale(1.03); }',
+        '}',
+        '@keyframes wavePreviewBossPulse {',
+        '  0% { opacity: 0.7; transform: scale(1); }',
+        '  100% { opacity: 1; transform: scale(1.06); }',
         '}',
         '@keyframes wavePreviewSlideIn {',
         '  to { opacity: 1; transform: translateY(0); }',

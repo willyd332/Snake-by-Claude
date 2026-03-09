@@ -99,6 +99,7 @@ var g = {
     currentScreen: 'title',
     titleState: createTitleState(),
     hunterIntroState: null,
+    bossIntroState: null,
     hunterTrailHistory: [],
     achievementPopup: null,
     achievementPopupQueue: [],
@@ -561,6 +562,32 @@ function gameLoop(timestamp) {
             ctx.restore();
         } else if (introElapsed >= 3500) {
             g.hunterIntroState = null;
+        }
+    }
+
+    // Boss intro text overlay (rendered outside shake transform)
+    if (g.bossIntroState) {
+        var bossIntroElapsed = Date.now() - g.bossIntroState.startTime;
+        if (bossIntroElapsed >= 0 && bossIntroElapsed < 4000) {
+            var bossIntroFade = bossIntroElapsed < 500
+                ? bossIntroElapsed / 500
+                : bossIntroElapsed > 3200
+                    ? 1 - (bossIntroElapsed - 3200) / 800
+                    : 1;
+            ctx.save();
+            ctx.globalAlpha = bossIntroFade * 0.95;
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 8;
+            ctx.fillText(g.bossIntroState.text, CANVAS_SIZE / 2, 30);
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+            ctx.textAlign = 'left';
+            ctx.restore();
+        } else if (bossIntroElapsed >= 4000) {
+            g.bossIntroState = null;
         }
     }
 

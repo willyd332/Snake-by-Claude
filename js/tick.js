@@ -346,6 +346,25 @@ export function tick(prev) {
         }
     }
 
+    // Boss collision (invincible passes through; any contact is fatal)
+    if (clean.boss && !isInvincible && clean.boss.entranceTicks <= 0) {
+        var bossSegments = clean.boss.segments;
+        if (collides(newHead, bossSegments)) {
+            if (isShielded) {
+                newHead = { x: head.x, y: head.y };
+                isShielded = false;
+                newShieldActive = false;
+                clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
+            } else {
+                return Object.assign({}, clean, {
+                    gameOver: true, direction: dir,
+                    _killedByBoss: true, _deathCause: 'boss',
+                    shieldActive: false,
+                });
+            }
+        }
+    }
+
     // Environmental hazard collision (invincible ignores)
     var hazards = clean.hazards || [];
     var newIceSliding = false;
@@ -420,6 +439,9 @@ export function tick(prev) {
     // Move hunter AI
     var newHunter = clean.hunter ? moveHunter(clean.hunter, newHead, clean.walls, newObstacles, config) : null;
 
+    // Move boss AI
+    var newBoss = clean.boss ? moveBoss(clean.boss, newHead, clean.direction, clean.walls, newObstacles, config) : null;
+
     var ate = clean.food && newHead.x === clean.food.x && newHead.y === clean.food.y;
     var newSnake = [newHead].concat(ate ? clean.snake : clean.snake.slice(0, -1));
 
@@ -483,9 +505,33 @@ export function tick(prev) {
         }
     }
 
+    // Check if boss moved onto player head (invincible ignores)
+    if (newBoss && !isInvincible && newBoss.entranceTicks <= 0) {
+        var newBossHead = newBoss.segments[0];
+        var bossPlayerHead = newSnake[0];
+        if (collides(newBossHead, [bossPlayerHead])) {
+            if (isShielded) {
+                isShielded = false;
+                newShieldActive = false;
+                clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
+            } else {
+                return Object.assign({}, clean, {
+                    gameOver: true, direction: dir,
+                    _killedByBoss: true, _deathCause: 'boss',
+                    shieldActive: false,
+                });
+            }
+        }
+    }
+
     // Hunter grows when player eats food
     if (ate && newHunter) {
         newHunter = Object.assign({}, newHunter, { growPending: newHunter.growPending + 1 });
+    }
+
+    // Boss grows every 3 food items eaten
+    if (ate && newBoss) {
+        newBoss = onBossFoodEaten(newBoss);
     }
 
     // Check if hunter landed on food — respawn food to prevent soft-lock
@@ -493,6 +539,14 @@ export function tick(prev) {
         var hHead = newHunter.segments[0];
         if (hHead.x === newFood.x && hHead.y === newFood.y) {
             newHunter = Object.assign({}, newHunter, { growPending: newHunter.growPending + 1 });
+            newFood = null;
+        }
+    }
+
+    // Check if boss landed on food — respawn food to prevent soft-lock
+    if (newBoss && newFood && newBoss.entranceTicks <= 0) {
+        var bHead = newBoss.segments[0];
+        if (bHead.x === newFood.x && bHead.y === newFood.y) {
             newFood = null;
         }
     }
@@ -531,6 +585,8 @@ export function tick(prev) {
             return !collides(p.a, newWalls) && !collides(p.b, newWalls);
         });
         newHunter = endlessConfig.hunterEnabled ? generateEndlessHunter(endlessWave) : null;
+        // Boss spawns every 10 waves; clear previous boss on any wave transition
+        newBoss = isBossWave(endlessWave) ? generateEndlessBoss(endlessWave) : null;
         newFood = null;
         newPowerUp = null;
         newActivePowerUp = null;
@@ -546,6 +602,18 @@ export function tick(prev) {
         hazards = createHazards(endlessWave, hazardOccupied);
         newIceSliding = false;
         newIceSlideTicks = 0;
+    }
+
+    // Boss wave survival tracking + score bonus
+    var BOSS_SURVIVE_BONUS = 500;
+    var newBossWavesSurvived = clean.bossWavesSurvived || 0;
+    var bossWaveSurvived = false;
+    if (endlessWave !== clean.endlessWave && clean.boss) {
+        // Player survived a boss wave -- the wave just transitioned
+        newBossWavesSurvived = newBossWavesSurvived + 1;
+        bossWaveSurvived = true;
+        newScore = newScore + BOSS_SURVIVE_BONUS;
+        _scoreGained = _scoreGained + BOSS_SURVIVE_BONUS;
     }
 
     // Shrinking arena
@@ -646,9 +714,10 @@ export function tick(prev) {
         }
     }
 
-    // Spawn food if needed (avoid hazard cells)
+    // Spawn food if needed (avoid hazard cells and boss segments)
     if (!newFood) {
-        var spawnedPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter, hazards);
+        var foodExcludeSnake = newBoss ? newSnake.concat(newBoss.segments) : newSnake;
+        var spawnedPos = randomPosition(foodExcludeSnake, newWalls, newObstacles, newPortals, null, newHunter, hazards);
         var spawnedFoodType = pickFoodType();
         // Inherit zone multiplier for food spawned inside a zone
         var spawnedFoodZone = getZoneAtPoint(spawnedPos.x, spawnedPos.y, newScoreZones);
@@ -869,6 +938,7 @@ export function tick(prev) {
         activePowerUp: newActivePowerUp,
         powerUpSpawnCounter: newPowerUpSpawnCounter,
         hunter: newHunter,
+        boss: newBoss,
         score: newScore,
         level: newLevel,
         foodEaten: newFoodEaten,
@@ -917,9 +987,12 @@ export function tick(prev) {
         _frenzyEnded: frenzyJustEnded,
         _ateFrenzyFood: ateFrenzyFood,
         _ateFrenzyFoodPos: ateFrenzyFoodPos,
+        bossWavesSurvived: newBossWavesSurvived,
         scoreZones: newScoreZones,
         _activeZone: _activeZone,
         _hungryLost: hungryLost,
         _hazardDeath: null,
+        _killedByBoss: false,
+        _bossWaveSurvived: bossWaveSurvived,
     };
 }

@@ -83,6 +83,9 @@ export var ACHIEVEMENTS = [
     { id: 'big_eater', name: 'Big Eater', desc: 'Eat 100 food items in one run', category: 'skill' },
     { id: 'no_power_legend', name: 'Purist', desc: 'Reach wave 15 without ever collecting a power-up', category: 'skill' },
     { id: 'combo_zone', name: 'Combo Zone', desc: 'Eat food in a score zone while at x3 or higher combo', category: 'skill' },
+    // Boss encounters (1)
+    { id: 'boss_slayer', name: 'Boss Slayer', desc: 'Survive 5 boss waves', category: 'skill' },
+
     { id: 'completionist', name: 'The Completionist', desc: 'Unlock all other achievements', category: 'secret' },
 ];
 

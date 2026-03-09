@@ -112,6 +112,7 @@ export function startEndlessMode(g, deps) {
     }
 
     g.hunterIntroState = null;
+    g.bossIntroState = null;
 
     g.speedrunState = resetSpeedrun(g.speedrunState || createSpeedrunState());
     deps.dom.levelLabelEl.textContent = 'Wave:';
@@ -153,6 +154,7 @@ export function buildEventCtx(g, prevState, prevLevel, config, deps) {
         headFlashState: g.headFlashState,
         highScore: g.highScore,
         hunterIntroState: g.hunterIntroState,
+        bossIntroState: g.bossIntroState,
         currentScreen: g.currentScreen, config: config,
         speedrunState: g.speedrunState,
         scorePopups: g.scorePopups,
@@ -191,6 +193,7 @@ export function applyEventCtx(g, eventCtx) {
     g.headFlashState = eventCtx.headFlashState;
     g.highScore = eventCtx.highScore;
     g.hunterIntroState = eventCtx.hunterIntroState;
+    g.bossIntroState = eventCtx.bossIntroState;
     g.currentScreen = eventCtx.currentScreen;
     g.speedrunState = eventCtx.speedrunState;
     g.scorePopups = eventCtx.scorePopups;
@@ -232,6 +235,7 @@ export function restartGame(g, deps, newDir) {
     g.prevSnake = null;
     g.prevHunterSegments = null;
     g.hunterIntroState = null;
+    g.bossIntroState = null;
     g.hunterTrailHistory = [];
     g.snakeTrailHistory = [];
     g.replayBuffer = createReplayBuffer();

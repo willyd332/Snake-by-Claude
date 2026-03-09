@@ -39,6 +39,9 @@ function renderWaveEventBanner(ctx, waveEvent) {
 }
 
 function getDeathMessage(deathCause, level, config) {
+    if (deathCause === 'boss') {
+        return 'ALPHA PRIME crushes you. The apex predator claims its prey. No data survives.';
+    }
     if (deathCause === 'hunter') {
         return 'ALPHA found you. Its jaws close around your data. Protocol complete.';
     }
@@ -86,6 +89,27 @@ function renderWrappedText(ctx, text, x, y, maxWidth, lineHeight) {
 function renderDeathIcon(ctx, x, y, deathCause, config) {
     ctx.save();
     switch (deathCause) {
+        case 'boss':
+            // Boss death: crimson/gold crown icon
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.arc(x - 10, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 10, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.moveTo(x - 8, y - 6);
+            ctx.lineTo(x - 4, y - 14);
+            ctx.lineTo(x, y - 8);
+            ctx.lineTo(x + 4, y - 14);
+            ctx.lineTo(x + 8, y - 6);
+            ctx.closePath();
+            ctx.fill();
+            break;
         case 'hunter':
             ctx.fillStyle = '#f97316';
             ctx.shadowColor = '#ff0000';
@@ -540,6 +564,120 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 ctx.fill();
                 ctx.beginPath();
                 ctx.arc(ex2, ey2, eyeRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 0.5;
+    }
+
+    // Boss snake (ALPHA BOSS)
+    if (state.boss && state.boss.segments.length > 0) {
+        var bossEntranceFade = state.boss.entranceTicks > 0
+            ? 1 - (state.boss.entranceTicks / 15)
+            : 1;
+        var bossPulse = Math.sin(Date.now() / 180) * 0.2 + 0.8;
+        var bossGoldPulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+        var bossProximity = manhattanDistance(
+            state.boss.segments[0], state.snake[0], config.wrapAround
+        );
+        var bossProximityFactor = Math.max(0, 1 - bossProximity / (GRID_SIZE * 0.6));
+
+        state.boss.segments.forEach(function(seg, i) {
+            var bDrawX = seg.x;
+            var bDrawY = seg.y;
+            var isHead = i === 0;
+            var segAlpha = (1 - (i / state.boss.segments.length) * 0.35)
+                * bossPulse * bossEntranceFade;
+            ctx.globalAlpha = segAlpha;
+
+            // Alternating red/gold body with angular spike-like segments
+            var isGoldSeg = i % 2 === 0;
+            var bossBodyColor = isGoldSeg ? '#fbbf24' : '#ef4444';
+            var bossGlowColor = isGoldSeg ? '#f59e0b' : '#dc2626';
+            ctx.fillStyle = bossBodyColor;
+            ctx.shadowColor = bossGlowColor;
+            ctx.shadowBlur = isHead ? 12 : 5;
+            var bPad = isHead ? 0 : 1;
+
+            // Angular spike-like shape for body segments
+            if (!isHead) {
+                var bcx = bDrawX * CELL_SIZE + CELL_SIZE / 2;
+                var bcy = bDrawY * CELL_SIZE + CELL_SIZE / 2;
+                var bSize = (CELL_SIZE / 2) - bPad;
+                ctx.beginPath();
+                ctx.moveTo(bcx, bcy - bSize);
+                ctx.lineTo(bcx + bSize, bcy);
+                ctx.lineTo(bcx, bcy + bSize);
+                ctx.lineTo(bcx - bSize, bcy);
+                ctx.closePath();
+                ctx.fill();
+            } else {
+                // Head: larger rect
+                ctx.fillRect(
+                    bDrawX * CELL_SIZE,
+                    bDrawY * CELL_SIZE,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
+            }
+
+            // Energy lines between boss segments
+            if (i > 0) {
+                var bPrevSeg = state.boss.segments[i - 1];
+                var beDist = Math.abs(bDrawX - bPrevSeg.x) + Math.abs(bDrawY - bPrevSeg.y);
+                if (beDist <= 1.5) {
+                    var bLinePulse = Math.sin(Date.now() / 120 + i * 0.9) * 0.3 + 0.4;
+                    ctx.globalAlpha = bLinePulse * bossEntranceFade;
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(bPrevSeg.x * CELL_SIZE + CELL_SIZE / 2,
+                               bPrevSeg.y * CELL_SIZE + CELL_SIZE / 2);
+                    ctx.lineTo(bDrawX * CELL_SIZE + CELL_SIZE / 2,
+                               bDrawY * CELL_SIZE + CELL_SIZE / 2);
+                    ctx.stroke();
+                }
+            }
+
+            // Head: menacing eyes with proximity-based crimson glow
+            if (isHead) {
+                var bEyeGlow = 6 + bossProximityFactor * 14;
+                var bEyeRadius = 2.5 + bossProximityFactor * 1.2;
+                ctx.globalAlpha = bossEntranceFade;
+                ctx.fillStyle = '#ff0000';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = bEyeGlow;
+                var bhcx = bDrawX * CELL_SIZE + CELL_SIZE / 2;
+                var bhcy = bDrawY * CELL_SIZE + CELL_SIZE / 2;
+                var bDir = state.boss.direction;
+                var bEyeFwd = 3;
+                var bEyeSpread = 3.5;
+                var bex1 = bhcx + bDir.x * bEyeFwd + (-bDir.y) * bEyeSpread;
+                var bey1 = bhcy + bDir.y * bEyeFwd + bDir.x * bEyeSpread;
+                var bex2 = bhcx + bDir.x * bEyeFwd + bDir.y * bEyeSpread;
+                var bey2 = bhcy + bDir.y * bEyeFwd + (-bDir.x) * bEyeSpread;
+                ctx.beginPath();
+                ctx.arc(bex1, bey1, bEyeRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(bex2, bey2, bEyeRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Crown-like spikes on the boss head
+                ctx.fillStyle = '#fbbf24';
+                ctx.shadowColor = '#fbbf24';
+                ctx.shadowBlur = 4;
+                ctx.globalAlpha = bossGoldPulse * bossEntranceFade * 0.8;
+                var crownY = bhcy - CELL_SIZE / 2 - 2;
+                ctx.beginPath();
+                ctx.moveTo(bhcx - 4, crownY + 4);
+                ctx.lineTo(bhcx - 2, crownY);
+                ctx.lineTo(bhcx, crownY + 3);
+                ctx.lineTo(bhcx + 2, crownY);
+                ctx.lineTo(bhcx + 4, crownY + 4);
+                ctx.closePath();
                 ctx.fill();
             }
         });
@@ -1068,8 +1206,9 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         renderDeathIcon(ctx, goCenterX, 65, goDeathCause, config);
 
         // Title
-        var goTitleColor = goKilledByHunter ? '#f97316' : '#ef4444';
-        var goTitleText = goKilledByHunter ? 'ALPHA CAUGHT YOU' : 'GAME OVER';
+        var goKilledByBoss = state._killedByBoss;
+        var goTitleColor = goKilledByBoss ? '#fbbf24' : goKilledByHunter ? '#f97316' : '#ef4444';
+        var goTitleText = goKilledByBoss ? 'ALPHA PRIME WINS' : goKilledByHunter ? 'ALPHA CAUGHT YOU' : 'GAME OVER';
         ctx.fillStyle = goTitleColor;
         ctx.font = 'bold 24px Courier New';
         ctx.shadowColor = goTitleColor;
