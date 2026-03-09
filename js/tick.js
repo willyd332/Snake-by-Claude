@@ -338,7 +338,7 @@ export function tick(prev) {
     var hazards = clean.hazards || [];
     var newIceSliding = false;
     var newIceSlideTicks = 0;
-    if (hazards.length > 0 && !isInvincible) {
+    if (hazards.length > 0 && !isInvincible && !isGhost) {
         var headHazard = getHazardAt(hazards, newHead.x, newHead.y);
         if (headHazard && isHazardDeadly(headHazard, clean.tickCount || 0)) {
             if (isShielded) {
