@@ -8,6 +8,13 @@ import { getActiveSkin, getActiveTrail } from './achievements.js';
 import { getSettingsRef } from './settings.js';
 import { getActiveEventDisplay } from './wave-events.js';
 import { isModifierActive } from './modifiers.js';
+import {
+    isHazardDeadly, isSpikeInWarningPhase,
+    HAZARD_LAVA_COLOR, HAZARD_LAVA_GLOW,
+    HAZARD_ICE_COLOR, HAZARD_ICE_GLOW,
+    HAZARD_SPIKE_COLOR, HAZARD_SPIKE_ACTIVE_COLOR,
+    SPIKE_PERIOD_TICKS,
+} from './hazards.js';
 
 function renderWaveEventBanner(ctx, waveEvent) {
     var display = getActiveEventDisplay(waveEvent);
@@ -40,6 +47,12 @@ function getDeathMessage(deathCause, level, config) {
     }
     if (deathCause === 'obstacle') {
         return 'The patrol caught you. These corridors don\'t forgive mistakes.';
+    }
+    if (deathCause === 'lava') {
+        return 'The molten core consumes you. Thermal overload. Process incinerated.';
+    }
+    if (deathCause === 'spike') {
+        return 'The trap springs. Your code is pierced. Execution halted.';
     }
     if (deathCause === 'self') {
         return 'You consumed yourself. The data loop closes.';
@@ -135,6 +148,33 @@ function renderDeathIcon(ctx, x, y, deathCause, config) {
             ctx.lineTo(x + 6, y + 14);
             ctx.stroke();
             break;
+        case 'lava':
+            ctx.fillStyle = HAZARD_LAVA_COLOR;
+            ctx.shadowColor = HAZARD_LAVA_COLOR;
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffaa00';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        case 'spike':
+            ctx.strokeStyle = HAZARD_SPIKE_ACTIVE_COLOR;
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = HAZARD_SPIKE_ACTIVE_COLOR;
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(x - 10, y - 10);
+            ctx.lineTo(x + 10, y + 10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x + 10, y - 10);
+            ctx.lineTo(x - 10, y + 10);
+            ctx.stroke();
+            break;
         default:
             ctx.strokeStyle = config.wallColor || config.color;
             ctx.lineWidth = 2.5;
@@ -208,6 +248,90 @@ function renderScoreZones(ctx, zones, now) {
     ctx.restore();
 }
 
+function renderHazards(ctx, hazards, tickCount, now) {
+    if (!hazards || hazards.length === 0) return;
+    ctx.save();
+
+    for (var i = 0; i < hazards.length; i++) {
+        var h = hazards[i];
+        var cells = h.cells;
+
+        if (h.type === 'lava') {
+            var lavaPulse = Math.sin(now / 300 + i * 1.7) * 0.2 + 0.8;
+            for (var lj = 0; lj < cells.length; lj++) {
+                var lx = cells[lj].x * CELL_SIZE;
+                var ly = cells[lj].y * CELL_SIZE;
+                ctx.shadowColor = HAZARD_LAVA_GLOW;
+                ctx.shadowBlur = 12 * lavaPulse;
+                ctx.globalAlpha = 0.7 * lavaPulse;
+                ctx.fillStyle = HAZARD_LAVA_COLOR;
+                ctx.fillRect(lx + 1, ly + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 0.4 * lavaPulse;
+                ctx.fillStyle = '#ffaa00';
+                ctx.fillRect(lx + 4, ly + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+            }
+        } else if (h.type === 'ice') {
+            for (var ij = 0; ij < cells.length; ij++) {
+                var ix = cells[ij].x * CELL_SIZE;
+                var iy = cells[ij].y * CELL_SIZE;
+                ctx.shadowColor = HAZARD_ICE_GLOW;
+                ctx.shadowBlur = 6;
+                ctx.globalAlpha = 0.35;
+                ctx.fillStyle = HAZARD_ICE_COLOR;
+                ctx.fillRect(ix + 1, iy + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 0.2;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(ix + 3, iy + 3, CELL_SIZE - 10, CELL_SIZE - 10);
+            }
+        } else if (h.type === 'spike') {
+            var deadly = isHazardDeadly(h, tickCount);
+            var warning = isSpikeInWarningPhase(h, tickCount);
+            for (var sj = 0; sj < cells.length; sj++) {
+                var sx = cells[sj].x * CELL_SIZE;
+                var sy = cells[sj].y * CELL_SIZE;
+                if (deadly) {
+                    ctx.shadowColor = HAZARD_SPIKE_ACTIVE_COLOR;
+                    ctx.shadowBlur = 8;
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillStyle = HAZARD_SPIKE_COLOR;
+                    ctx.fillRect(sx + 1, sy + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                    ctx.strokeStyle = HAZARD_SPIKE_ACTIVE_COLOR;
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.9;
+                    ctx.beginPath();
+                    ctx.moveTo(sx + 4, sy + 4);
+                    ctx.lineTo(sx + CELL_SIZE - 4, sy + CELL_SIZE - 4);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(sx + CELL_SIZE - 4, sy + 4);
+                    ctx.lineTo(sx + 4, sy + CELL_SIZE - 4);
+                    ctx.stroke();
+                    ctx.lineWidth = 0.5;
+                } else {
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = HAZARD_SPIKE_COLOR;
+                    ctx.fillRect(sx + 1, sy + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+                }
+                if (warning) {
+                    var warnFlash = Math.sin(now / 60) * 0.4 + 0.5;
+                    ctx.globalAlpha = warnFlash;
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(sx + 2, sy + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+                    ctx.lineWidth = 0.5;
+                }
+            }
+        }
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.restore();
+}
+
 export function render(ctx, state, konamiActivated, dom, interp) {
     var config = getLevelConfig(state.level, state.endlessConfig);
     var userSettings = getSettingsRef();
@@ -263,6 +387,11 @@ export function render(ctx, state, konamiActivated, dom, interp) {
     // Score multiplier zones (rendered as semi-transparent glowing overlays)
     if (state.scoreZones && state.scoreZones.length > 0 && state.started && !state.gameOver) {
         renderScoreZones(ctx, state.scoreZones, Date.now());
+    }
+
+    // Environmental hazards (lava, ice, teleport)
+    if (state.hazards && state.hazards.length > 0 && state.started && !state.gameOver) {
+        renderHazards(ctx, state.hazards, state.tickCount || 0, Date.now());
     }
 
     // Walls
@@ -904,6 +1033,17 @@ export function render(ctx, state, konamiActivated, dom, interp) {
             CELL_SIZE / 2 + 7, 0, Math.PI * 2
         );
         ctx.stroke();
+        ctx.restore();
+    }
+
+    // Ice sliding blue tint on snake
+    if (state.started && !state.gameOver && state.iceSliding) {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = HAZARD_ICE_COLOR;
+        for (var iceOi = 0; iceOi < state.snake.length; iceOi++) {
+            ctx.fillRect(state.snake[iceOi].x * CELL_SIZE, state.snake[iceOi].y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
         ctx.restore();
     }
 

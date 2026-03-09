@@ -18,9 +18,12 @@ export function getGridSizeForWave(wave) {
 // Wave names for narrative flavor
 var WAVE_TITLES = {
     3: 'Walls rise.',
+    4: 'The ground burns.',
+    5: 'The air freezes.',
     6: 'The arena expands.',
     7: 'Portals tear open.',
     9: 'Darkness descends.',
+    10: 'Traps emerge.',
     11: 'Borders dissolve.',
     13: 'ALPHA awakens.',
     16: 'The grid stretches.',

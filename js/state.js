@@ -4,6 +4,7 @@ import { GRID_SIZE, INITIAL_LIVES } from './constants.js';
 import { getObstaclePositions, getPortalPositions } from './levels.js';
 import { getHunterPositions } from './hunter.js';
 import { createComboState } from './combo.js';
+import { getHazardPositions } from './hazards.js';
 
 export function createInitialState() {
     return {
@@ -39,6 +40,10 @@ export function createInitialState() {
         waveEvent: null,
         frenzyFood: [],
         scoreZones: [],
+        hazards: [],
+        iceSliding: false,
+        iceSlideTicks: 0,
+        tickCount: 0,
     };
 }
 
@@ -51,11 +56,12 @@ function isNearObstacle(pos, obPositions) {
     return false;
 }
 
-export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter) {
+export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter, hazards) {
     var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
     var portalPositions = portals ? getPortalPositions(portals) : [];
     var hunterPositions = hunter ? getHunterPositions(hunter) : [];
-    var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions).concat(hunterPositions);
+    var hazardPositions = hazards ? getHazardPositions(hazards) : [];
+    var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions).concat(hunterPositions).concat(hazardPositions);
     if (powerUp) occupied = occupied.concat([powerUp]);
     var pos;
     var attempts = 0;
@@ -87,11 +93,12 @@ export function randomPosition(snake, walls, obstacles, portals, powerUp, hunter
     return pos;
 }
 
-export function randomPositionInBounds(snake, walls, obstacles, portals, powerUp, hunter, minX, minY, maxX, maxY) {
+export function randomPositionInBounds(snake, walls, obstacles, portals, powerUp, hunter, minX, minY, maxX, maxY, hazards) {
     var obPositions = obstacles ? getObstaclePositions(obstacles) : [];
     var portalPositions = portals ? getPortalPositions(portals) : [];
     var hunterPositions = hunter ? getHunterPositions(hunter) : [];
-    var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions).concat(hunterPositions);
+    var hazardPositions = hazards ? getHazardPositions(hazards) : [];
+    var occupied = (walls || []).concat(snake).concat(obPositions).concat(portalPositions).concat(hunterPositions).concat(hazardPositions);
     if (powerUp) occupied = occupied.concat([powerUp]);
     var rangeX = maxX - minX + 1;
     var rangeY = maxY - minY + 1;

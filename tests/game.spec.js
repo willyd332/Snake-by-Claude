@@ -758,3 +758,120 @@ test.describe('Snake Game — Screenshots', () => {
     await page.screenshot({ path: 'tests/screenshots/02-gameplay.png', fullPage: true })
   })
 })
+
+test.describe('Snake Game — Environmental Hazards', () => {
+  test('hazards module exports all required functions', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const mod = await import('/js/hazards.js')
+      return {
+        hasCreateHazards: typeof mod.createHazards === 'function',
+        hasUpdateHazards: typeof mod.updateHazards === 'function',
+        hasGetHazardAt: typeof mod.getHazardAt === 'function',
+        hasIsHazardDeadly: typeof mod.isHazardDeadly === 'function',
+        hasIsSpikeInWarningPhase: typeof mod.isSpikeInWarningPhase === 'function',
+        hasIsIceAt: typeof mod.isIceAt === 'function',
+        hasGetHazardPositions: typeof mod.getHazardPositions === 'function',
+        hasLavaColor: typeof mod.HAZARD_LAVA_COLOR === 'string',
+        hasIceColor: typeof mod.HAZARD_ICE_COLOR === 'string',
+        hasSpikeColor: typeof mod.HAZARD_SPIKE_COLOR === 'string',
+        hasSpikePeriod: typeof mod.SPIKE_PERIOD_TICKS === 'number',
+      }
+    })
+    expect(result.hasCreateHazards).toBe(true)
+    expect(result.hasUpdateHazards).toBe(true)
+    expect(result.hasGetHazardAt).toBe(true)
+    expect(result.hasIsHazardDeadly).toBe(true)
+    expect(result.hasIsSpikeInWarningPhase).toBe(true)
+    expect(result.hasIsIceAt).toBe(true)
+    expect(result.hasGetHazardPositions).toBe(true)
+    expect(result.hasLavaColor).toBe(true)
+    expect(result.hasIceColor).toBe(true)
+    expect(result.hasSpikeColor).toBe(true)
+    expect(result.hasSpikePeriod).toBe(true)
+  })
+
+  test('hazards do not spawn before wave thresholds', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { createHazards } = await import('/js/hazards.js')
+      // Wave 1: no lava (requires wave 4), no ice (requires wave 5), no spikes (requires wave 10)
+      var wave1 = createHazards(1, [])
+      // Wave 3: still no hazards (lava starts at wave 4)
+      var wave3 = createHazards(3, [])
+      return {
+        wave1Count: wave1.length,
+        wave3Count: wave3.length,
+      }
+    })
+    expect(result.wave1Count).toBe(0)
+    expect(result.wave3Count).toBe(0)
+  })
+
+  test('lava hazard is always deadly', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { isHazardDeadly, getHazardAt } = await import('/js/hazards.js')
+      var lavaHazard = { type: 'lava', cells: [{ x: 5, y: 5 }], tickCount: 0 }
+      var hazards = [lavaHazard]
+      var found = getHazardAt(hazards, 5, 5)
+      return {
+        foundType: found ? found.type : null,
+        deadlyAt0: isHazardDeadly(lavaHazard, 0),
+        deadlyAt50: isHazardDeadly(lavaHazard, 50),
+        deadlyAt100: isHazardDeadly(lavaHazard, 100),
+        notFoundMiss: getHazardAt(hazards, 6, 6),
+      }
+    })
+    expect(result.foundType).toBe('lava')
+    expect(result.deadlyAt0).toBe(true)
+    expect(result.deadlyAt50).toBe(true)
+    expect(result.deadlyAt100).toBe(true)
+    expect(result.notFoundMiss).toBeNull()
+  })
+
+  test('ice detection works correctly', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { isIceAt } = await import('/js/hazards.js')
+      var hazards = [
+        { type: 'ice', cells: [{ x: 3, y: 3 }, { x: 3, y: 4 }], tickCount: 0 },
+        { type: 'lava', cells: [{ x: 7, y: 7 }], tickCount: 0 },
+      ]
+      return {
+        iceAt3_3: isIceAt(hazards, 3, 3),
+        iceAt3_4: isIceAt(hazards, 3, 4),
+        iceAt7_7: isIceAt(hazards, 7, 7),
+        iceAt0_0: isIceAt(hazards, 0, 0),
+      }
+    })
+    expect(result.iceAt3_3).toBe(true)
+    expect(result.iceAt3_4).toBe(true)
+    expect(result.iceAt7_7).toBe(false)
+    expect(result.iceAt0_0).toBe(false)
+  })
+
+  test('spike traps toggle between deadly and safe phases', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const { isHazardDeadly, SPIKE_PERIOD_TICKS } = await import('/js/hazards.js')
+      var spike = { type: 'spike', cells: [{ x: 5, y: 5 }], tickCount: 0 }
+      // First half of cycle (0 to SPIKE_PERIOD_TICKS-1) = deadly
+      // Second half (SPIKE_PERIOD_TICKS to 2*SPIKE_PERIOD_TICKS-1) = safe
+      return {
+        deadlyAtStart: isHazardDeadly(spike, 0),
+        deadlyMidFirst: isHazardDeadly(spike, SPIKE_PERIOD_TICKS - 1),
+        safeAtSecond: isHazardDeadly(spike, SPIKE_PERIOD_TICKS),
+        safeMidSecond: isHazardDeadly(spike, 2 * SPIKE_PERIOD_TICKS - 1),
+        deadlyNextCycle: isHazardDeadly(spike, 2 * SPIKE_PERIOD_TICKS),
+        spikePeriod: SPIKE_PERIOD_TICKS,
+      }
+    })
+    expect(result.deadlyAtStart).toBe(true)
+    expect(result.deadlyMidFirst).toBe(true)
+    expect(result.safeAtSecond).toBe(false)
+    expect(result.safeMidSecond).toBe(false)
+    expect(result.deadlyNextCycle).toBe(true)
+    expect(result.spikePeriod).toBe(30)
+  })
+})

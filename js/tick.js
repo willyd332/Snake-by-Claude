@@ -17,6 +17,9 @@ import {
     tickWaveEvent, checkBonusFoodCollection, resetWaveEventForNewWave,
     createWaveEventState, isGoldRushActive, GOLD_RUSH_SCORE_MULTIPLIER,
 } from './wave-events.js';
+import {
+    createHazards, updateHazards, getHazardAt, isHazardDeadly, isIceAt, getHazardPositions,
+} from './hazards.js';
 
 // Food type spawn rates (must sum to 1.0)
 var FOOD_TYPE_CHANCES = [
@@ -190,11 +193,20 @@ export function tick(prev) {
         _ateFrenzyFoodPos: null,
         _activeZone: null,
         _hungryLost: false,
+        _hazardDeath: null,
     });
 
     if (clean.gameOver || !clean.started) return clean;
 
-    var dir = clean.nextDirection;
+    // Ice sliding: if snake is sliding on ice, override player direction input
+    var iceSliding = clean.iceSliding || false;
+    var iceSlideTicks = clean.iceSlideTicks || 0;
+    var dir;
+    if (iceSliding && iceSlideTicks > 0 && (clean.direction.x !== 0 || clean.direction.y !== 0)) {
+        dir = clean.direction; // override player input, continue in same direction
+    } else {
+        dir = clean.nextDirection;
+    }
     if (dir.x === 0 && dir.y === 0) return clean;
 
     // GLASS SNAKE modifier: die if player inputs the exact opposite direction
@@ -319,6 +331,34 @@ export function tick(prev) {
                     return Object.assign({}, clean, { gameOver: true, direction: dir, _killedByHunter: true, _deathCause: 'hunter', shieldActive: false });
                 }
             }
+        }
+    }
+
+    // Environmental hazard collision (invincible ignores)
+    var hazards = clean.hazards || [];
+    var newIceSliding = false;
+    var newIceSlideTicks = 0;
+    if (hazards.length > 0 && !isInvincible) {
+        var headHazard = getHazardAt(hazards, newHead.x, newHead.y);
+        if (headHazard && isHazardDeadly(headHazard, clean.tickCount || 0)) {
+            if (isShielded) {
+                newHead = { x: head.x, y: head.y };
+                isShielded = false;
+                newShieldActive = false;
+                clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
+            } else {
+                var hazardDeathCause = headHazard.type === 'lava' ? 'lava' : 'spike';
+                return Object.assign({}, clean, {
+                    gameOver: true, direction: dir,
+                    _deathCause: hazardDeathCause,
+                    _hazardDeath: hazardDeathCause,
+                    shieldActive: false,
+                });
+            }
+        }
+        if (isIceAt(hazards, newHead.x, newHead.y)) {
+            newIceSliding = true;
+            newIceSlideTicks = 1;
         }
     }
 
@@ -486,6 +526,14 @@ export function tick(prev) {
         newFrenzyFood = [];
         // Reset wave events on new wave
         newWaveEvent = resetWaveEventForNewWave();
+        // Create new hazards for the new wave
+        var hazardOccupied = newSnake.concat(newWalls);
+        for (var pi2 = 0; pi2 < newPortals.length; pi2++) {
+            hazardOccupied = hazardOccupied.concat([newPortals[pi2].a, newPortals[pi2].b]);
+        }
+        hazards = createHazards(endlessWave, hazardOccupied);
+        newIceSliding = false;
+        newIceSlideTicks = 0;
     }
 
     // Shrinking arena
@@ -586,9 +634,9 @@ export function tick(prev) {
         }
     }
 
-    // Spawn food if needed
+    // Spawn food if needed (avoid hazard cells)
     if (!newFood) {
-        var spawnedPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter);
+        var spawnedPos = randomPosition(newSnake, newWalls, newObstacles, newPortals, null, newHunter, hazards);
         var spawnedFoodType = pickFoodType();
         // Inherit zone multiplier for food spawned inside a zone
         var spawnedFoodZone = getZoneAtPoint(spawnedPos.x, spawnedPos.y, newScoreZones);
@@ -793,6 +841,10 @@ export function tick(prev) {
         _scoreGained = _scoreGained + bonusFromModifiers;
     }
 
+    // --- Hazard System: update tick count on existing hazards ---
+    var newTickCount = (clean.tickCount || 0) + 1;
+    hazards = updateHazards(hazards, newTickCount);
+
     return {
         snake: newSnake,
         direction: dir,
@@ -829,6 +881,10 @@ export function tick(prev) {
         modifierMultiplier: modifierMultiplier,
         hungryCounter: newHungryCounter,
         fogActive: clean.fogActive || false,
+        hazards: hazards,
+        tickCount: newTickCount,
+        iceSliding: newIceSliding,
+        iceSlideTicks: newIceSlideTicks,
         _collectedPowerUp: collectedPowerUpType,
         _shrinkOccurred: shrinkOccurred,
         _ateFood: ate,
@@ -852,5 +908,6 @@ export function tick(prev) {
         scoreZones: newScoreZones,
         _activeZone: _activeZone,
         _hungryLost: hungryLost,
+        _hazardDeath: null,
     };
 }
