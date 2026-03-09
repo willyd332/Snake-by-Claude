@@ -577,8 +577,9 @@ export function render(ctx, state, konamiActivated, dom, interp) {
         var bossEntranceFade = state.boss.entranceTicks > 0
             ? 1 - (state.boss.entranceTicks / 15)
             : 1;
-        var bossPulse = Math.sin(Date.now() / 180) * 0.2 + 0.8;
-        var bossGoldPulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+        var now = Date.now();
+        var bossPulse = Math.sin(now / 180) * 0.2 + 0.8;
+        var bossGoldPulse = Math.sin(now / 300) * 0.3 + 0.7;
         var bossProximity = manhattanDistance(
             state.boss.segments[0], state.snake[0], config.wrapAround
         );
@@ -628,7 +629,7 @@ export function render(ctx, state, konamiActivated, dom, interp) {
                 var bPrevSeg = state.boss.segments[i - 1];
                 var beDist = Math.abs(bDrawX - bPrevSeg.x) + Math.abs(bDrawY - bPrevSeg.y);
                 if (beDist <= 1.5) {
-                    var bLinePulse = Math.sin(Date.now() / 120 + i * 0.9) * 0.3 + 0.4;
+                    var bLinePulse = Math.sin(now / 120 + i * 0.9) * 0.3 + 0.4;
                     ctx.globalAlpha = bLinePulse * bossEntranceFade;
                     ctx.strokeStyle = '#fbbf24';
                     ctx.lineWidth = 1.5;

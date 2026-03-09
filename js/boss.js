@@ -28,7 +28,7 @@ export function isBossWave(wave) {
 }
 
 export function createBoss(wave) {
-    var startX = 1;
+    var startX = 5;
     var startY = Math.floor(GRID_SIZE / 2);
     var segments = [];
     for (var i = 0; i < BOSS_INITIAL_LENGTH; i++) {
@@ -48,11 +48,6 @@ export function createBoss(wave) {
         circleAngle: 0,
         circleRadius: 3,
     };
-}
-
-export function getBossPositions(boss) {
-    if (!boss) return [];
-    return boss.segments.map(function(s) { return { x: s.x, y: s.y }; });
 }
 
 // --- Pattern Selection ---

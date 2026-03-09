@@ -346,8 +346,8 @@ export function tick(prev) {
         }
     }
 
-    // Boss collision (invincible passes through; any contact is fatal)
-    if (clean.boss && !isInvincible && clean.boss.entranceTicks <= 0) {
+    // Boss collision (invincible passes through; ghost passes through; any contact is fatal)
+    if (clean.boss && !isInvincible && !isGhost && clean.boss.entranceTicks <= 0) {
         var bossSegments = clean.boss.segments;
         if (collides(newHead, bossSegments)) {
             if (isShielded) {
@@ -389,7 +389,7 @@ export function tick(prev) {
         }
         if (isIceAt(hazards, newHead.x, newHead.y)) {
             newIceSliding = true;
-            newIceSlideTicks = 1;
+            newIceSlideTicks = 3;
         }
     }
 
@@ -505,8 +505,8 @@ export function tick(prev) {
         }
     }
 
-    // Check if boss moved onto player head (invincible ignores)
-    if (newBoss && !isInvincible && newBoss.entranceTicks <= 0) {
+    // Check if boss moved onto player head (invincible ignores; ghost ignores)
+    if (newBoss && !isInvincible && !isGhost && newBoss.entranceTicks <= 0) {
         var newBossHead = newBoss.segments[0];
         var bossPlayerHead = newSnake[0];
         if (collides(newBossHead, [bossPlayerHead])) {
@@ -595,7 +595,7 @@ export function tick(prev) {
         // Reset wave events on new wave
         newWaveEvent = resetWaveEventForNewWave();
         // Create new hazards for the new wave
-        var hazardOccupied = newSnake.concat(newWalls);
+        var hazardOccupied = newSnake.concat(newWalls).concat(getObstaclePositions(newObstacles));
         for (var pi2 = 0; pi2 < newPortals.length; pi2++) {
             hazardOccupied = hazardOccupied.concat([newPortals[pi2].a, newPortals[pi2].b]);
         }
