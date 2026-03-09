@@ -214,6 +214,7 @@ export function showMilestone(wave, score, length, color) {
 
 // Immediately dismiss the milestone overlay (on key/tap or auto-timeout).
 export function dismissMilestone() {
+    if (dismissTimer) { clearTimeout(dismissTimer); dismissTimer = null; }
     if (!activeOverlay) return;
     var overlay = activeOverlay;
     overlay.classList.remove('visible');

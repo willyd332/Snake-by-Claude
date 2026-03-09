@@ -248,6 +248,9 @@ export function tick(prev) {
             newHead = { x: head.x, y: head.y };
             isShielded = false;
             newShieldActive = false;
+            // End ice slide on shield absorption to prevent infinite wall-slide loop
+            newIceSliding = false;
+            newIceSlideTicks = 0;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'boundary', shieldActive: false });
@@ -262,6 +265,9 @@ export function tick(prev) {
                 newHead = { x: head.x, y: head.y };
                 isShielded = false;
                 newShieldActive = false;
+                // End ice slide on shield absorption to prevent infinite wall-slide loop
+                newIceSliding = false;
+                newIceSlideTicks = 0;
                 clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
             } else {
                 return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'arena', shieldActive: false });
@@ -275,6 +281,9 @@ export function tick(prev) {
             newHead = { x: head.x, y: head.y };
             isShielded = false;
             newShieldActive = false;
+            // End ice slide on shield absorption to prevent infinite wall-slide loop
+            newIceSliding = false;
+            newIceSlideTicks = 0;
             clean = Object.assign({}, clean, { shieldActive: false, activePowerUp: null, _shieldBroke: true });
         } else {
             return Object.assign({}, clean, { gameOver: true, direction: dir, _deathCause: 'wall', shieldActive: false });

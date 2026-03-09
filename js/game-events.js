@@ -38,6 +38,7 @@ import {
 } from './speedrun.js';
 import { getSettingsRef, getDifficultyPreset } from './settings.js';
 import { showWavePreview, dismissWavePreview } from './wave-preview.js';
+import { isMilestoneWave, showMilestone, dismissMilestone } from './milestone.js';
 
 // --- Helper: compute Manhattan distance to nearest hunter segment ---
 export function computeHunterDistance(state) {
@@ -265,6 +266,9 @@ export function processPostTickEvents(ctx) {
         ctx.prevHunterSegments = null;
         playLevelUpSound();
         playWaveFanfare(getAudioContext(), getMasterGain(), ctx.state.endlessWave);
+        if (isMilestoneWave(ctx.state.endlessWave)) {
+            showMilestone(ctx.state.endlessWave, ctx.state.score, ctx.state.snake.length, waveConfig.color);
+        }
         transitionToWave(ctx.state.endlessWave, ctx.state.wallInset || 0);
         var waveConfig = ctx.state.endlessConfig;
         ctx.particleSystem = emitLevelUpShower(ctx.particleSystem, CANVAS_SIZE, waveConfig.color);
@@ -527,6 +531,7 @@ export function processPostTickEvents(ctx) {
     // Death detected: check lives for respawn or game over
     if (ctx.state.gameOver && !ctx.prevState.gameOver) {
         dismissWavePreview();
+        dismissMilestone();
         ctx.prevSnake = null;
         ctx.prevHunterSegments = null;
         ctx.hunterIntroState = null;
@@ -543,8 +548,8 @@ export function processPostTickEvents(ctx) {
             ctx.particleSystem = emitBurst(ctx.particleSystem, ctx.state.snake[0].x, ctx.state.snake[0].y, '#ffffff', 16, 50, 0.4);
             ctx.shakeState = triggerShake(SHAKE_LIFE_LOST.intensity, SHAKE_LIFE_LOST.duration);
 
-            // Respawn snake at a safe position within current grid
-            var spawnPos = randomPositionInBounds([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1);
+            // Respawn snake at a safe position within current grid (exclude hazards so snake can't land on lava)
+            var spawnPos = randomPositionInBounds([], ctx.state.walls, ctx.state.obstacles, ctx.state.portals, null, ctx.state.hunter, 0, 0, GRID_SIZE - 1, GRID_SIZE - 1, ctx.state.hazards);
             var spawnSnake = [spawnPos];
             var newLives = ctx.state.lives - 1;
             var respawnState = Object.assign({}, ctx.state, {

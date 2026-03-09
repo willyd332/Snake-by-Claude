@@ -1,5 +1,7 @@
 'use strict';
 
+import { isMilestoneActive, dismissMilestone } from './milestone.js';
+
 var SWIPE_THRESHOLD = 30;
 var TAP_THRESHOLD = 15;
 var LONG_PRESS_MS = 500;
@@ -91,6 +93,9 @@ export function setupTouch(canvas, callbacks) {
     }, { passive: false });
 
     function handleTap() {
+        // Dismiss milestone overlay on tap
+        if (isMilestoneActive()) { dismissMilestone(); return; }
+
         // Skip replay on tap
         if (callbacks.isReplaying && callbacks.isReplaying()) {
             callbacks.onReplaySkip();
@@ -129,6 +134,9 @@ export function setupTouch(canvas, callbacks) {
     }
 
     function handleSwipe(direction) {
+        // Dismiss milestone overlay on swipe
+        if (isMilestoneActive()) { dismissMilestone(); return; }
+
         // Skip replay on swipe
         if (callbacks.isReplaying && callbacks.isReplaying()) {
             callbacks.onReplaySkip();

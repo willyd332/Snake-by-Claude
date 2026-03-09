@@ -1,6 +1,7 @@
 'use strict';
 
 import { KONAMI_SEQUENCE } from './constants.js';
+import { isMilestoneActive, dismissMilestone } from './milestone.js';
 
 var DIRECTION_MAP = {
     ArrowUp:    { x: 0, y: -1 },
@@ -14,6 +15,9 @@ export function setupInput(callbacks) {
 
     document.addEventListener('keydown', function(e) {
         var screen = callbacks.getScreen();
+
+        // Dismiss milestone overlay on any key
+        if (isMilestoneActive()) { dismissMilestone(); return; }
 
         // --- Title Screen ---
         if (screen === 'title') {
